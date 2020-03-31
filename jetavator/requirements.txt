@@ -1,0 +1,7 @@
+-e .
+
+wheel
+sphinx
+behave
+keyring
+git+https://github.com/jtv8/behave-pandas.git@supply-dtypes-in-code#egg=behave-pandas

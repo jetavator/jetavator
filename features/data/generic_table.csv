@@ -1,0 +1,11 @@
+some_bools,some_ints,some_floats,some_dates,some_times,code,name
+0,1,1.2,2015-01-01,10:03,ATL,Hartsfield-Jackson Atlanta International Airport
+0,2,-1.2,2015-01-01,09:42,PEK,Beijing Capital International Airport
+1,3,1.71,2015-01-01,16:05,DXB,Dubai International Airport
+0,4,1.2,2015-01-02,20:00,HND,Haneda Airport
+1,5,1.2,2015-01-02,03:33,LAX,Los Angeles International Airport
+1,6,1.9,2015-01-02,21:04,ORD,O'Hare International Airport
+1,7,1.2,2015-01-02,22:14,LHR,London Heathrow Airport
+0,8,1.2,2015-01-02,12:29,HKG,Hong Kong International Airport
+0,9,1.2,2015-01-02,03:43,PVG,Shanghai Pudong International Airport
+0,0,1.2,2015-01-03,07:56,CDG,Paris-Charles de Gaulle Airport
