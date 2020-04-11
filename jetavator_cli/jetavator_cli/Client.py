@@ -130,11 +130,8 @@ class Client(object):
     def project_history(self):
         return self.schema_registry
 
-    def deploy(self, wheel_only=False):
-        self.connection.deploy(wheel_only)
-
-    def deploy_wheel(self, local_path):
-        self.connection.deploy_wheel(local_path)
+    def deploy(self):
+        self.connection.deploy()
 
     # TODO: Deprecate environment_type.
     #       Remove this hard-coded conditional switching and base this on
