@@ -271,18 +271,17 @@ class CreateSource(SparkJob):
     key_args = ['source']
 
     def __init__(self, runner, source):
-        csv_path = runner.engine.connection.csv_file_path(source)
         source_ddl = runner.engine.connection.compile_sqlalchemy(
             source.sql_model
             .create_table(source.sql_model.table)[0]
         )
-        if os.path.exists(f'/dbfs/{csv_path}'):
+        if runner.engine.connection.source_csv_exists(source):
             super().__init__(
                 runner,
                 source,
                 source_ddl=source_ddl.replace(
                     'CREATE TABLE', 'CREATE TEMPORARY TABLE'),
-                csv_path=csv_path
+                csv_path=runner.engine.connection.csv_file_path(source)
             )
         else:
             super().__init__(
@@ -291,6 +290,23 @@ class CreateSource(SparkJob):
                 source_ddl=source_ddl.replace(
                     'CREATE TABLE', 'CREATE TABLE IF NOT EXISTS'),
             )
+            self.logger.warn(f'CSV file not found for source: {source}')
+
+
+class DropSource(SparkJob):
+    name = 'drop_source_{{source.name}}'
+    template = '''
+        DROP TABLE source_{{source.name}}
+        '''
+    template_args = ['source']
+    key_args = ['source']
+
+    @property
+    def dependencies(self):
+        return [
+            self.runner.get_job(SatelliteQuery, satellite)
+            for satellite in self.source.dependent_satellites
+        ]
 
 
 class InputKeys(SparkView):
@@ -594,6 +610,8 @@ class StarData(SparkView):
                {% endfor %}
                {% endif %}
 
+               , keys.key_source
+
                {% for satellite in satellite_owner.star_satellites.values() %}
                , array_contains(
                     keys.key_source,
@@ -762,9 +780,14 @@ class SparkRunner(object):
         }
 
     def source_jobs(self, source):
-        return [
+        jobs = [
             self.get_or_create_job(CreateSource, source)
         ]
+        if self.engine.connection.source_csv_exists(source):
+            jobs += [
+                self.get_or_create_job(DropSource, source)
+            ]
+        return jobs
 
     def satellite_jobs(self, satellite):
         return [
@@ -778,11 +801,12 @@ class SparkRunner(object):
             self.get_or_create_job(SerialiseSatellite, satellite)
         ]
 
+    # TODO: Eliminate StarMerge if star datastore is external to Spark
     def star_jobs(self, satellite_owner):
         return [
             self.get_or_create_job(StarKeys, satellite_owner),
             self.get_or_create_job(StarData, satellite_owner),
-            # self.get_or_create_job(StarMerge, satellite_owner)
+            self.get_or_create_job(StarMerge, satellite_owner)
         ]
 
     def input_keys(self, satellite, type):

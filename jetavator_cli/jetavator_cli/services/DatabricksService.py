@@ -265,6 +265,11 @@ class DatabricksService(SparkService, register_as='remote_databricks'):
             f'{source.name}.csv'
         )
 
+    # TODO: Either implement this - or refactor so this class
+    #       doesn't inherit this from SparkService
+    def source_csv_exists(self, source):
+        raise NotImplementedError
+
     def load_csv(self, csv_file, source):
         self.databricks_runner.load_csv(csv_file, source)
 

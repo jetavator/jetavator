@@ -157,7 +157,7 @@ class Project(ProjectOrChangeSet):
                 f"""
                 Cannot delete table that has dependencies.
                 The following satellites are dependent on the table {key}:
-                {table.dependent_satellites}
+                {[satellite.name for satellite in table.dependent_satellites]}
                 """
             )
         del self.object_definitions[key]
