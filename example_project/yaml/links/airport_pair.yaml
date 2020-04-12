@@ -1,0 +1,5 @@
+name: airport_pair
+type: link
+link_hubs:
+  dep_airport: airport
+  arr_airport: airport

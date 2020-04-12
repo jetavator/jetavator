@@ -1,0 +1,5 @@
+name: airport_details
+type: source
+columns:
+  "code": {"type": "char(3)", "nullable": False, "pk": True}
+  "name": {"type": "varchar(64)", "nullable": False}
