@@ -1,0 +1,12 @@
+name: airport_details
+type: satellite
+parent:
+  name: airport
+  type: hub
+columns:
+  "name": {"type": "varchar(64)", "nullable": False}
+pipeline:
+  type: source
+  source: airport_details
+  key_columns:
+    "airport": "code"

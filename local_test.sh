@@ -1,1 +1,3 @@
- behave -D config=./local_spark_config.yml --no-capture --verbose
+#!/bin/bash
+jetavator config --config-file=./local_spark_config.yml
+behave -D config=~/.jetavator/config.yml --no-capture --verbose $1

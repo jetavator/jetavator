@@ -1,0 +1,31 @@
+name: last_updated_airport
+type: satellite
+parent:
+  name: airport
+  type: hub
+columns:
+  "last_updated_airport": {"type": "char(1)"}
+pipeline:
+  type: sql
+  key_columns:
+    "airport": "hub_airport_key"
+  dependencies:
+    - type: satellite
+      name: airport_details
+      view: current
+  load_dt: "sat_load_dt"
+  deleted_ind: "sat_deleted_ind"
+  sql: |
+    SELECT COALESCE(updates.hub_airport_key,
+                    now.hub_airport_key) AS hub_airport_key,
+           CASE WHEN updates.hub_airport_key IS NULL
+                THEN 0
+                ELSE 1
+              END AS last_updated_airport,
+           CURRENT_TIMESTAMP AS sat_load_dt,
+           COALESCE(updates.sat_deleted_ind,
+                    now.sat_deleted_ind) AS sat_deleted_ind
+      FROM {{satellite.airport_details.current}} AS now
+           FULL JOIN {{satellite.airport_details.updates}} AS updates
+                  ON updates.hub_airport_key
+                   = now.hub_airport_key

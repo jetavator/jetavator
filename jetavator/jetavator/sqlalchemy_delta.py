@@ -1,8 +1,14 @@
 from sqlalchemy.sql import compiler
+
 from pyhive.sqlalchemy_hive import HiveDialect, HiveCompiler, HiveTypeCompiler
+
+from pyhive.hive import HiveParamEscaper
 
 
 class DeltaCompiler(HiveCompiler):
+
+    def render_literal_value(self, value, type_):
+        return str(HiveParamEscaper().escape_item(value))
 
     def __str__(self):
         result = super().__str__()

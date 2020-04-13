@@ -9,8 +9,7 @@ Usage:
     [-s | --deploy-scripts-only]
     [--behave=<behave_opts>]
     [--set <option>=<value>]...
-  jetavator deploy [-d|--drop-if-exists] [--wheel-only]
-    [--set <option>=<value>]...
+  jetavator deploy [-d|--drop-if-exists] [--set <option>=<value>]...
   jetavator update [--set <option>=<value>]...
   jetavator run [delta|full] [--csv <target_table>=<source_csv>]...
   jetavator run [delta|full] --folder=<csv_folder>
@@ -137,7 +136,7 @@ def main(argv=None, exit_callback=None):
             client.build_wheel()
 
         elif options['deploy']:
-            client.deploy(wheel_only=bool(options['--wheel-only']))
+            client.deploy()
 
         elif options['test']:
             BehaveClient(client.config).test()

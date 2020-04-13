@@ -115,12 +115,13 @@ class VaultObject(RegistersSubclasses, HasSQLModel, ValidatesYaml):
     @property
     def dependent_satellites(self):
         return [
-            satellite["name"]
+            satellite
             for satellite in self.project["satellite"].values()
-            for source in satellite.definition["sources"]
-            for dependency in source.get("dependencies", [])
-            if dependency.type == self.type
-            and dependency.name == self.name
+            if any(
+                dependency.type == self.type
+                and dependency.name == self.name
+                for dependency in satellite.pipeline.dependencies
+            )
         ]
 
     @property

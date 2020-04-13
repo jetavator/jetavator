@@ -1,3 +1,4 @@
+#!/bin/bash
 jetavator config --config-file=./ci_config.yml
 jetavator build
 # export HTTPS_PROXY=""

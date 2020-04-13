@@ -1,0 +1,8 @@
+dep_airport,arr_airport,num_changes
+ATL,LHR,0
+ATL,ORD,0
+ATL,PVG,0
+LHR,AMS,0
+ORD,PVG,1
+ORD,LHR,1
+ORD,AMS,2

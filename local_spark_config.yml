@@ -6,6 +6,5 @@ storage:
   star: spark
   logs: azure_queue
 compute: spark
-storage_account_name: $AZURE_STORAGE_ACCOUNT
-storage_account_key: $AZURE_STORAGE_KEY
+environment_type: local_spark
 secret_lookup: environment

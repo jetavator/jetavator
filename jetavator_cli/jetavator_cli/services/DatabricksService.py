@@ -68,24 +68,24 @@ class DatabricksService(SparkService, register_as='remote_databricks'):
             ):
                 yield os.path.join(root, yaml_file)
 
-    def deploy(self, wheel_only=False):
+    def _deploy_wheel(self):
         if not os.path.isfile(self.engine.config.wheel_path):
             raise Exception(
                 f'No wheel file found at [{self.engine.config.wheel_path}]')
         self.databricks_runner.start_cluster()
         self.databricks_runner.load_wheel()
-        if not wheel_only:
-            self.databricks_runner.create_jobs()
-            self.databricks_runner.load_config()
-            self.databricks_runner.create_secrets()
-            self.databricks_runner.clear_yaml()
-            for path in self.yaml_file_paths():
-                self.databricks_runner.load_yaml(
-                    os.path.relpath(path, self.engine.config.model_path))
-            self.databricks_runner.deploy_remote()
 
-    def deploy_wheel(self, local_path):
-        self.databricks_runner.load_wheel(local_path)
+
+    def deploy(self):
+        self._deploy_wheel()
+        self.databricks_runner.create_jobs()
+        self.databricks_runner.load_config()
+        self.databricks_runner.create_secrets()
+        self.databricks_runner.clear_yaml()
+        for path in self.yaml_file_paths():
+            self.databricks_runner.load_yaml(
+                os.path.relpath(path, self.engine.config.model_path))
+        self.databricks_runner.deploy_remote()
 
     def session(self):
         return sqlalchemy.orm.sessionmaker(bind=self.sqlalchemy_connection)()
@@ -264,6 +264,11 @@ class DatabricksService(SparkService, register_as='remote_databricks'):
             f'{self.config.schema}/'
             f'{source.name}.csv'
         )
+
+    # TODO: Either implement this - or refactor so this class
+    #       doesn't inherit this from SparkService
+    def source_csv_exists(self, source):
+        raise NotImplementedError
 
     def load_csv(self, csv_file, source):
         self.databricks_runner.load_csv(csv_file, source)

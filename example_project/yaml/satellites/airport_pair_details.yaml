@@ -1,0 +1,10 @@
+name: airport_pair_details
+type: satellite
+parent:
+  name: airport_pair
+  type: link
+columns:
+  "num_changes": {"type": "int", "nullable": False}
+pipeline:
+  type: source
+  source: airport_pair_details

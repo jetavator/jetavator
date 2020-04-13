@@ -1,0 +1,6 @@
+name: airport_pair_details
+type: source
+columns:
+  "dep_airport": {"type": "char(3)", "nullable": False, "pk": True}
+  "arr_airport": {"type": "char(3)", "nullable": False, "pk": True}
+  "num_changes": {"type": "int", "nullable": False}

@@ -127,6 +127,9 @@ class SparkService(DBService):
     def csv_file_path(self, source):
         raise NotImplementedError
 
+    def source_csv_exists(self, source):
+        raise NotImplementedError
+
     def table_delta_path(self, sqlalchemy_table):
         return (
             '/tmp'
@@ -356,6 +359,9 @@ class LocalDatabricksService(SparkService, register_as="local_databricks"):
             f'{source.name}.csv'
         )
 
+    def source_csv_exists(self, source):
+        return os.path.exists('/dbfs/' + self.csv_file_path(source))
+
 
 class LocalSparkService(SparkService, register_as="local_spark"):
 
@@ -389,6 +395,9 @@ class LocalSparkService(SparkService, register_as="local_spark"):
             f'{self.engine.config.session.run_uuid}/'
             f'{source.name}.csv'
         )
+
+    def source_csv_exists(self, source):
+        return os.path.exists(self.csv_file_path(source))
 
     def load_csv(self, csv_file, source):
         utils.print_to_console(f"{source.name}.csv: Uploading file")
