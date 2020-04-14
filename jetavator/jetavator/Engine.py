@@ -1,11 +1,14 @@
 import pandas
 import os
-from lazy_property import LazyProperty
 import tempfile
 import numpy as np
 import sqlalchemy
 import yaml
 import datetime
+
+from typing import Union, List, Dict, Callable
+
+from lazy_property import LazyProperty
 
 from re import match
 from functools import wraps
@@ -15,9 +18,15 @@ from . import utils
 from .schema_registry import SchemaRegistry
 
 from .config import Config
+from .schema_registry import Project
 
 from .SparkRunner import SparkRunner
 from .services import Service, DBService
+from .sql_model import BaseModel
+
+from logging import Logger
+
+from enum import Enum
 
 DEFAULT_NUMERIC = 0
 DEFAULT_STRING = ''
@@ -100,7 +109,12 @@ BASE_DTYPES = {
 }
 
 
-def logged(function_to_decorate):
+class LoadType(Enum):
+    DELTA = 'delta'
+    FULL = 'full'
+
+
+def logged(function_to_decorate: Callable) -> Callable:
     @wraps(function_to_decorate)
     def decorated_function(self, *args, **kwargs):
         try:
@@ -115,82 +129,85 @@ class Engine(object):
 
     def __init__(
         self,
-        config=None,
+        config: Config = None,
         **kwargs
-    ):
+    ) -> None:
         self.config = config or Config(**kwargs)
 
     @property
-    def connection(self):
+    def connection(self) -> DBService:
         return self.services[self.config.compute]
 
     @property
-    def source_storage_service(self):
+    def source_storage_service(self) -> DBService:
         return self.services[self.config.storage.source]
 
     @property
-    def vault_storage_service(self):
+    def vault_storage_service(self) -> DBService:
         return self.services[self.config.storage.vault]
 
     @property
-    def star_storage_service(self):
+    def star_storage_service(self) -> DBService:
         return self.services[self.config.storage.star]
 
     @property
-    def logs_storage_service(self):
+    def logs_storage_service(self) -> DBService:
         return self.services[self.config.storage.logs]
 
     @property
-    def db_services(self):
+    def db_services(self) -> Dict[str, DBService]:
         return {
             k: v
             for k, v in self.services.items()
             if isinstance(v, DBService)
         }
 
-    def drop_schemas(self):
+    def drop_schemas(self) -> None:
         for service in self.db_services.values():
             if service.schema_exists:
                 service.drop_schema()
 
     @property
-    def logger(self):
+    def logger(self) -> Logger:
         return self.connection.logger
 
     @LazyProperty
-    def services(self):
+    def services(self) -> Dict[str, Service]:
         return {
             service_config.name: Service.from_config(self, service_config)
             for service_config in self.config.services
         }
 
     @LazyProperty
-    def schema_registry(self):
+    def schema_registry(self) -> SchemaRegistry:
         return SchemaRegistry(self.config, self.connection)
 
     @property
-    def sql_model(self):
+    def sql_model(self) -> BaseModel:
         return self.schema_registry.changeset.sql_model
 
     @property
-    def project(self):
+    def project(self) -> Project:
         return self.schema_registry.deployed
 
+    # TODO: project_history is reduntant - can this or schema_registry
+    #       be deprecated?
     @property
-    def project_history(self):
+    def project_history(self) -> SchemaRegistry:
         return self.schema_registry
 
     @logged
-    def deploy(self):
+    def deploy(self) -> None:
         self.generate_database()
 
     @logged
-    def run(self, load_type="delta"):
-        if load_type not in ("delta", "full"):
-            raise ValueError("load_type must be either 'delta' or 'full'")
+    def run(
+        self,
+        load_type: LoadType = LoadType.DELTA
+    ) -> None:
 
-        # Fix this later?
-        if load_type == "full":
+        # TODO: Fix full load capability for Spark/Hive
+        if load_type == LoadType.FULL:
             raise NotImplementedError("Not implemented in Databricks version.")
 
         # TODO: Make this platform-independent - currently HIVE specific
@@ -198,6 +215,7 @@ class Engine(object):
             f'USE `{self.config.schema}`'
         )
 
+        # TODO: Test DB connection before execution
         # self.connection.test()
         self.spark_runner.run()
 
@@ -206,13 +224,15 @@ class Engine(object):
             index=False
         )
 
-        # if return_val != 0:
-        #     raise RuntimeError(
-        #         f"Call to Jetavator.run failed with return code {return_val}. "
-        #         "Changes rolled back. "
-        #         "Source tables emptied and dumped to source_error schema.")
-
-    def add(self, new_object, load_full_history=False, version=None):
+    # TODO: Reintroduce tests for Engine.add
+    # TODO: Refactor new_object so it takes a VaultObject which can then
+    #       be extended with more constructors
+    def add(
+        self,
+        new_object: Union[str, dict],
+        load_full_history: bool = False,
+        version: str = None
+    ) -> None:
 
         if isinstance(new_object, str):
             new_object_dict = yaml.load(new_object)
@@ -229,15 +249,31 @@ class Engine(object):
             self.connection.execute_sql_element(
                 new_vault_object.sql_model.sp_load("full").execute())
 
-    def drop(self, object_type, object_name, version=None):
+    # TODO: Move Engine.drop to VaultObject.drop in order to allow
+    #       multiple lookup methods, e.g. by type+name, composite key,
+    #       iteration through a list of VaultObjects - possibly decouple
+    #       from the version increment to give users more control?
+    def drop(
+        self,
+        object_type: str,
+        object_name: str,
+        version: str = None
+    ) -> None:
         self.schema_registry.load_from_database()
         self.schema_registry.loaded.increment_version(version)
         self.schema_registry.loaded.delete(object_type, object_name)
         self.update_database_model()
 
-    def update(self, model_dir=None, load_full_history=False):
-        if model_dir:
-            self.config.model_path = model_dir
+    # TODO: Refactor so the Engine doesn't need physical disk paths for
+    #       the YAML folder - move this functionality into an extendable
+    #       loader object elsewhere. Instead pass in a whole project object.
+    def update(
+        self,
+        model_path: str = None,
+        load_full_history: bool = False
+    ) -> None:
+        if model_path:
+            self.config.model_path = model_path
         self.schema_registry.load_from_disk()
         assert (
                 self.schema_registry.loaded.checksum
@@ -259,7 +295,13 @@ class Engine(object):
             load_full_history=load_full_history
         )
 
-    def table_dtypes(self, table_name, registry=None):
+    # TODO: Review if Engine.table_dtypes is still needed. Refactor it to
+    #       somewhere more appropriate (Source?) if it is, deprecate it if not
+    def table_dtypes(
+        self,
+        table_name: str,
+        registry: Project = None   # rename this to project?
+    ) -> Dict[str, str]:
         registry = registry or self.schema_registry.loaded
         try:
             user_defined_dtypes = {
@@ -277,12 +319,14 @@ class Engine(object):
             **user_defined_dtypes
         }
 
+    # TODO: Refactor file loading responsibilities out of Engine
+    # TODO: DRY in the try/except block of Engine.csv_to_dataframe
     def csv_to_dataframe(
-            self,
-            csv_file,
-            table_name,
-            registry=None
-    ):
+        self,
+        csv_file: str,
+        table_name: str,
+        registry: Project = None   # rename this to project?
+    ) -> pandas.DataFrame :
         registry = registry or self.schema_registry.loaded
         try:
             return pandas.read_csv(
@@ -314,7 +358,16 @@ class Engine(object):
                 }
             )
 
-    def source_def_from_dataframe(self, df, table_name, use_as_pk):
+    # TODO: Refactor Engine.source_def_from_dataframe
+    #       as a constructor for the Source object
+    # TODO: Nothing should ever return a type signature this complex!
+    #       It should be an object instead
+    def source_def_from_dataframe(
+        self,
+        df: pandas.DataFrame,
+        table_name: str,
+        use_as_pk: str
+    ) -> Dict[str, Union[str, Dict[str, Dict[str, Union[str, bool]]]]]:
 
         pd_dtypes_dict = df.dtypes.apply(lambda x: x.name).to_dict()
         col_dict_list = [
@@ -338,7 +391,14 @@ class Engine(object):
         }
         return source_def
 
-    def add_dataframe_as_source(self, df, table_name, use_as_pk):
+    # TODO: Deprecate after Engine.source_def_from_dataframe has been added
+    #       as a constructor for the Source object
+    def add_dataframe_as_source(
+        self,
+        df: pandas.DataFrame,
+        table_name: str,
+        use_as_pk: str
+    ) -> None:
         source_def = self.source_def_from_dataframe(
             df=df,
             table_name=table_name,
@@ -355,10 +415,17 @@ class Engine(object):
             table_name=table_name,
         )
 
+    # TODO: Refactor responsibility for loading CSV files away from
+    #       Engine. Tie this directly to the Source object so we don't force a
+    #       particular lookup method here.
+    # TODO: Re-implement assume_schema_integrity for loading CSVs
+    #       (perhaps with a header line safety check!)
     def load_csvs(
-        self, table_name, csv_files
+        self,
+        table_name: str,
+        csv_files: List[str]
         # , assume_schema_integrity=False
-    ):
+    ) -> None:
         # if assume_schema_integrity:
         #     source = self.schema_registry.loaded["source", table_name]
         #     self.spark_runner.load_csv(csv_file, source)
@@ -375,7 +442,13 @@ class Engine(object):
             self.schema_registry.loaded["source", table_name]
         )
 
-    def load_csv_folder(self, folder_path):
+    # TODO: Refactor responsibility for loading CSV files away from
+    #       Engine. For Engine.load_csv_folder, these should be two methods
+    #       of an extendable loader class (or possibly subclasses?)
+    def load_csv_folder(
+        self,
+        folder_path: str
+    ) -> None:
         assert os.path.isdir(folder_path), (
             f"{folder_path} is not a valid directory."
         )
@@ -384,16 +457,27 @@ class Engine(object):
             if file_extension == ".csv" and dir_entry.is_file():
                 self.load_csvs(filename, [dir_entry.path])
 
-    def call_stored_procedure(self, procedure_name):
+    # TODO: Deprecate Engine.call_stored_procedure as it's specific to MSSQL
+    def call_stored_procedure(
+        self,
+        procedure_name: str
+    ):
         return self.connection.call_stored_procedure(procedure_name)
 
-    def sql_query_single_value(self, sql):
+    # TODO: Deprecate Engine.sql_query_single_value
+    def sql_query_single_value(
+        self,
+        sql: str
+    ):
         return self.connection.sql_query_single_value(sql)
 
+    # TODO: Investigate if Engine.get_performance_data is still needed
+    #       and deprecate it if not
     def get_performance_data(self):
         raise NotImplementedError
 
-    def generate_database(self):
+    # TODO: Engine.generate_database doesn't belong as a public method
+    def generate_database(self) -> None:
         self.logger.info('Testing database connection')
         self.connection.test(master=True)
         if self.connection.schema_exists:
@@ -415,32 +499,45 @@ class Engine(object):
             self.connection.create_schema()
         self._deploy_template(action="create")
 
-    def update_database_model(self, load_full_history=False):
+    # TODO: Engine.update_database_model doesn't belong as a public method
+    def update_database_model(
+        self,
+        load_full_history: bool=False
+    ) -> None:
         self._deploy_template(action="alter")
         if load_full_history:
             self.connection.execute_sql_element(
                 self.sql_model.sp_jetavator_load_full.execute()
             )
 
-    def update_model_from_dir(self, new_model_path=None):
+    # TODO: Refactor responsibility for loading YAML files away from Engine.
+    def update_model_from_dir(
+        self,
+        new_model_path: str = None
+    ) -> None:
         if new_model_path:
             self.config.model_path = new_model_path
         self.schema_registry.load_from_disk()
 
+    # TODO: Refactor Engine.spark_runner to make Runner a generic interface
     @LazyProperty
-    def spark_runner(self):
+    def spark_runner(self) -> SparkRunner:
         return SparkRunner(
             self,
             self.sql_model.definition
         )
 
-    def clear_database(self):
+    def clear_database(self) -> None:
         self.logger.info('Starting: clear_database')
         for table in self.sql_model.tables:
             self.connection.write_empty_table(table, overwrite_schema=False)
         self.logger.info('Finished: clear_database')
 
-    def _deploy_template(self, action):
+    # TODO: Make action an enum?
+    def _deploy_template(
+        self,
+        action: str
+    ) -> None:
 
         if not self.schema_registry.loaded.valid:
             raise Exception(self.schema_registry.loaded.validation_error)
