@@ -2,7 +2,7 @@ import sys
 import base64
 import os
 import tempfile
-import lazy_property
+from lazy_property import LazyProperty
 import sqlparse
 import textwrap
 import jinja2
@@ -280,7 +280,7 @@ class DatabricksJob(object):
         self.filename = filename
         self.scripts = scripts
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def jupyter_notebook(self):
         return nbformat.v4.new_notebook(
             cells=[
@@ -386,31 +386,31 @@ class DatabricksRunner(object):
     def engine_config(self):
         return self.connection.engine.config
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def dbfs_api(self):
         return DbfsApi(self.databricks_api)
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def jobs_api(self):
         return JobsService(self.databricks_api)
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def libraries_api(self):
         return ManagedLibraryService(self.databricks_api)
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def workspace_api(self):
         return WorkspaceService(self.databricks_api)
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def secrets_api(self):
         return SecretService(self.databricks_api)
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def clusters_api(self):
         return ClusterService(self.databricks_api)
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def databricks_api(self):
         return ApiClient(
             host=f'https://{self.config.host}',
@@ -599,7 +599,7 @@ class DatabricksRunner(object):
             sql=f'CREATE SCHEMA {self.engine.config.schema}'
         )
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def deploy_job(self):
         return DatabricksJob(
             self,
@@ -616,7 +616,7 @@ class DatabricksRunner(object):
             ]
         )
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def run_job(self):
         return DatabricksJob(
             self,

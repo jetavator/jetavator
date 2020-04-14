@@ -1,4 +1,4 @@
-import lazy_property
+from lazy_property import LazyProperty
 
 from datetime import datetime, timedelta
 
@@ -39,7 +39,7 @@ class LogListener(object):
     def queue_name(self):
         return f'jetavator-log-{self.config.session.run_uuid}'
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def queue(self):
         return self.storage_service.queue_client(self.queue_name)
 

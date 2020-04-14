@@ -1,7 +1,7 @@
 import random
 import os
 import uuid
-import lazy_property
+from lazy_property import LazyProperty
 import yaml
 
 from . import json_schema_objects as jso
@@ -20,7 +20,7 @@ PROPERTIES_TO_PRINT = [
 
 class SecretSubstitutingConfig(jso.Object):
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def _secret_lookup(self):
         return SecretLookup.registered_subclass_instance(
             self._document['secret_lookup']

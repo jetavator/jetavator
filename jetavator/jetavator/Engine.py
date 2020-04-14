@@ -1,6 +1,6 @@
 import pandas
 import os
-import lazy_property
+from lazy_property import LazyProperty
 import tempfile
 import numpy as np
 import sqlalchemy
@@ -157,14 +157,14 @@ class Engine(object):
     def logger(self):
         return self.connection.logger
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def services(self):
         return {
             service_config.name: Service.from_config(self, service_config)
             for service_config in self.config.services
         }
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def schema_registry(self):
         return SchemaRegistry(self.config, self.connection)
 
@@ -427,7 +427,7 @@ class Engine(object):
             self.config.model_path = new_model_path
         self.schema_registry.load_from_disk()
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def spark_runner(self):
         return SparkRunner(
             self,

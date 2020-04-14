@@ -1,7 +1,7 @@
 import sqlalchemy
 import os
 import re
-import lazy_property
+from lazy_property import LazyProperty
 import pyspark
 import sqlparse
 import asyncactions
@@ -62,13 +62,13 @@ class SparkService(DBService):
             }
         }
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def logger(self):
         logging.config.dictConfig(self.logger_config)
         return logging.getLogger('jetavator')
 
     # In future, refactor elsewhere to separate sqlalchemy and spark concerns
-    @lazy_property.LazyProperty
+    @LazyProperty
     def metadata(self):
         return sqlalchemy.MetaData()
 
@@ -321,7 +321,7 @@ class LocalDatabricksService(SparkService, register_as="local_databricks"):
             'blob.core.windows.net'
         )
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def dbutils(self):
         import IPython
         return IPython.get_ipython().user_ns["dbutils"]
@@ -371,7 +371,7 @@ class LocalSparkService(SparkService, register_as="local_spark"):
         # Figure out a better way to manage temporary folders -
         # requires storage of state between commands line calls!
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def spark(self):
         os.environ['PYSPARK_SUBMIT_ARGS'] = (
             '--packages'

@@ -1,4 +1,4 @@
-import lazy_property
+from lazy_property import LazyProperty
 import base64
 
 from .Service import Service
@@ -48,13 +48,13 @@ class AzureStorageService(Service, register_as='azure_storage'):
             name
         )
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def blob_service_client(self):
         return BlobServiceClient.from_connection_string(
             self.connection_string
         )
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def blob_container_client(self):
         return self.create_container_if_not_exists()
 

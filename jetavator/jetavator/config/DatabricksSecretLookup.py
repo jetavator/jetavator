@@ -1,11 +1,11 @@
 from jetavator.config.SecretLookup import SecretLookup
 
-import lazy_property
+from lazy_property import LazyProperty
 
 
 class DatabricksSecretLookup(SecretLookup, register_as='databricks'):
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def dbutils(self):
         import IPython
         return IPython.get_ipython().user_ns["dbutils"]

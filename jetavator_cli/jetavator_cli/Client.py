@@ -1,6 +1,6 @@
 import pandas
 import os
-import lazy_property
+from lazy_property import LazyProperty
 import tempfile
 import numpy as np
 import sqlalchemy

@@ -1,12 +1,12 @@
 import sqlalchemy
-import lazy_property
+from lazy_property import LazyProperty
 
 from .DBService import DBService
 
 
 class MSSQLService(DBService, register_as='mssql'):
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def sqlalchemy_connection(self):
         if self.config.trusted_connection:
             return sqlalchemy.create_engine(
@@ -31,7 +31,7 @@ class MSSQLService(DBService, register_as='mssql'):
                 deprecate_large_types=True
             )
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def metadata(self):
         meta = sqlalchemy.MetaData()
         meta.bind = self.sqlalchemy_connection

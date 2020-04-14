@@ -3,7 +3,7 @@ import os
 import re
 import time
 import thrift
-import lazy_property
+from lazy_property import LazyProperty
 
 from ..LogListener import LogListener
 
@@ -52,11 +52,11 @@ class DatabricksService(SparkService, register_as='remote_databricks'):
         self.sqlalchemy_connection = self._create_sql_connection()
         self.reset_metadata()
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def databricks_runner(self):
         return DatabricksRunner(self)
 
-    @lazy_property.LazyProperty
+    @LazyProperty
     def log_listener(self):
         return LogListener(self.engine.config, self.engine.logs_storage_service)
 
