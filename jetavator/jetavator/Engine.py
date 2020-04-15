@@ -239,7 +239,7 @@ class Engine(object):
         """Deploy the current project to the configured storage services
         """
         self.logger.info('Testing database connection')
-        self.compute_service.test(master=True)
+        self.compute_service.test()
         if self.compute_service.schema_exists:
             if self.config.drop_schema_if_exists:
                 self.logger.info('Dropping and recreating database')

@@ -1,4 +1,4 @@
-from jetavator.config.SecretLookup import SecretLookup
+from jetavator.config.secret_lookup import SecretLookup
 
 from lazy_property import LazyProperty
 

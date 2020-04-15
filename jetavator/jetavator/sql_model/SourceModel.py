@@ -1,10 +1,9 @@
+from sqlalchemy import Column
+from sqlalchemy.types import *
+
 from .BaseModel import BaseModel
 
-from .functions import hash_record
 
-from sqlalchemy import Column, PrimaryKeyConstraint
-
-from sqlalchemy.types import *
 # from sqlalchemy.dialects.mssql import BIT
 
 
@@ -53,7 +52,7 @@ class SourceModel(BaseModel, register_as="source"):
     def table_columns(self, include_primary_key=True):
         has_primary_key = bool(self.definition.primary_key_columns)
         # use_primary_key = has_primary_key and include_primary_key
-        use_primary_key = False  # Databricks does not allow PKs. Make this configurable per engine?
+        use_primary_key = False  # Spark/Hive does not allow PKs. Make this configurable per engine?
         return [
             *self.source_columns(use_primary_key),
             *self.date_columns(use_primary_key)

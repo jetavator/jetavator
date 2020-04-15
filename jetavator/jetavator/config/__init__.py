@@ -7,6 +7,7 @@ from .Config import (
     StorageConfig
 )
 from .ConfigProperty import ConfigProperty
-from .SecretLookup import SecretLookup
-from .DatabricksSecretLookup import DatabricksSecretLookup
-from .EnvironmentSecretLookup import EnvironmentSecretLookup
+from .secret_lookup import (
+    SecretLookup,
+    EnvironmentSecretLookup
+)

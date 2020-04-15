@@ -1,13 +1,13 @@
-import random
 import os
+import random
 import uuid
-from lazy_property import LazyProperty
+
 import yaml
+from lazy_property import LazyProperty
 
 from . import json_schema_objects as jso
-
 from .ConfigProperty import ConfigProperty
-from .SecretLookup import SecretLookup
+from .secret_lookup import SecretLookup
 
 PROPERTIES_TO_PRINT = [
     "model_path",
@@ -60,14 +60,6 @@ class DBServiceConfig(ServiceConfig):
             return self['schema']
         else:
             return self._document.schema
-
-
-class LocalDatabricksConfig(DBServiceConfig, register_as='local_databricks'):
-    properties = {
-        'type': jso.Const['local_databricks'],
-        'name': jso.String,
-        'schema': jso.String
-    }
 
 
 class LocalSparkConfig(DBServiceConfig, register_as='local_spark'):

@@ -1,8 +1,5 @@
-import time
-
-from jetavator import utils
-
-from sqlalchemy.exc import ProgrammingError, OperationalError
+from jetavator.config import Config
+from jetavator.services import DBService
 
 from .Project import Project, ProjectChangeSet
 from .sqlalchemy_tables import Deployment
@@ -10,7 +7,7 @@ from .sqlalchemy_tables import Deployment
 
 class SchemaRegistry(object):
 
-    def __init__(self, config, compute_service):
+    def __init__(self, config: Config, compute_service: DBService):
         self.config = config
         self.compute_service = compute_service
         if self.config.model_path:
@@ -45,26 +42,25 @@ class SchemaRegistry(object):
             for deployment in session.query(Deployment)
         ]
 
+    # TODO: Implement storage/retrieval of deployed definitions on Spark/Hive
     @property
     def deployed(self):
+        # self.compute_service.test()
+        # session = self.compute_service.session()
+        # try:
+        #     deployment = session.query(Deployment).order_by(
+        #         Deployment.deploy_dt.desc()).first()
+        #     retry = False
+        # except (ProgrammingError, OperationalError):
+        #     deployment = Deployment()
+        #     retry = False
+        # # if there is no deployment on Spark/Hive above piece fails.
+        # # for not loose fix is done by below if statement. needs to be
+        # # fixed with more logical code in future
+        # if deployment is None:
+        #     deployment = Deployment()
+        # return Project.from_sqlalchemy_object(self, deployment)
         return Project.from_sqlalchemy_object(self, Deployment())
-        # the above is for local Spark testing - remove it later
-
-        self.compute_service.test()
-        session = self.compute_service.session()
-        try:
-            deployment = session.query(Deployment).order_by(
-                Deployment.deploy_dt.desc()).first()
-            retry = False
-        except (ProgrammingError, OperationalError):
-            deployment = Deployment()
-            retry = False
-        #TODO:if there is no deployment on databricks above piece fails.
-        # for not loose fix is done by below if statement. needs to be
-        # fixed with more logical code in future
-        if deployment is None:
-            deployment = Deployment()
-        return Project.from_sqlalchemy_object(self, deployment)
 
     @property
     def changeset(self):

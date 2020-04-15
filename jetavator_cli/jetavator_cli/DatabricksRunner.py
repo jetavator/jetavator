@@ -1,36 +1,13 @@
-import sys
 import base64
 import os
-import tempfile
-from lazy_property import LazyProperty
-import sqlparse
-import textwrap
-import jinja2
-import asyncactions
 import time
-import nbformat
-import sqlalchemy
-
-from sqlalchemy.schema import CreateColumn
-
 from copy import deepcopy
 
-from jetavator import REQUIRED, Config
-
-from concurrent.futures import Future
-
-from shutil import copyfile
-
-from pyspark.sql import SparkSession
-from pyspark.sql.utils import ParseException
-
-from pyhive import hive, sqlalchemy_hive
-from thrift.transport import THttpClient
-
-from jetavator.config import SecretSubstitutingConfig
-
-from . import utils
-
+import jinja2
+import nbformat
+import sqlalchemy
+from databricks_cli.dbfs.api import DbfsApi
+from databricks_cli.dbfs.dbfs_path import DbfsPath
 from databricks_cli.sdk import (
     ApiClient,
     JobsService,
@@ -39,11 +16,12 @@ from databricks_cli.sdk import (
     SecretService,
     ClusterService
 )
+from jetavator.config import SecretSubstitutingConfig
+from lazy_property import LazyProperty
+from sqlalchemy.schema import CreateColumn
 
-from databricks_cli.dbfs.api import DbfsApi
-from databricks_cli.dbfs.dbfs_path import DbfsPath
-
-from enum import Enum, auto
+from jetavator import REQUIRED, Config
+from . import utils
 
 mssql_dialect = sqlalchemy.databases.mssql.dialect()
 
@@ -76,6 +54,7 @@ SQL_JAVA_TYPE_MAPPING = {
     'DATETIME': 'TIMESTAMP'
 }
 
+# TODO: We also need to build and upload a wheel for jetavator_databricks_local
 # TODO: These dbutils calls should only be necessary in development, not prod
 PYTHON_SETUP_SCRIPT = '''
 %python
@@ -85,6 +64,7 @@ dbutils.library.restartPython()
 
 import sys
 
+from jetavator_databricks_local import *
 from jetavator import Engine, Config
 
 schema=dbutils.widgets.get('schema')
