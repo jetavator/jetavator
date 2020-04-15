@@ -134,15 +134,13 @@ class Engine(object):
                    configuration for the Engine
     """
 
-    # TODO: Make different constructors for Engine based on a Config or kwargs
     def __init__(
         self,
-        config: Config = None,
-        **kwargs
+        config: Config
     ) -> None:
         """Default constructor
         """
-        self.config = config or Config(**kwargs)
+        self.config = config
 
     # TODO: <object>.connection does not adequately describe what this does -
     #       compute_service or similar would be better?

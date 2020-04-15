@@ -101,10 +101,9 @@ class Client(object):
 
     def __init__(
         self,
-        config=None,
-        **kwargs
+        config
     ):
-        self.engine = jetavator.Engine(config or BaseConfig(**kwargs))
+        self.engine = jetavator.Engine(config)
 
     @property
     def config(self):
