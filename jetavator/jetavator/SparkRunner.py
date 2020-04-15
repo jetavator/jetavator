@@ -112,7 +112,7 @@ class SparkJob(object):
 
     @property
     def spark(self):
-        return self.runner.engine.connection.spark
+        return self.runner.engine.compute_service.spark
 
     def set_state(self, state):
         if state is SparkJobState.RUNNING:
@@ -271,17 +271,17 @@ class CreateSource(SparkJob):
     key_args = ['source']
 
     def __init__(self, runner, source):
-        source_ddl = runner.engine.connection.compile_sqlalchemy(
+        source_ddl = runner.engine.compute_service.compile_sqlalchemy(
             source.sql_model
             .create_table(source.sql_model.table)[0]
         )
-        if runner.engine.connection.source_csv_exists(source):
+        if runner.engine.compute_service.source_csv_exists(source):
             super().__init__(
                 runner,
                 source,
                 source_ddl=source_ddl.replace(
                     'CREATE TABLE', 'CREATE TEMPORARY TABLE'),
-                csv_path=runner.engine.connection.csv_file_path(source)
+                csv_path=runner.engine.compute_service.csv_file_path(source)
             )
         else:
             super().__init__(
@@ -389,7 +389,7 @@ class SatelliteQuery(SparkView):
         super().__init__(
             runner,
             satellite,
-            sql=runner.engine.connection.compile_sqlalchemy(
+            sql=runner.engine.compute_service.compile_sqlalchemy(
                 satellite.pipeline.sql_model.pipeline_query())
         )
 
@@ -751,8 +751,8 @@ class SparkRunner(object):
         return self.engine.config
 
     @property
-    def connection(self):
-        return self.engine.connection
+    def compute_service(self):
+        return self.engine.compute_service
 
     def get_job(self, job_class, *args):
         return self.jobs[job_class.construct_key(*args)]
@@ -783,7 +783,7 @@ class SparkRunner(object):
         jobs = [
             self.get_or_create_job(CreateSource, source)
         ]
-        if self.engine.connection.source_csv_exists(source):
+        if self.engine.compute_service.source_csv_exists(source):
             jobs += [
                 self.get_or_create_job(DropSource, source)
             ]

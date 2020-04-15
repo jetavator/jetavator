@@ -351,7 +351,7 @@ class DatabricksJob(object):
                     while not (t.timed_out or any(
                         'ERROR' in message for message in messages
                     )):
-                        messages = list(self.runner.connection.log_listener)
+                        messages = list(self.runner.compute_service.log_listener)
                         for message in messages:
                             utils.print_to_console(message)
                 raise Exception(f'''
@@ -361,11 +361,11 @@ class DatabricksJob(object):
             self.print_log_messages()
         time.sleep(JOB_POLL_FREQUENCY_SECS)
         self.print_log_messages()
-        self.runner.connection.log_listener.delete_queue()
+        self.runner.compute_service.log_listener.delete_queue()
         utils.print_to_console('\nRun complete')
 
     def print_log_messages(self):
-        for message in self.runner.connection.log_listener:
+        for message in self.runner.compute_service.log_listener:
             utils.print_to_console(message)
 
 

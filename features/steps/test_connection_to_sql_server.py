@@ -10,7 +10,7 @@ def step_impl(context):
 
 @when(u'we run the test_sql_connection method')
 def step_impl(context):
-    context.result = context.jetavator.connection.test()
+    context.result = context.jetavator.compute_service.test()
 
 
 @then(u'the result is True')

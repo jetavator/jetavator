@@ -111,7 +111,7 @@ class Client(object):
 
     @property
     def connection(self):
-        return self.engine.connection
+        return self.engine.compute_service
 
     @property
     def schema_registry(self):

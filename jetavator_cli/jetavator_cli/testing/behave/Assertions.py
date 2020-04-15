@@ -44,7 +44,7 @@ class Assertions(object):
                 )
 
     def sql_exists(self, sql, **kwargs):
-        dataframe = self.client.connection.execute_to_pandas(
+        dataframe = self.client.compute_service.execute_to_pandas(
             sql.format(**kwargs)
         )
         assert len(dataframe) > 0, (
@@ -54,7 +54,7 @@ class Assertions(object):
         return dataframe
 
     def sql_does_not_exist(self, sql, **kwargs):
-        dataframe = self.client.connection.execute_to_pandas(
+        dataframe = self.client.compute_service.execute_to_pandas(
             sql.format(**kwargs)
         )
         assert len(dataframe) == 0, (

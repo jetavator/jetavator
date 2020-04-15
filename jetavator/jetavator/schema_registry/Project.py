@@ -222,8 +222,8 @@ class Project(ProjectOrChangeSet):
     #         return None
 
     @property
-    def connection(self):
-        return self.registry.connection
+    def compute_service(self):
+        return self.registry.compute_service
 
     @property
     def definitions(self):

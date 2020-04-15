@@ -10,9 +10,9 @@ from .sqlalchemy_tables import Deployment
 
 class SchemaRegistry(object):
 
-    def __init__(self, config, connection):
+    def __init__(self, config, compute_service):
         self.config = config
-        self.connection = connection
+        self.compute_service = compute_service
         if self.config.model_path:
             self.load_from_disk()
         else:
@@ -27,19 +27,19 @@ class SchemaRegistry(object):
         self.loaded = self.deployed
 
     def __getitem__(self, key):
-        session = self.connection.session()
+        session = self.compute_service.session()
         deployment = session.query(Deployment).get(key)
         return Project.from_sqlalchemy_object(self, deployment)
 
     def keys(self):
-        session = self.connection.session()
+        session = self.compute_service.session()
         return [
             deployment.version
             for deployment in session.query(Deployment)
         ]
 
     def values(self):
-        session = self.connection.session()
+        session = self.compute_service.session()
         return [
             Project.from_sqlalchemy_object(self, deployment)
             for deployment in session.query(Deployment)
@@ -50,8 +50,8 @@ class SchemaRegistry(object):
         return Project.from_sqlalchemy_object(self, Deployment())
         # the above is for local Spark testing - remove it later
 
-        self.connection.test()
-        session = self.connection.session()
+        self.compute_service.test()
+        session = self.compute_service.session()
         try:
             deployment = session.query(Deployment).order_by(
                 Deployment.deploy_dt.desc()).first()
@@ -71,7 +71,7 @@ class SchemaRegistry(object):
         return ProjectChangeSet(self.loaded, self.deployed)
 
     def write_definitions_to_sql(self):
-        session = self.connection.session()
+        session = self.compute_service.session()
         session.add(self.loaded.export_sqlalchemy_object())
         session.add_all([
             object_definition.export_sqlalchemy_object()

@@ -87,8 +87,8 @@ class VaultObject(RegistersSubclasses, HasSQLModel, ValidatesYaml):
         return print_yaml(self.definition)
 
     @property
-    def connection(self):
-        return self.project.connection
+    def compute_service(self):
+        return self.project.compute_service
 
     @property
     def name(self):

@@ -34,7 +34,7 @@ class BaseModel(RegistersSubclasses):
 
     @property
     def metadata(self):
-        return self.project.connection.metadata
+        return self.project.compute_service.metadata
 
     @property
     def project(self):

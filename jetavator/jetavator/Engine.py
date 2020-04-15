@@ -142,10 +142,8 @@ class Engine(object):
         """
         self.config = config
 
-    # TODO: <object>.connection does not adequately describe what this does -
-    #       compute_service or similar would be better?
     @property
-    def connection(self) -> DBService:
+    def compute_service(self) -> DBService:
         """The storage service used for computation
         """
         return self.services[self.config.compute]
@@ -200,7 +198,7 @@ class Engine(object):
     def logger(self) -> Logger:
         """Python logging service to receive log messages
         """
-        return self.connection.logger
+        return self.compute_service.logger
 
     @LazyProperty
     def services(self) -> Dict[str, Service]:
@@ -217,7 +215,7 @@ class Engine(object):
     #       responsibilities into Engine and Project?
     @LazyProperty
     def schema_registry(self) -> SchemaRegistry:
-        return SchemaRegistry(self.config, self.connection)
+        return SchemaRegistry(self.config, self.compute_service)
 
     # TODO: Engine.sql_model doesn't really make sense. Deprecate this!
     @property
@@ -241,14 +239,14 @@ class Engine(object):
         """Deploy the current project to the configured storage services
         """
         self.logger.info('Testing database connection')
-        self.connection.test(master=True)
-        if self.connection.schema_exists:
+        self.compute_service.test(master=True)
+        if self.compute_service.schema_exists:
             if self.config.drop_schema_if_exists:
                 self.logger.info('Dropping and recreating database')
-                self.connection.drop_schema()
-                self.connection.create_schema()
+                self.compute_service.drop_schema()
+                self.compute_service.create_schema()
             elif (
-                not self.connection.schema_empty
+                not self.compute_service.schema_empty
                 and not self.config.skip_deploy
             ):
                 raise Exception(
@@ -258,7 +256,7 @@ class Engine(object):
                 )
         else:
             self.logger.info(f'Creating database {self.config.schema}')
-            self.connection.create_schema()
+            self.compute_service.create_schema()
         self._deploy_template(action="create")
 
     @logged
@@ -277,7 +275,7 @@ class Engine(object):
             raise NotImplementedError("Not implemented in Spark/Hive version.")
 
         # TODO: Make this platform-independent - currently HIVE specific
-        self.connection.execute(
+        self.compute_service.execute(
             f'USE `{self.config.schema}`'
         )
 
@@ -324,7 +322,7 @@ class Engine(object):
         self._update_database_model()
 
         if new_vault_object.type == "satellite":
-            self.connection.execute_sql_element(
+            self.compute_service.execute_sql_element(
                 new_vault_object.sql_model.sp_load("full").execute())
 
     # TODO: Move Engine.drop to VaultObject.drop in order to allow
@@ -553,7 +551,7 @@ class Engine(object):
         #     source = self.schema_registry.loaded["source", table_name]
         #     self.spark_runner.load_csv(csv_file, source)
         # else:
-        self.connection.load_dataframe(
+        self.compute_service.load_dataframe(
             pandas.concat([
                 self.csv_to_dataframe(
                     csv_file,
@@ -590,14 +588,14 @@ class Engine(object):
         self,
         procedure_name: str
     ):
-        return self.connection.call_stored_procedure(procedure_name)
+        return self.compute_service.call_stored_procedure(procedure_name)
 
     # TODO: Deprecate Engine.sql_query_single_value
     def sql_query_single_value(
         self,
         sql: str
     ):
-        return self.connection.sql_query_single_value(sql)
+        return self.compute_service.sql_query_single_value(sql)
 
     # TODO: Investigate if Engine.get_performance_data is still needed
     #       and deprecate it if not
@@ -610,7 +608,7 @@ class Engine(object):
     ) -> None:
         self._deploy_template(action="alter")
         if load_full_history:
-            self.connection.execute_sql_element(
+            self.compute_service.execute_sql_element(
                 self.sql_model.sp_jetavator_load_full.execute()
             )
 
@@ -635,7 +633,7 @@ class Engine(object):
     def clear_database(self) -> None:
         self.logger.info('Starting: clear_database')
         for table in self.sql_model.tables:
-            self.connection.write_empty_table(table, overwrite_schema=False)
+            self.compute_service.write_empty_table(table, overwrite_schema=False)
         self.logger.info('Finished: clear_database')
 
     # TODO: Make action an enum?

@@ -10,7 +10,7 @@ class TestDataLoader(object):
 
     @property
     def connection(self):
-        return self.jetavator.connection
+        return self.jetavator.compute_service
 
     def generate_sql(
         self, table_name, base_columns, meta_columns={}
