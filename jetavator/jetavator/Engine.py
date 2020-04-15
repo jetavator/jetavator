@@ -126,66 +126,108 @@ def logged(function_to_decorate: Callable) -> Callable:
 
 
 class Engine(object):
+    """The core Jetavator engine. Pass this object a valid engine
+    configuration, and use it to perform operations like deploying a project
+    or loading new data.
 
+    :param config: A `jetavator.Config` object containing the desired
+                   configuration for the Engine
+    """
+
+    # TODO: Make different constructors for Engine based on a Config or kwargs
     def __init__(
         self,
         config: Config = None,
         **kwargs
     ) -> None:
+        """Default constructor
+        """
         self.config = config or Config(**kwargs)
 
+    # TODO: <object>.connection does not adequately describe what this does -
+    #       compute_service or similar would be better?
     @property
     def connection(self) -> DBService:
+        """The storage service used for computation
+        """
         return self.services[self.config.compute]
 
     @property
     def source_storage_service(self) -> DBService:
+        """The storage service used for the source layer
+        """
         return self.services[self.config.storage.source]
 
     @property
     def vault_storage_service(self) -> DBService:
+        """The storage service used for the data vault layer
+        """
         return self.services[self.config.storage.vault]
 
     @property
     def star_storage_service(self) -> DBService:
+        """The storage service used for the star schema layer
+        """
         return self.services[self.config.storage.star]
 
     @property
     def logs_storage_service(self) -> DBService:
+        """The storage service used for logs
+        """
         return self.services[self.config.storage.logs]
 
     @property
     def db_services(self) -> Dict[str, DBService]:
+        """All the registered database services in the engine config
+
+        :return: A dictionary of class:`jetavator.services.DBService` by name
+        """
         return {
             k: v
             for k, v in self.services.items()
             if isinstance(v, DBService)
         }
 
+    # TODO: Engine.drop_schemas be moved to Project if the schema to drop
+    #       is specific to a Project?
     def drop_schemas(self) -> None:
+        """Drop this project's schema on all storage services
+        """
         for service in self.db_services.values():
             if service.schema_exists:
                 service.drop_schema()
 
+    # TODO: Should <object>.logger be part of the public API?
     @property
     def logger(self) -> Logger:
+        """Python logging service to receive log messages
+        """
         return self.connection.logger
 
     @LazyProperty
     def services(self) -> Dict[str, Service]:
+        """All the registered services as defined in the engine config
+
+        :return: A dictionary of class:`jetavator.services.Service` by name
+        """
         return {
             service_config.name: Service.from_config(self, service_config)
             for service_config in self.config.services
         }
 
+    # TODO: The role of SchemaRegistry is unclear. Can we refactor its
+    #       responsibilities into Engine and Project?
     @LazyProperty
     def schema_registry(self) -> SchemaRegistry:
         return SchemaRegistry(self.config, self.connection)
 
+    # TODO: Engine.sql_model doesn't really make sense. Deprecate this!
     @property
     def sql_model(self) -> BaseModel:
         return self.schema_registry.changeset.sql_model
 
+    # TODO: Is there any reason for an Engine only to have one project?
+    #       Should this be Engine.projects?
     @property
     def project(self) -> Project:
         return self.schema_registry.deployed
@@ -198,17 +240,43 @@ class Engine(object):
 
     @logged
     def deploy(self) -> None:
-        self.generate_database()
+        """Deploy the current project to the configured storage services
+        """
+        self.logger.info('Testing database connection')
+        self.connection.test(master=True)
+        if self.connection.schema_exists:
+            if self.config.drop_schema_if_exists:
+                self.logger.info('Dropping and recreating database')
+                self.connection.drop_schema()
+                self.connection.create_schema()
+            elif (
+                not self.connection.schema_empty
+                and not self.config.skip_deploy
+            ):
+                raise Exception(
+                    f"Database {self.config.schema} already exists, "
+                    "is not empty, and config.drop_schema_if_exists "
+                    "is set to False."
+                )
+        else:
+            self.logger.info(f'Creating database {self.config.schema}')
+            self.connection.create_schema()
+        self._deploy_template(action="create")
 
     @logged
     def run(
         self,
         load_type: LoadType = LoadType.DELTA
     ) -> None:
+        """Run the data pipelines for the current project
+
+        :param load_type: A `LoadType` that tells the pipelines how to behave
+                          with respect to historic data
+        """
 
         # TODO: Fix full load capability for Spark/Hive
         if load_type == LoadType.FULL:
-            raise NotImplementedError("Not implemented in Databricks version.")
+            raise NotImplementedError("Not implemented in Spark/Hive version.")
 
         # TODO: Make this platform-independent - currently HIVE specific
         self.connection.execute(
@@ -227,12 +295,24 @@ class Engine(object):
     # TODO: Reintroduce tests for Engine.add
     # TODO: Refactor new_object so it takes a VaultObject which can then
     #       be extended with more constructors
+    # TODO: Move load_full_history functionality to a new VaultObject method
+    # TODO: Enforce semver compatibility for user-supplied version strings?
     def add(
         self,
         new_object: Union[str, dict],
         load_full_history: bool = False,
         version: str = None
     ) -> None:
+        """Add a new object to the current project
+
+        :param new_object:        The definition of the new object as a
+                                  dictionary or valid YAML string
+        :param load_full_history: True if the new object should be loaded
+                                  with full historic data
+        :param version:           New version string for the amended project
+                                  (optional - will be auto-incremented if
+                                  not supplied)
+        """
 
         if isinstance(new_object, str):
             new_object_dict = yaml.load(new_object)
@@ -243,7 +323,7 @@ class Engine(object):
 
         self.schema_registry.loaded.increment_version(version)
         new_vault_object = self.schema_registry.loaded.add(new_object_dict)
-        self.update_database_model()
+        self._update_database_model()
 
         if new_vault_object.type == "satellite":
             self.connection.execute_sql_element(
@@ -251,7 +331,7 @@ class Engine(object):
 
     # TODO: Move Engine.drop to VaultObject.drop in order to allow
     #       multiple lookup methods, e.g. by type+name, composite key,
-    #       iteration through a list of VaultObjects - possibly decouple
+    #       iteration through a list of VaultObjects? Possibly decouple
     #       from the version increment to give users more control?
     def drop(
         self,
@@ -259,10 +339,19 @@ class Engine(object):
         object_name: str,
         version: str = None
     ) -> None:
+        """Drop an object from the current project
+
+        :param object_type:       Type of the object to drop e.g. 'source'
+        :param object_name:       Name of the object to drop
+                                  with full historic data
+        :param version:           New version string for the amended project
+                                  (optional - will be auto-incremented if
+                                  not supplied)
+        """
         self.schema_registry.load_from_database()
         self.schema_registry.loaded.increment_version(version)
         self.schema_registry.loaded.delete(object_type, object_name)
-        self.update_database_model()
+        self._update_database_model()
 
     # TODO: Refactor so the Engine doesn't need physical disk paths for
     #       the YAML folder - move this functionality into an extendable
@@ -272,6 +361,15 @@ class Engine(object):
         model_path: str = None,
         load_full_history: bool = False
     ) -> None:
+        """Updates the current project with a new set of object definitions
+        from disk
+
+        :param model_path:        Path on disk to load the new project
+                                  definition (optional, will use the existing
+                                  configured path if not supplied)
+        :param load_full_history: True if the new object(s) should be loaded
+                                  with full historic data
+        """
         if model_path:
             self.config.model_path = model_path
         self.schema_registry.load_from_disk()
@@ -291,7 +389,7 @@ class Engine(object):
             "Cannot upgrade - version number must be incremented "
             f"from {self.schema_registry.deployed.version}"
         )
-        self.update_database_model(
+        self._update_database_model(
             load_full_history=load_full_history
         )
 
@@ -302,6 +400,10 @@ class Engine(object):
         table_name: str,
         registry: Project = None   # rename this to project?
     ) -> Dict[str, str]:
+        """Generates a set of pandas dtypes for a given named Source
+
+        :param table_name: Name of the Source object to generate dtypes for
+        """
         registry = registry or self.schema_registry.loaded
         try:
             user_defined_dtypes = {
@@ -327,6 +429,12 @@ class Engine(object):
         table_name: str,
         registry: Project = None   # rename this to project?
     ) -> pandas.DataFrame :
+        """Loads a CSV file from disk and into a compatible pandas dataframe
+
+        :param csv_file:   Path of the CSV file on disk
+        :param table_name: Name of the Source object to load
+        :param registry:   Project containing this named Source
+        """
         registry = registry or self.schema_registry.loaded
         try:
             return pandas.read_csv(
@@ -368,6 +476,12 @@ class Engine(object):
         table_name: str,
         use_as_pk: str
     ) -> Dict[str, Union[str, Dict[str, Dict[str, Union[str, bool]]]]]:
+        """Constructs a valid Source definition from a pandas dataframe
+
+        :param df:         Dataframe to construct Source definition for
+        :param table_name: Name of the new Source object to construct
+        :param use_as_pk:  Column name to use as the primary key
+        """
 
         pd_dtypes_dict = df.dtypes.apply(lambda x: x.name).to_dict()
         col_dict_list = [
@@ -399,6 +513,12 @@ class Engine(object):
         table_name: str,
         use_as_pk: str
     ) -> None:
+        """Adds a pandas dataframe as a Source for this project
+
+        :param df:         Dataframe to add as a Source
+        :param table_name: Name of the new Source object to construct
+        :param use_as_pk:  Column name to use as the primary key
+        """
         source_def = self.source_def_from_dataframe(
             df=df,
             table_name=table_name,
@@ -426,6 +546,11 @@ class Engine(object):
         csv_files: List[str]
         # , assume_schema_integrity=False
     ) -> None:
+        """Loads a list of CSV files into a single named Source
+
+        :param table_name: Name of the new Source object to load
+        :param csv_files:  List of paths on disk of the CSV filess
+        """
         # if assume_schema_integrity:
         #     source = self.schema_registry.loaded["source", table_name]
         #     self.spark_runner.load_csv(csv_file, source)
@@ -449,6 +574,11 @@ class Engine(object):
         self,
         folder_path: str
     ) -> None:
+        """Loads a folder of CSV files into a set of Sources. The CSV files
+        must each be named <source>.csv where <source> is a valid Source name
+
+        :param folder_path:  Folder path on disk containing the CSV files
+        """
         assert os.path.isdir(folder_path), (
             f"{folder_path} is not a valid directory."
         )
@@ -476,31 +606,7 @@ class Engine(object):
     def get_performance_data(self):
         raise NotImplementedError
 
-    # TODO: Engine.generate_database doesn't belong as a public method
-    def generate_database(self) -> None:
-        self.logger.info('Testing database connection')
-        self.connection.test(master=True)
-        if self.connection.schema_exists:
-            if self.config.drop_schema_if_exists:
-                self.logger.info('Dropping and recreating database')
-                self.connection.drop_schema()
-                self.connection.create_schema()
-            elif (
-                not self.connection.schema_empty
-                and not self.config.skip_deploy
-            ):
-                raise Exception(
-                    f"Database {self.config.schema} already exists, "
-                    "is not empty, and config.drop_schema_if_exists "
-                    "is set to False."
-                )
-        else:
-            self.logger.info(f'Creating database {self.config.schema}')
-            self.connection.create_schema()
-        self._deploy_template(action="create")
-
-    # TODO: Engine.update_database_model doesn't belong as a public method
-    def update_database_model(
+    def _update_database_model(
         self,
         load_full_history: bool=False
     ) -> None:
@@ -527,6 +633,7 @@ class Engine(object):
             self.sql_model.definition
         )
 
+    # TODO: Do we need both clear_database and drop_schemas?
     def clear_database(self) -> None:
         self.logger.info('Starting: clear_database')
         for table in self.sql_model.tables:
