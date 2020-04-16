@@ -1,66 +1,41 @@
-import pandas
-import os
-import tempfile
-import numpy as np
-import sqlalchemy
-import yaml
-import datetime
+# TODO: Support all possible operations for upgrading from one version of a project to another.
+#       Operations to support:
+#           Add source
+#           Delete source - requires all satellites referencing it to be deleted
+#           Modify source
+#           Rename source - requires all satellites referencing it to be modified
+#           Add hub
+#           Delete hub - requires all links and satellites referencing it to be deleted
+#           Modify hub - requires all links and satellites referencing it to be modified
+#           Rename hub - requires all links and satellites referencing it to be modified
+#           Add link
+#           Delete link - requires all satellites referencing it to be deleted
+#           Modify link - requires all satellites referencing it to be modified
+#           Rename link - requires all satellites referencing it to be modified
+#           Add satellite
+#           Delete satellite - requires all satellites referencing it as a dependency to be deleted
+#           Modify satellite - requires all satellites referencing it as a dependency to be modified
+#           Rename satellite - requires all satellites referencing it as a dependency to be modified
+#           Backfill satellite to date (by calculating)
+#           Backfill satellite to date (by copying from previous version)
 
+import os
+from enum import Enum
+from functools import wraps
+from logging import Logger
 from typing import Union, List, Dict, Callable
 
+import pandas
+import yaml
 from lazy_property import LazyProperty
 
-from re import match
-from functools import wraps
-
 from . import utils
-
-from .schema_registry import SchemaRegistry
-
+from .runners import Runner
 from .config import Config
 from .schema_registry import Project
-
-from .SparkRunner import SparkRunner
+from .schema_registry import SchemaRegistry
 from .services import Service, DBService
-from .sql_model import BaseModel
-
-from logging import Logger
-
-from enum import Enum
-
-DEFAULT_NUMERIC = 0
-DEFAULT_STRING = ''
-DEFAULT_DATE = '1970-01-01'
-DEFAULT_TIME = '0000'
-DEFAULT_BINARY = bin(0)
-
-TYPE_DEFAULTS = {
-    "bigint": DEFAULT_NUMERIC,
-    "bit": DEFAULT_NUMERIC,
-    "decimal": DEFAULT_NUMERIC,
-    "int": DEFAULT_NUMERIC,
-    "money": DEFAULT_NUMERIC,
-    "numeric": DEFAULT_NUMERIC,
-    "smallint": DEFAULT_NUMERIC,
-    "smallmoney": DEFAULT_NUMERIC,
-    "tinyint": DEFAULT_NUMERIC,
-    "float": DEFAULT_NUMERIC,
-    "real": DEFAULT_NUMERIC,
-    "date": DEFAULT_DATE,
-    "datetime": DEFAULT_DATE,
-    "datetime2": DEFAULT_DATE,
-    "smalldatetime": DEFAULT_DATE,
-    "time": DEFAULT_TIME,
-    "char": DEFAULT_STRING,
-    "text": DEFAULT_STRING,
-    "varchar": DEFAULT_STRING,
-    "nchar": DEFAULT_STRING,
-    "ntext": DEFAULT_STRING,
-    "nvarchar": DEFAULT_STRING,
-    "binary": DEFAULT_BINARY,
-    "varbinary": DEFAULT_BINARY,
-    "image": DEFAULT_BINARY
-}
+from .sql_model import ProjectModel
 
 PANDAS_DTYPE_MAPPINGS = {
     "bigint": "Int64",
@@ -219,7 +194,7 @@ class Engine(object):
 
     # TODO: Engine.sql_model doesn't really make sense. Deprecate this!
     @property
-    def sql_model(self) -> BaseModel:
+    def sql_model(self) -> ProjectModel:
         return self.schema_registry.changeset.sql_model
 
     # TODO: Is there any reason for an Engine only to have one project?
@@ -228,7 +203,7 @@ class Engine(object):
     def project(self) -> Project:
         return self.schema_registry.deployed
 
-    # TODO: project_history is reduntant - can this or schema_registry
+    # TODO: project_history is redundant - can this or schema_registry
     #       be deprecated?
     @property
     def project_history(self) -> SchemaRegistry:
@@ -281,9 +256,9 @@ class Engine(object):
 
         # TODO: Test DB connection before execution
         # self.connection.test()
-        self.spark_runner.run()
+        self.runner.run()
 
-        self.spark_runner.performance_data().to_csv(
+        self.runner.performance_data().to_csv(
             'performance.csv',
             index=False
         )
@@ -425,11 +400,7 @@ class Engine(object):
         table_name: str,
         registry: Project = None   # rename this to project?
     ) -> pandas.DataFrame :
-        """Loads a CSV file from disk and into a compatible pandas dataframe
-
-        :param csv_file:   Path of the CSV file on disk
-        :param table_name: Name of the Source object to load
-        :param registry:   Project containing this named Source
+        """Loads a CSV file from disk and into a compatible pandas `DataFrame`
         """
         registry = registry or self.schema_registry.loaded
         try:
@@ -515,21 +486,7 @@ class Engine(object):
         :param table_name: Name of the new Source object to construct
         :param use_as_pk:  Column name to use as the primary key
         """
-        source_def = self.source_def_from_dataframe(
-            df=df,
-            table_name=table_name,
-            use_as_pk=use_as_pk
-        )
-        self.add(
-            # This is supposed to fail if table_name already exist in the
-            # source schema of the database.
-            source_def
-        )
-        self.insert_to_sql_from_pandas(
-            df=df,
-            schema="source",
-            table_name=table_name,
-        )
+        raise NotImplementedError
 
     # TODO: Refactor responsibility for loading CSV files away from
     #       Engine. Tie this directly to the Source object so we don't force a
@@ -588,14 +545,14 @@ class Engine(object):
         self,
         procedure_name: str
     ):
-        return self.compute_service.call_stored_procedure(procedure_name)
+        raise NotImplementedError
 
     # TODO: Deprecate Engine.sql_query_single_value
     def sql_query_single_value(
         self,
         sql: str
     ):
-        return self.compute_service.sql_query_single_value(sql)
+        raise NotImplementedError
 
     # TODO: Investigate if Engine.get_performance_data is still needed
     #       and deprecate it if not
@@ -604,13 +561,11 @@ class Engine(object):
 
     def _update_database_model(
         self,
-        load_full_history: bool=False
+        load_full_history: bool = False
     ) -> None:
         self._deploy_template(action="alter")
         if load_full_history:
-            self.compute_service.execute_sql_element(
-                self.sql_model.sp_jetavator_load_full.execute()
-            )
+            raise NotImplementedError
 
     # TODO: Refactor responsibility for loading YAML files away from Engine.
     def update_model_from_dir(
@@ -621,11 +576,11 @@ class Engine(object):
             self.config.model_path = new_model_path
         self.schema_registry.load_from_disk()
 
-    # TODO: Refactor Engine.spark_runner to make Runner a generic interface
     @LazyProperty
-    def spark_runner(self) -> SparkRunner:
-        return SparkRunner(
+    def runner(self) -> Runner:
+        return Runner.from_compute_service(
             self,
+            self.compute_service,
             self.sql_model.definition
         )
 

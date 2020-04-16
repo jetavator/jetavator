@@ -8,10 +8,10 @@ from setuptools import setup, find_packages
 # Package metadata
 # ----------------
 
-NAME = 'jetavator_databricks_local'
+NAME = 'jetavator_databricks_client'
 DESCRIPTION = (
     'Databricks support for the Jetavator engine '
-    'to be installed on the Databricks cluster'
+    'to be installed on the client system'
 )
 URL = 'https://github.com/jetavator/jetavator'
 EMAIL = 'joetaylorconsulting@gmail.com'

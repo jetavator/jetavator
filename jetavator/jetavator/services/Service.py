@@ -1,5 +1,6 @@
 from ..mixins import RegistersSubclasses
 
+
 class Service(RegistersSubclasses):
 
     def __init__(self, engine, config):

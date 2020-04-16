@@ -1,6 +1,7 @@
 import base64
 import os
 import time
+import pandas as pd
 from copy import deepcopy
 
 import jinja2
@@ -21,7 +22,10 @@ from lazy_property import LazyProperty
 from sqlalchemy.schema import CreateColumn
 
 from jetavator import REQUIRED, Config
-from . import utils
+
+# TODO: Rationalise utils, remove any unused ones and remove duplicates across libraries
+from jetavator_cli import utils
+from jetavator.runners import Runner
 
 mssql_dialect = sqlalchemy.databases.mssql.dialect()
 
@@ -70,15 +74,15 @@ from jetavator import Engine, Config
 schema=dbutils.widgets.get('schema')
 run_uuid=dbutils.widgets.get('run_uuid')
 
-engine_config = Config._from_json_file(
+engine.config = Config._from_json_file(
     '/dbfs/jetavator/jobs/' + schema + '/config.json')
 
-engine_config.schema = schema
-engine_config.model_path = (
+engine.config.schema = schema
+engine.config.model_path = (
     '/dbfs/jetavator/jobs/' + schema + '/definitions/')
-engine_config.session.run_uuid = run_uuid
+engine.config.session.run_uuid = run_uuid
 
-jetavator_engine = Engine(engine_config)
+jetavator_engine = Engine(engine.config)
 '''
 
 JETAVATOR_DEPLOY_SCRIPT = '''
@@ -297,7 +301,7 @@ class DatabricksJob(object):
     def run(self):
         utils.print_to_console(
             f'Running {self.filename} on remote databricks '
-            f'with run_uuid [{self.runner.engine_config.session.run_uuid}]'
+            f'with run_uuid [{self.runner.engine.config.session.run_uuid}]'
         )
         job_run = self.runner.jobs_api.submit_run(
             run_name=self.filename,
@@ -306,7 +310,7 @@ class DatabricksJob(object):
                 'notebook_path': self.notebook_path,
                 'base_parameters': {
                     'schema': self.runner.config.schema,
-                    'run_uuid': self.runner.engine_config.session.run_uuid
+                    'run_uuid': self.runner.engine.config.session.run_uuid
                 }
             },
             libraries=[
@@ -349,22 +353,14 @@ class DatabricksJob(object):
             utils.print_to_console(message)
 
 
-class DatabricksRunner(object):
+class DatabricksRunner(Runner, register_as='remote_databricks'):
 
-    def __init__(self, connection):
-        self.connection = connection
+    def performance_data(self) -> pd.DataFrame:
+        raise NotImplementedError
 
     @property
     def config(self):
-        return self.connection.config
-
-    @property
-    def engine(self):
-        return self.connection.engine
-
-    @property
-    def engine_config(self):
-        return self.connection.engine.config
+        return self.compute_service.config
 
     @LazyProperty
     def dbfs_api(self):
@@ -426,7 +422,7 @@ class DatabricksRunner(object):
             '\\', '/')
         utils.print_to_console(f'Uploading YAML: {dbfs_path}')
         self.dbfs_api.put_file(
-            os.path.join(self.engine_config.model_path, relative_path),
+            os.path.join(self.engine.config.model_path, relative_path),
             DbfsPath(dbfs_path),
             overwrite=True
         )
@@ -435,13 +431,13 @@ class DatabricksRunner(object):
     def dbfs_wheel_path(self):
         return (
             'dbfs:/jetavator/lib/' +
-            os.path.basename(self.engine_config.wheel_path)
+            os.path.basename(self.engine.config.wheel_path)
         )
 
     def build_remote_config(self):
         remote_config = Config({
             k: v
-            for k, v in deepcopy(self.engine_config).items()
+            for k, v in deepcopy(self.engine.config).items()
             if k in Config.properties
         })
         databricks_services = [
@@ -494,7 +490,7 @@ class DatabricksRunner(object):
         utils.print_to_console(
             f'Writing wheel to {self.dbfs_wheel_path}')
         self.dbfs_api.put_file(
-            self.engine_config.wheel_path,
+            self.engine.config.wheel_path,
             DbfsPath(self.dbfs_wheel_path),
             overwrite=True
         )
@@ -543,7 +539,7 @@ class DatabricksRunner(object):
     def mssql_bulk_load_tables(self, satellite_owners):
         return [
             SCALA_SETUP_SCRIPT + jinja2.Template(BULK_COPY_TEMPLATE).render(
-                schema=self.engine_config.schema,
+                schema=self.engine.config.schema,
                 table_name=satellite_owner.sql_model.star_table_name,
                 columns=[
                     {
@@ -621,7 +617,7 @@ class DatabricksRunner(object):
     def deploy_remote(self):
         self.deploy_job.run()
 
-    def run_remote(self):
+    def run(self) -> None:
         self.run_job.run()
 
     @staticmethod

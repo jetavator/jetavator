@@ -1,9 +1,5 @@
 from ...Client import Client
-from ..TestDataLoader import TestDataLoader
-from ...utils import (
-    run_bash,
-    print_to_console
-    )
+from ...utils import print_to_console
 
 from .Assertions import Assertions
 
@@ -25,37 +21,6 @@ class BehaveClient(Client):
             "features"
         )
 
-    @property
-    def behave_userdata(self):
-        return {
-            "schema": self.config.schema,
-            "databricks_host": self.config.databricks_host,
-            "databricks_token": self.config.databricks_token,
-            "databricks_cluster_id": self.config.databricks_cluster_id,
-            "databricks_http_path": self.config.databricks_http_path
-        }
-
-    @property
-    def serialised_behave_userdata(self):
-        return " ".join([
-            "-D " + str(k) + "='" + str(v) + "'"
-            for k, v in self.behave_userdata.items()
-            if v
-        ])
-
-    # TODO: Review if this can be deprecated
-    def patch_context(self, context):
-        context.assert_that = self.assert_that
-        context.load_csv = lambda x, y: self.load_csvs(y, [x])
-        context.test_data_loader = self.test_data_loader
-
-    def test_data_loader(self, dataframe):
-        return TestDataLoader(
-            self,
-            dataframe,
-            self.schema_registry.loaded["source"]
-        )
-
     def test(self):
         if self.config.skip_deploy:
             print_to_console(
@@ -67,7 +32,6 @@ class BehaveClient(Client):
 
         behave_args = [
             f"'{self.feature_path}'",
-            self.serialised_behave_userdata,
             self.config.behave_options
         ]
 

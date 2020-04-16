@@ -1,16 +1,16 @@
-import tempfile
+from __future__ import annotations  # Remove in Python 3.8
+
 import jinja2
-import uuid
-import sqlalchemy
 import datetime
-import os
 import pandas as pd
 
 import pyspark.sql.functions as F
+
 from functools import reduce
 from concurrent.futures import Future
-from . import utils
 from enum import Enum, auto
+
+from .Runner import Runner
 
 COALESCE_PARTITIONS = 10
 
@@ -51,9 +51,13 @@ class SparkJob(object):
             self.template_arg_values[arg_name] = arg
         for arg_name, value in self.template_arg_values.items():
             self.__setattr__(arg_name, value)
-        self.name = jinja2.Template(self.name).render(
-            self.template_arg_values
-        )
+
+    @classmethod
+    def get_or_create(cls, runner: SparkRunner, *args) -> SparkJob:
+        key = cls.construct_key(*args)
+        if key not in runner.jobs:
+            runner.jobs[key] = cls(runner, *args)
+        return runner.jobs[key]
 
     @property
     def logger(self):
@@ -86,6 +90,12 @@ class SparkJob(object):
 
     @property
     def name(self):
+        return jinja2.Template(self.name_template).render(
+            self.template_arg_values
+        )
+
+    @property
+    def name_template(self):
         raise NotImplementedError
 
     @property
@@ -112,7 +122,7 @@ class SparkJob(object):
 
     @property
     def spark(self):
-        return self.runner.engine.compute_service.spark
+        return self.runner.compute_service.spark
 
     def set_state(self, state):
         if state is SparkJobState.RUNNING:
@@ -126,6 +136,10 @@ class SparkJob(object):
         self.set_state(SparkJobState.ACKNOWLEDGED)
 
     def state_timedelta(self, from_state, to_state):
+        if from_state not in self.state_timestamps:
+            raise Exception(f'Cannot find timestamp for state {from_state} in {self}')
+        if to_state not in self.state_timestamps:
+            raise Exception(f'Cannot find timestamp for state {to_state} in {self}')
         return (
             self.state_timestamps[to_state]
             - self.state_timestamps[from_state]
@@ -167,10 +181,6 @@ class SparkJob(object):
     def execute(self):
         return self.execute_query()
 
-    @property
-    def config(self):
-        return self.runner.config
-
     def require_state(self, state):
         if self.state != state:
             raise Exception(f'Job is not in state {state}.')
@@ -201,17 +211,17 @@ class SparkJob(object):
 
     def check_if_job_complete(self):
         if type(self.result) is Future:
-            if self.future.exception():
+            if self.result.exception():
                 raise Exception(f'''
                     Job completed with error:
-                    {self.future.exception()}
+                    {self.result.exception()}
 
                     Job script:
                     {self.query}
                 ''')
-            return self.future.done()
+            return self.result.done()
         else:
-            # Remove this once non-async jobs are all gone!
+            # TODO: Remove this once non-async jobs are all gone!
             self.logger.warn(f'Non-async job {self.name}')
             return True
 
@@ -240,6 +250,18 @@ class SparkView(SparkJob):
     def global_view(self):
         raise NotImplementedError
 
+    @property
+    def name_template(self):
+        raise NotImplementedError
+
+    @property
+    def template(self):
+        raise NotImplementedError
+
+    @property
+    def template_args(self):
+        raise NotImplementedError
+
     def execute(self):
         df = super().execute()
 
@@ -255,7 +277,7 @@ class SparkView(SparkJob):
 
 
 class CreateSource(SparkJob):
-    name = 'create_source_{{source.name}}'
+    name_template = 'create_source_{{source.name}}'
     template = '''
         {{source_ddl}}
         {% if csv_path is defined %}
@@ -271,17 +293,17 @@ class CreateSource(SparkJob):
     key_args = ['source']
 
     def __init__(self, runner, source):
-        source_ddl = runner.engine.compute_service.compile_sqlalchemy(
+        source_ddl = runner.compute_service.compile_sqlalchemy(
             source.sql_model
             .create_table(source.sql_model.table)[0]
         )
-        if runner.engine.compute_service.source_csv_exists(source):
+        if runner.compute_service.source_csv_exists(source):
             super().__init__(
                 runner,
                 source,
                 source_ddl=source_ddl.replace(
                     'CREATE TABLE', 'CREATE TEMPORARY TABLE'),
-                csv_path=runner.engine.compute_service.csv_file_path(source)
+                csv_path=runner.compute_service.csv_file_path(source)
             )
         else:
             super().__init__(
@@ -294,23 +316,27 @@ class CreateSource(SparkJob):
 
 
 class DropSource(SparkJob):
-    name = 'drop_source_{{source.name}}'
+    name_template = 'drop_source_{{source.name}}'
     template = '''
         DROP TABLE source_{{source.name}}
         '''
     template_args = ['source']
     key_args = ['source']
 
+    def __init__(self, runner, source):
+        super().__init__(runner, source)
+        self.source = source
+
     @property
     def dependencies(self):
         return [
-            self.runner.get_job(SatelliteQuery, satellite)
+            SatelliteQuery.get_or_create(self.runner, satellite)
             for satellite in self.source.dependent_satellites
         ]
 
 
 class InputKeys(SparkView):
-    name = (
+    name_template = (
         'vault_updates'
         '_{{satellite_owner.full_name}}'
         '_{{satellite.full_name}}'
@@ -364,6 +390,10 @@ class InputKeys(SparkView):
             dependent_satellites=satellite.dependent_satellites_by_owner(
                 satellite_owner.key)
         )
+        self.satellite = satellite
+        self.satellite_owner = satellite_owner
+        self.dependent_satellites = satellite.dependent_satellites_by_owner(
+            satellite_owner.key)
 
     @property
     def dependencies(self):
@@ -378,7 +408,7 @@ class InputKeys(SparkView):
 
 
 class SatelliteQuery(SparkView):
-    name = 'vault_updates_{{satellite.full_name}}'
+    name_template = 'vault_updates_{{satellite.full_name}}'
     template = '{{sql}}'
     template_args = ['satellite', 'sql']
     key_args = ['satellite']
@@ -389,9 +419,10 @@ class SatelliteQuery(SparkView):
         super().__init__(
             runner,
             satellite,
-            sql=runner.engine.compute_service.compile_sqlalchemy(
+            sql=runner.compute_service.compile_sqlalchemy(
                 satellite.pipeline.sql_model.pipeline_query())
         )
+        self.satellite = satellite
 
     @property
     def dependencies(self):
@@ -399,15 +430,15 @@ class SatelliteQuery(SparkView):
             *self.runner.input_keys(self.satellite, 'hub'),
             *self.runner.input_keys(self.satellite, 'link'),
             *[
-                self.runner.get_job(
-                    SerialiseSatellite, dep.object_reference)
+                SerialiseSatellite.get_or_create(
+                    self.runner, dep.object_reference)
                 for dep in self.satellite.pipeline.dependencies
                 if dep.type == 'satellite'
                 and dep.view in ['current', 'history']
             ],
             *[
-                self.runner.get_job(
-                    CreateSource, dep.object_reference)
+                CreateSource.get_or_create(
+                    self.runner, dep.object_reference)
                 for dep in self.satellite.pipeline.dependencies
                 if dep.type == 'source'
             ]
@@ -415,7 +446,7 @@ class SatelliteQuery(SparkView):
 
 
 class ProducedHubKeys(SparkView):
-    name = 'produced_keys_{{hub.full_name}}_{{satellite.full_name}}'
+    name_template = 'produced_keys_{{hub.full_name}}_{{satellite.full_name}}'
     template = '''
         {% if key_columns|length > 1 %}
         SELECT {{ hub.key_column_name }},
@@ -451,14 +482,16 @@ class ProducedHubKeys(SparkView):
             hub=hub,
             key_columns=satellite.hub_key_columns[hub.name]
         )
+        self.satellite = satellite
+        self.hub = hub
 
     @property
     def dependencies(self):
-        return [self.runner.get_job(SatelliteQuery, self.satellite)]
+        return [SatelliteQuery.get_or_create(self.runner, self.satellite)]
 
 
 class ProducedLinkKeys(SparkView):
-    name = 'produced_keys_{{link.full_name}}_{{satellite.full_name}}'
+    name_template = 'produced_keys_{{link.full_name}}_{{satellite.full_name}}'
     template = '''
         SELECT {{ link.key_column_name }}
                , array('sat_{{ satellite.name }}') AS key_source
@@ -471,19 +504,29 @@ class ProducedLinkKeys(SparkView):
     checkpoint = False
     global_view = False
 
+    def __init__(self, runner, satellite, link):
+        super().__init__(runner, satellite, link)
+        self.satellite = satellite
+        self.link = link
+
     @property
     def dependencies(self):
-        return [self.runner.get_job(SatelliteQuery, self.satellite)]
+        return [SatelliteQuery.get_or_create(self.runner, self.satellite)]
 
 
 class OutputKeysFromSatellite(SparkView):
-    name = 'keys_{{satellite_owner.full_name}}_{{satellite.full_name}}'
+    name_template = 'keys_{{satellite_owner.full_name}}_{{satellite.full_name}}'
     template = '''
         SELECT * FROM produced_keys_{{satellite_owner.full_name}}_{{satellite.full_name}}
         '''
     template_args = ['satellite', 'satellite_owner']
     checkpoint = False
     global_view = False
+
+    def __init__(self, runner, satellite, satellite_owner):
+        super().__init__(runner, satellite, satellite_owner)
+        self.satellite = satellite
+        self.satellite_owner = satellite_owner
 
     @property
     def dependencies(self):
@@ -492,13 +535,13 @@ class OutputKeysFromSatellite(SparkView):
         else:
             produced_keys_class = ProducedLinkKeys
         return [
-            self.runner.get_job(
-                produced_keys_class, self.satellite, self.satellite_owner)
+            produced_keys_class.get_or_create(
+                self.runner, self.satellite, self.satellite_owner)
         ]
 
 
 class OutputKeysFromDependencies(SparkView):
-    name = 'keys_{{satellite_owner.full_name}}_{{satellite.full_name}}'
+    name_template = 'keys_{{satellite_owner.full_name}}_{{satellite.full_name}}'
     template = '''
         SELECT * FROM
         vault_updates_{{satellite_owner.full_name}}_{{satellite.full_name}}
@@ -507,14 +550,19 @@ class OutputKeysFromDependencies(SparkView):
     checkpoint = False
     global_view = False
 
+    def __init__(self, runner, satellite, satellite_owner):
+        super().__init__(runner, satellite, satellite_owner)
+        self.satellite = satellite
+        self.satellite_owner = satellite_owner
+
     @property
     def dependencies(self):
-        return [self.runner.get_job(
-            InputKeys, self.satellite, self.satellite_owner)]
+        return [InputKeys.get_or_create(
+            self.runner, self.satellite, self.satellite_owner)]
 
 
 class OutputKeysFromBoth(SparkView):
-    name = 'keys_{{satellite_owner.full_name}}_{{satellite.full_name}}'
+    name_template = 'keys_{{satellite_owner.full_name}}_{{satellite.full_name}}'
     template = '''
         SELECT COALESCE(input_keys.{{satellite_owner.key_column_name}},
                         produced_keys.{{satellite_owner.key_column_name}})
@@ -540,6 +588,11 @@ class OutputKeysFromBoth(SparkView):
     checkpoint = True
     global_view = False
 
+    def __init__(self, runner, satellite, satellite_owner):
+        super().__init__(runner, satellite, satellite_owner)
+        self.satellite = satellite
+        self.satellite_owner = satellite_owner
+
     @property
     def dependencies(self):
         if self.satellite_owner.type == "hub":
@@ -547,15 +600,15 @@ class OutputKeysFromBoth(SparkView):
         else:
             produced_keys_class = ProducedLinkKeys
         return [
-            self.runner.get_job(
-                produced_keys_class, self.satellite, self.satellite_owner),
-            self.runner.get_job(
-                InputKeys, self.satellite, self.satellite_owner)
+            produced_keys_class.get_or_create(
+                self.runner, self.satellite, self.satellite_owner),
+            InputKeys.get_or_create(
+                self.runner, self.satellite, self.satellite_owner)
         ]
 
 
 class StarKeys(SparkView):
-    name = 'keys_{{satellite_owner.full_name}}'
+    name_template = 'keys_{{satellite_owner.full_name}}'
     template = '''
         SELECT {{ satellite_owner.key_column_name }},
                {% if satellite_owner.type == "link" %}
@@ -586,6 +639,10 @@ class StarKeys(SparkView):
     checkpoint = True
     global_view = False
 
+    def __init__(self, runner, satellite_owner):
+        super().__init__(runner, satellite_owner)
+        self.satellite_owner = satellite_owner
+
     @property
     def dependencies(self):
         return [
@@ -600,7 +657,7 @@ class StarKeys(SparkView):
 
 
 class StarData(SparkView):
-    name = 'updates_{{satellite_owner.sql_model.star_table_name}}'
+    name_template = 'updates_{{satellite_owner.sql_model.star_table_name}}'
     template = '''
         SELECT keys.{{satellite_owner.key_column_name}}
 
@@ -651,20 +708,28 @@ class StarData(SparkView):
     checkpoint = True
     global_view = False
 
+    def __init__(self, runner, satellite_owner):
+        super().__init__(runner, satellite_owner)
+        self.satellite_owner = satellite_owner
+
     @property
     def dependencies(self):
         return [
-            self.runner.get_job(StarKeys, self.satellite_owner),
+            StarKeys.get_or_create(self.runner, self.satellite_owner),
             *[
-                self.runner.get_job(SatelliteQuery, satellite)
+                SatelliteQuery.get_or_create(self.runner, satellite)
                 for satellite in self.satellite_owner.star_satellites.values()
             ]
         ]
 
 
 class StarMerge(SparkJob):
-    name = 'merge_{{satellite_owner.sql_model.star_table_name}}'
+    name_template = 'merge_{{satellite_owner.sql_model.star_table_name}}'
     template_args = ['satellite_owner']
+
+    def __init__(self, runner, satellite_owner):
+        super().__init__(runner, satellite_owner)
+        self.satellite_owner = satellite_owner
 
     def execute_query(self):
         path = [
@@ -684,6 +749,7 @@ class StarMerge(SparkJob):
         # Import has to happen inline because delta library is installed
         # at runtime by PySpark. Not ideal as not PEP8 compliant!
         # Create a setuptools-compatible mirror repo instead?
+        # noinspection PyUnresolvedReferences
         from delta.tables import DeltaTable
 
         (
@@ -716,11 +782,11 @@ class StarMerge(SparkJob):
 
     @property
     def dependencies(self):
-        return [self.runner.get_job(StarData, self.satellite_owner)]
+        return [StarData.get_or_create(self.runner, self.satellite_owner)]
 
 
 class SerialiseSatellite(SparkJob):
-    name = 'serialise_sat_{{satellite.name}}'
+    name_template = 'serialise_sat_{{satellite.name}}'
     template = '''
         INSERT
           INTO {{satellite.sql_model.table.name}}
@@ -729,39 +795,26 @@ class SerialiseSatellite(SparkJob):
         '''
     template_args = ['satellite']
 
+    def __init__(self, runner, satellite):
+        super().__init__(runner, satellite)
+        self.satellite = satellite
+
     @property
     def dependencies(self):
-        return [self.runner.get_job(SatelliteQuery, self.satellite)]
+        return [SatelliteQuery.get_or_create(self.runner, self.satellite)]
 
 
-class SparkRunner(object):
+class SparkRunner(Runner, register_as="local_spark"):
 
-    def __init__(self, engine, project):
-        self.engine = engine
-        self.project = project
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.jobs = {}
         self.create_jobs()
+        pass
 
     @property
     def logger(self):
         return self.engine.logger
-
-    @property
-    def config(self):
-        return self.engine.config
-
-    @property
-    def compute_service(self):
-        return self.engine.compute_service
-
-    def get_job(self, job_class, *args):
-        return self.jobs[job_class.construct_key(*args)]
-
-    def get_or_create_job(self, job_class, *args):
-        key = job_class.construct_key(*args)
-        if key not in self.jobs:
-            self.jobs[key] = job_class(self, *args)
-        return self.jobs[key]
 
     def create_jobs(self):
         for source in self.project.sources.values():
@@ -781,11 +834,11 @@ class SparkRunner(object):
 
     def source_jobs(self, source):
         jobs = [
-            self.get_or_create_job(CreateSource, source)
+            CreateSource.get_or_create(self, source)
         ]
-        if self.engine.compute_service.source_csv_exists(source):
+        if self.compute_service.source_csv_exists(source):
             jobs += [
-                self.get_or_create_job(DropSource, source)
+                DropSource.get_or_create(self, source)
             ]
         return jobs
 
@@ -793,25 +846,25 @@ class SparkRunner(object):
         return [
             *self.input_keys(satellite, 'hub'),
             *self.input_keys(satellite, 'link'),
-            self.get_or_create_job(SatelliteQuery, satellite),
+            SatelliteQuery.get_or_create(self, satellite),
             *self.produced_hub_keys(satellite),
             *self.produced_link_keys(satellite),
             *self.output_keys(satellite, 'hub'),
             *self.output_keys(satellite, 'link'),
-            self.get_or_create_job(SerialiseSatellite, satellite)
+            SerialiseSatellite.get_or_create(self, satellite)
         ]
 
     # TODO: Eliminate StarMerge if star datastore is external to Spark
     def star_jobs(self, satellite_owner):
         return [
-            self.get_or_create_job(StarKeys, satellite_owner),
-            self.get_or_create_job(StarData, satellite_owner),
-            self.get_or_create_job(StarMerge, satellite_owner)
+            StarKeys.get_or_create(self, satellite_owner),
+            StarData.get_or_create(self, satellite_owner),
+            StarMerge.get_or_create(self, satellite_owner)
         ]
 
     def input_keys(self, satellite, type):
         return [
-            self.get_or_create_job(InputKeys, satellite, satellite_owner)
+            InputKeys.get_or_create(self, satellite, satellite_owner)
             for satellite_owner in satellite.input_keys(type).values()
         ]
 
@@ -823,7 +876,7 @@ class SparkRunner(object):
         else:
             job_class = OutputKeysFromBoth
 
-        return self.get_or_create_job(job_class, satellite, satellite_owner)
+        return job_class.get_or_create(self, satellite, satellite_owner)
 
     def output_keys(self, satellite, type):
         return [
@@ -833,8 +886,8 @@ class SparkRunner(object):
 
     def produced_hub_keys(self, satellite):
         return [
-            self.get_or_create_job(
-                ProducedHubKeys,
+            ProducedHubKeys.get_or_create(
+                self,
                 satellite,
                 hub
             )
@@ -843,8 +896,8 @@ class SparkRunner(object):
 
     def produced_link_keys(self, satellite):
         return [
-            self.get_or_create_job(
-                ProducedLinkKeys,
+            ProducedLinkKeys.get_or_create(
+                self,
                 satellite,
                 link
             )
@@ -871,7 +924,7 @@ class SparkRunner(object):
     def acknowledged_jobs(self):
         return self.jobs_in_state([SparkJobState.ACKNOWLEDGED])
 
-    def run(self):
+    def run(self) -> None:
         self.start_ready_jobs()
         if not self.running_jobs and not self.finished_jobs:
             raise Exception("Dependency error. No jobs could be started.")
@@ -898,7 +951,7 @@ class SparkRunner(object):
         for job in self.blocked_jobs.values():
             job.check_if_blocked()
 
-    def performance_data(self):
+    def performance_data(self) -> pd.DataFrame:
         return pd.DataFrame([
             (
                 key,

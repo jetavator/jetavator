@@ -1,21 +1,18 @@
 import sqlalchemy
 import os
-import re
 import time
 import thrift
 from lazy_property import LazyProperty
 
-from ..LogListener import LogListener
+from LogListener import LogListener
 
 from jetavator import utils
 
 from jetavator.services.SparkService import SparkService
 
-from ..DatabricksRunner import DatabricksRunner
+from ..runners import DatabricksRunner
 
 from TCLIService.ttypes import TOperationState
-
-from jetavator.sqlalchemy_delta import DeltaDialect
 
 from functools import wraps
 
@@ -52,9 +49,10 @@ class DatabricksService(SparkService, register_as='remote_databricks'):
         self.sqlalchemy_connection = self._create_sql_connection()
         self.reset_metadata()
 
+    # TODO: Reverse this relationship so the Runner instantiates the Service
     @LazyProperty
     def databricks_runner(self):
-        return DatabricksRunner(self)
+        raise NotImplementedError
 
     @LazyProperty
     def log_listener(self):
@@ -88,6 +86,7 @@ class DatabricksService(SparkService, register_as='remote_databricks'):
         self.databricks_runner.deploy_remote()
 
     def session(self):
+        # noinspection PyUnresolvedReferences
         return sqlalchemy.orm.sessionmaker(bind=self.sqlalchemy_connection)()
 
     def reset_metadata(self):
@@ -102,6 +101,7 @@ class DatabricksService(SparkService, register_as='remote_databricks'):
         for sql_statement in sql.encode(
                 "ascii", "ignore"
         ).decode("ascii").split("GO\n"):
+            # noinspection PyUnresolvedReferences
             try:
                 self.sqlalchemy_connection.execute(
                     sql_statement
@@ -153,6 +153,7 @@ class DatabricksService(SparkService, register_as='remote_databricks'):
         # Workaround because has_table raises an OperationalError if
         # a table does not exist. Contribute a fix to
         # https://github.com/dropbox/PyHive for this in future!
+        # noinspection PyUnresolvedReferences
         try:
             return self.sqlalchemy_connection.dialect.has_table(
                 self.sqlalchemy_connection, table_name)
@@ -233,15 +234,6 @@ class DatabricksService(SparkService, register_as='remote_databricks'):
                             f'Error running job {key}: '
                             f'{cursor.poll().errorMessage}'
                         )
-
-    def write_sql_element_to_disk(self, filename, sql_element):
-        script = str(sql_element.compile(bind=self.sqlalchemy_connection))
-        path = os.path.join("artifacts", self.config.schema, filename)
-        dir = os.path.dirname(path)
-        if not os.path.exists(dir):
-            os.makedirs(dir)
-        with open(path, "wb") as f:
-            f.write(self.convert_hive_syntax(script).encode("utf-8"))
 
     def _create_sql_connection(
         self,

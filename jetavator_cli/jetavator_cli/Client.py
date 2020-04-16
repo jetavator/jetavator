@@ -1,100 +1,8 @@
-import pandas
-import os
-from lazy_property import LazyProperty
-import tempfile
-import numpy as np
-import sqlalchemy
 import yaml
-import datetime
-import inspect
-
-from re import match
-
-from . import utils
-
-from .config import BaseConfig
 
 import jetavator
 
-DEFAULT_NUMERIC = 0
-DEFAULT_STRING = ''
-DEFAULT_DATE = '1970-01-01'
-DEFAULT_TIME = '0000'
-DEFAULT_BINARY = bin(0)
-
-TYPE_DEFAULTS = {
-    "bigint": DEFAULT_NUMERIC,
-    "bit": DEFAULT_NUMERIC,
-    "decimal": DEFAULT_NUMERIC,
-    "int": DEFAULT_NUMERIC,
-    "money": DEFAULT_NUMERIC,
-    "numeric": DEFAULT_NUMERIC,
-    "smallint": DEFAULT_NUMERIC,
-    "smallmoney": DEFAULT_NUMERIC,
-    "tinyint": DEFAULT_NUMERIC,
-    "float": DEFAULT_NUMERIC,
-    "real": DEFAULT_NUMERIC,
-    "date": DEFAULT_DATE,
-    "datetime": DEFAULT_DATE,
-    "datetime2": DEFAULT_DATE,
-    "smalldatetime": DEFAULT_DATE,
-    "time": DEFAULT_TIME,
-    "char": DEFAULT_STRING,
-    "text": DEFAULT_STRING,
-    "varchar": DEFAULT_STRING,
-    "nchar": DEFAULT_STRING,
-    "ntext": DEFAULT_STRING,
-    "nvarchar": DEFAULT_STRING,
-    "binary": DEFAULT_BINARY,
-    "varbinary": DEFAULT_BINARY,
-    "image": DEFAULT_BINARY
-}
-
-PANDAS_DTYPE_MAPPINGS = {
-    "bigint": "Int64",
-    "bit": "Int64",
-    "decimal": "Int64",
-    "int": "Int64",
-    "money": "float",
-    "numeric": "float",
-    "smallint": "Int64",
-    "smallmoney": "float",
-    "tinyint": "Int64",
-    "float": "float",
-    "real": "float",
-    "date": "datetime64[ns]",
-    "datetime": "datetime64[ns]",
-    "datetime2": "datetime64[ns]",
-    "smalldatetime": "datetime64[ns]",
-    "time": "timedelta64[ns]",
-    "char": "object",
-    "text": "object",
-    "varchar": "object",
-    "nchar": "object",
-    "ntext": "object",
-    "nvarchar": "object",
-    "binary": "object",
-    "varbinary": "object",
-    "image": "object"
-}
-
-PANDAS_TO_SQL_MAPPINGS = {
-    "int": "bigint",
-    "int32": "bigint",
-    "int64": "bigint",
-    "bool": "bit",
-    "float": "float(53)",
-    "float32": "float(53)",
-    "float64": "float(53)",
-    "datetime64[ns]": "datetime",
-    "str": "nvarchar(255)",
-    "object": "nvarchar(255)"
-}
-
-BASE_DTYPES = {
-    "jetavator_load_dt": "datetime64[ns]",
-    "jetavator_deleted_ind": "int"
-}
+from . import utils
 
 
 class Client(object):
@@ -133,15 +41,8 @@ class Client(object):
         self.connection.deploy()
 
     # TODO: Deprecate environment_type.
-    #       Remove this hard-coded conditional switching and base this on
-    #       the Compute setting in the config YAML
-    def run(self, load_type="delta"):
-        if self.config.environment_type == 'local_spark':
-            self.engine.run()
-        elif self.config.environment_type == 'remote_databricks':
-            self.connection.run_remote()
-        else:
-            raise NotImplementedError(self.config.environment_type)
+    def run(self, load_type: jetavator.LoadType = jetavator.LoadType.DELTA):
+        self.engine.run(load_type)
 
     def add(self, new_object, load_full_history=False, version=None):
 
@@ -191,22 +92,7 @@ class Client(object):
         )
 
     def table_dtypes(self, table_name, registry=None):
-        registry = registry or self.schema_registry.loaded
-        try:
-            user_defined_dtypes = {
-                k: PANDAS_DTYPE_MAPPINGS[utils.sql_basic_type(v["type"])]
-                for k, v in registry[
-                    "source", table_name
-                ].definition[
-                    "columns"
-                ].items()
-            }
-        except KeyError:
-            raise Exception(f"Table source.{table_name} does not exist.")
-        return {
-            **BASE_DTYPES,
-            **user_defined_dtypes
-        }
+        return self.engine.table_dtypes(table_name, registry)
 
     def csv_to_dataframe(
         self,
@@ -214,77 +100,17 @@ class Client(object):
         table_name,
         registry=None
     ):
-        registry = registry or self.schema_registry.loaded
-        try:
-            return pandas.read_csv(
-                csv_file,
-                parse_dates=[
-                    k
-                    for k, v in self.table_dtypes(table_name, registry).items()
-                    if v in ["datetime64[ns]", "timedelta64[ns]"]
-                ],
-                dtype={
-                    k: v
-                    for k, v in self.table_dtypes(table_name, registry).items()
-                    if v not in ["datetime64[ns]", "timedelta64[ns]"]
-                }
-            )
-        except ValueError:
-            return pandas.read_csv(
-                csv_file,
-                parse_dates=[
-                    k
-                    for k, v in self.table_dtypes(table_name, registry).items()
-                    if v in ["datetime64[ns]", "timedelta64[ns]"]
-                       and k != "jetavator_load_dt"
-                ],
-                dtype={
-                    k: v
-                    for k, v in self.table_dtypes(table_name, registry).items()
-                    if v not in ["datetime64[ns]", "timedelta64[ns]"]
-                }
-            )
+        return self.engine.csv_to_dataframe(
+            csv_file,
+            table_name,
+            registry
+        )
 
     def source_def_from_dataframe(self, df, table_name, use_as_pk):
-
-        pd_dtypes_dict = df.dtypes.apply(lambda x: x.name).to_dict()
-        col_dict_list = [
-            {
-                k: {
-                    "type": PANDAS_TO_SQL_MAPPINGS[v],
-                    "nullable": False  # in Python e.g. int is not nullable
-                }
-            }
-            for k, v in pd_dtypes_dict.items()
-        ]
-        col_dict = {k: v for d in col_dict_list for k, v in d.items()}
-
-        col_dict[use_as_pk]["pk"] = True
-
-        source_def = {
-            "name": table_name,
-            "type": "source",
-            "schema": "source",
-            "columns": col_dict
-        }
-        return source_def
+        return self.engine.source_def_from_dataframe(df, table_name, use_as_pk)
 
     def add_dataframe_as_source(self, df, table_name, use_as_pk):
-        source_def = self.source_def_from_dataframe(
-            df=df,
-            table_name=table_name,
-            use_as_pk=use_as_pk
-        )
-        self.add(
-            # This is supposed to fail if table_name already exist in the
-            # source schema of the database.
-            source_def
-        )
-        self.insert_to_sql_from_pandas(
-            df=df,
-            schema="source",
-            table_name=table_name,
-        )
+        self.engine.add_dataframe_as_source(df, table_name, use_as_pk)
 
     def call_stored_procedure(self, procedure_name):
         return self.connection.call_stored_procedure(procedure_name)

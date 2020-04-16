@@ -3,7 +3,6 @@ import logging
 import logging.config
 import os
 import tempfile
-from shutil import copyfile
 
 import numpy as np
 import pyspark
@@ -11,14 +10,12 @@ import sqlalchemy
 import sqlparse
 from jetavator.sqlalchemy_delta import DeltaDialect
 from lazy_property import LazyProperty
-from pyspark.sql import SparkSession
 
 from jetavator import utils
 from .DBService import DBService
 
 SPARK_APP_NAME = 'jetavator'
 DELTA_VERSION = 'delta-core_2.11:0.5.0'
-DBFS_DATA_ROOT = 'dbfs:/jetavator/data'
 
 PYSPARK_COLUMN_TYPE_MAPPINGS = [
     (sqlalchemy.types.String, pyspark.sql.types.StringType),
@@ -274,50 +271,3 @@ class SparkService(DBService):
             }
         for job in jobs.values():
             self.execute_sql_element(job)
-
-
-class LocalSparkService(SparkService, register_as="local_spark"):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.tempfolder = '/jetavator/data'
-        # Figure out a better way to manage temporary folders -
-        # requires storage of state between commands line calls!
-
-    @LazyProperty
-    def spark(self):
-        os.environ['PYSPARK_SUBMIT_ARGS'] = (
-            '--packages'
-            f' io.delta:{DELTA_VERSION}'
-            ' pyspark-shell'
-        )
-        spark_session = (
-            SparkSession
-            .builder
-            .appName(SPARK_APP_NAME)
-            .enableHiveSupport()
-            .getOrCreate()
-        )
-        spark_session.sparkContext.setLogLevel('ERROR')
-        return spark_session
-
-    def csv_file_path(self, source):
-        return (
-            f'{self.tempfolder}/'
-            f'{self.config.schema}/'
-            f'{self.engine.config.session.run_uuid}/'
-            f'{source.name}.csv'
-        )
-
-    def source_csv_exists(self, source):
-        return os.path.exists(self.csv_file_path(source))
-
-    def load_csv(self, csv_file, source):
-        utils.print_to_console(f"{source.name}.csv: Uploading file")
-        try:
-            os.makedirs(
-                os.path.dirname(
-                    self.csv_file_path(source)))
-        except FileExistsError:
-            pass
-        copyfile(csv_file, self.csv_file_path(source))

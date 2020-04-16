@@ -12,6 +12,4 @@ def from_behave_context(context, config=None, **kwargs):
         )
     )
 
-    instance.patch_context(context)
-
     return instance
