@@ -1,5 +1,7 @@
 from __future__ import annotations  # Remove in Python 3.8
 
+from abc import ABC, abstractmethod
+
 from pandas import DataFrame
 
 from jetavator import Engine
@@ -8,7 +10,7 @@ from jetavator.mixins import RegistersSubclasses
 from jetavator.services import DBService
 
 
-class Runner(RegistersSubclasses):
+class Runner(RegistersSubclasses, ABC):
 
     def __init__(
         self,
@@ -46,14 +48,16 @@ class Runner(RegistersSubclasses):
             project
         )
 
+    @abstractmethod
     def run(self) -> None:
         """
         Run all pipelines in the project
         """
-        raise NotImplementedError
+        pass
 
+    @abstractmethod
     def performance_data(self) -> DataFrame:
         """
         Return a `pandas.DataFrame` containing performance data
         """
-        raise NotImplementedError
+        pass

@@ -1,2 +1,2 @@
 from .Runner import Runner
-from .SparkRunner import SparkRunner
+from .spark_runner import SparkRunner

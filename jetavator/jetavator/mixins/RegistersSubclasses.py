@@ -15,6 +15,8 @@ def get_class_namespace(cls):
 
 class RegistersSubclasses(object):
 
+    registered_name = None
+    _registration_namespace = None
     _registered_subclasses = {}
 
     @classmethod
@@ -46,8 +48,6 @@ class RegistersSubclasses(object):
                     """)
             cls._registered_subclasses[key] = cls
             cls.registered_name = str(register_as)
-        else:
-            cls.registered_name = None
 
     @classmethod
     def registered_subclasses(cls):
