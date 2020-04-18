@@ -2,12 +2,10 @@ from typing import List
 
 from jetavator.schema_registry import SatelliteOwner
 
-from .. import SparkJob, SparkJobABC, SparkRunnerABC
+from .. import SparkJob, SparkRunnerABC
 
 
 class StarMerge(SparkJob, register_as='star_merge'):
-    name_template = 'merge_{{satellite_owner.sql_model.star_table_name}}'
-    template_args = ['satellite_owner']
 
     def __init__(
         self,
@@ -16,6 +14,10 @@ class StarMerge(SparkJob, register_as='star_merge'):
     ) -> None:
         super().__init__(runner, satellite_owner)
         self.satellite_owner = satellite_owner
+
+    @property
+    def name(self) -> str:
+        return f'merge_{self.satellite_owner.sql_model.star_table_name}'
 
     def execute(self):
         path = [
@@ -35,6 +37,7 @@ class StarMerge(SparkJob, register_as='star_merge'):
         # Import has to happen inline because delta library is installed
         # at runtime by PySpark. Not ideal as not PEP8 compliant!
         # Create a setuptools-compatible mirror repo instead?
+
         # noinspection PyUnresolvedReferences
         from delta.tables import DeltaTable
 
@@ -67,5 +70,5 @@ class StarMerge(SparkJob, register_as='star_merge'):
         )
 
     @property
-    def dependencies(self) -> List[SparkJobABC]:
-        return [self.runner.get_job('star_data', self.satellite_owner)]
+    def dependency_keys(self) -> List[str]:
+        return [self.construct_job_key('star_data', self.satellite_owner)]

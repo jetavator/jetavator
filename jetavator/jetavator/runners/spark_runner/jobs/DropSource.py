@@ -2,24 +2,25 @@ from typing import List
 
 from jetavator.schema_registry import Source
 
-from .. import SparkSQLJob, SparkJobABC, SparkRunnerABC
+from .. import SparkSQLJob, SparkRunnerABC
 
 
 class DropSource(SparkSQLJob, register_as='drop_source'):
-    name_template = 'drop_source_{{source.name}}'
     sql_template = '''
-        DROP TABLE source_{{source.name}}
+        DROP TABLE source_{{job.source.name}}
         '''
-    template_args = ['source']
-    key_args = ['source']
 
     def __init__(self, runner: SparkRunnerABC, source: Source) -> None:
         super().__init__(runner, source)
         self.source = source
 
     @property
-    def dependencies(self) -> List[SparkJobABC]:
+    def name(self) -> str:
+        return f'drop_source_{self.source.name}'
+
+    @property
+    def dependency_keys(self) -> List[str]:
         return [
-            self.runner.get_job('satellite_query', satellite)
+            self.construct_job_key('satellite_query', satellite)
             for satellite in self.source.dependent_satellites
         ]

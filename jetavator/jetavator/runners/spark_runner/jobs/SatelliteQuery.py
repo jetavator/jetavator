@@ -1,16 +1,12 @@
 from typing import List
 
-from jetavator import KeyType
 from jetavator.schema_registry import Satellite
 
-from .. import SparkJobABC, SparkSQLView, SparkRunnerABC
+from .. import SparkSQLView, SparkRunnerABC
 
 
 class SatelliteQuery(SparkSQLView, register_as='satellite_query'):
-    name_template = 'vault_updates_{{satellite.full_name}}'
-    sql_template = '{{sql}}'
-    template_args = ['satellite', 'sql']
-    key_args = ['satellite']
+    sql_template = '{{job.sql}}'
     checkpoint = True
     global_view = False
 
@@ -21,25 +17,38 @@ class SatelliteQuery(SparkSQLView, register_as='satellite_query'):
     ) -> None:
         super().__init__(
             runner,
-            satellite,
-            sql=runner.compute_service.compile_sqlalchemy(
-                satellite.pipeline.sql_model.pipeline_query())
+            satellite
         )
         self.satellite = satellite
 
     @property
-    def dependencies(self) -> List[SparkJobABC]:
+    def name(self) -> str:
+        return f'vault_updates_{self.satellite.full_name}'
+
+    @property
+    def sql(self) -> str:
+        return self.runner.compute_service.compile_sqlalchemy(
+            self.satellite.pipeline.sql_model.pipeline_query())
+
+    @property
+    def dependency_keys(self) -> List[str]:
         return [
-            *self.runner.input_keys(self.satellite, KeyType.HUB),
-            *self.runner.input_keys(self.satellite, KeyType.LINK),
             *[
-                self.runner.get_job('serialise_satellite', dep.object_reference)
+                self.construct_job_key('input_keys', self.satellite, satellite_owner)
+                # TODO: Refactor Satellite.input_keys to take multiple key types
+                for satellite_owner in [
+                    *self.satellite.input_keys('hub').values(),
+                    *self.satellite.input_keys('link').values()
+                ]
+            ],
+            *[
+                self.construct_job_key('serialise_satellite', dep.object_reference)
                 for dep in self.satellite.pipeline.dependencies
                 if dep.type == 'satellite'
                 and dep.view in ['current', 'history']
             ],
             *[
-                self.runner.get_job('create_source', dep.object_reference)
+                self.construct_job_key('create_source', dep.object_reference)
                 for dep in self.satellite.pipeline.dependencies
                 if dep.type == 'source'
             ]

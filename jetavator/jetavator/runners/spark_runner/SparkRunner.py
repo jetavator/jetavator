@@ -8,10 +8,24 @@ import pandas as pd
 from jetavator import KeyType
 from jetavator.schema_registry import Source, Satellite, SatelliteOwner
 
-from . import SparkJob, SparkJobABC, SparkRunnerABC
+from . import SparkJob, SparkRunnerABC
 
 from .SparkJobState import SparkJobState
-from .jobs import *
+
+from .jobs import (
+    CreateSource,
+    DropSource,
+    InputKeys,
+    OutputKeys,
+    ProducedHubKeys,
+    ProducedLinkKeys,
+    SatelliteQuery,
+    SerialiseSatellite,
+    StarData,
+    StarKeys,
+    StarMerge
+)
+
 
 LIFE_CYCLE_ERROR_STATES = [
     'INTERNAL_ERROR'
@@ -37,8 +51,10 @@ class SparkRunner(SparkRunnerABC, register_as="local_spark"):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._jobs = {}
-        self.create_jobs()
+        self._jobs = {
+            job.key: job
+            for job in self.create_jobs()
+        }
 
     @property
     def logger(self) -> Logger:
@@ -48,24 +64,21 @@ class SparkRunner(SparkRunnerABC, register_as="local_spark"):
     def jobs(self) -> Dict[str, SparkJob]:
         return self._jobs
 
-    def get_job(self, class_name: str, *args):
-        key = '/'.join([
-            class_name,
-            *[
-                '.'.join(vault_object.key)
-                for vault_object in args
-            ]
-        ])
-        return self._jobs[key]
-
-    def create_jobs(self) -> None:
-        for source in self.project.sources.values():
-            self.source_jobs(source)
-        for satellite in self.project.satellites.values():
-            self.satellite_jobs(satellite)
-        for satellite_owner in self.project.satellite_owners.values():
-            if satellite_owner.satellites_containing_keys:
-                self.star_jobs(satellite_owner)
+    def create_jobs(self) -> List[SparkJob]:
+        return [
+            job
+            for source in self.project.sources.values()
+            for job in self.source_jobs(source)
+        ] + [
+            job
+            for satellite in self.project.satellites.values()
+            for job in self.satellite_jobs(satellite)
+        ] + [
+            job
+            for satellite_owner in self.project.satellite_owners.values()
+            if satellite_owner.satellites_containing_keys
+            for job in self.star_jobs(satellite_owner)
+        ]
 
     def jobs_in_state(self, states) -> Dict[str, SparkJob]:
         return {
@@ -74,97 +87,34 @@ class SparkRunner(SparkRunnerABC, register_as="local_spark"):
             if job.state in states
         }
 
-    def source_jobs(self, source: Source) -> List[SparkJobABC]:
+    def source_jobs(self, source: Source) -> List[SparkJob]:
         jobs = [
-            CreateSource.get_or_create(self, source)
+            CreateSource(self, source)
         ]
         if self.compute_service.source_csv_exists(source):
             jobs += [
-                DropSource.get_or_create(self, source)
+                DropSource(self, source)
             ]
         return jobs
 
     def satellite_jobs(self, satellite: Satellite) -> List[SparkJob]:
         return [
-            *self.input_keys(satellite, KeyType.HUB),
-            *self.input_keys(satellite, KeyType.LINK),
-            SatelliteQuery.get_or_create(self, satellite),
-            *self.produced_hub_keys(satellite),
-            *self.produced_link_keys(satellite),
-            *self.output_keys(satellite, KeyType.HUB),
-            *self.output_keys(satellite, KeyType.LINK),
-            SerialiseSatellite.get_or_create(self, satellite)
+            *InputKeys.keys_for_satellite(self, satellite, KeyType.HUB),
+            *InputKeys.keys_for_satellite(self, satellite, KeyType.LINK),
+            SatelliteQuery(self, satellite),
+            *ProducedHubKeys.keys_for_satellite(self, satellite),
+            *ProducedLinkKeys.keys_for_satellite(self, satellite),
+            *OutputKeys.keys_for_satellite(self, satellite, KeyType.HUB),
+            *OutputKeys.keys_for_satellite(self, satellite, KeyType.LINK),
+            SerialiseSatellite(self, satellite)
         ]
 
     # TODO: Eliminate StarMerge if star datastore is external to Spark
-    def star_jobs(self, satellite_owner: SatelliteOwner) -> List[SparkJobABC]:
+    def star_jobs(self, satellite_owner: SatelliteOwner) -> List[SparkJob]:
         return [
-            StarKeys.get_or_create(self, satellite_owner),
-            StarData.get_or_create(self, satellite_owner),
-            StarMerge.get_or_create(self, satellite_owner)
-        ]
-
-    def input_keys(
-        self,
-        satellite: Satellite,
-        key_type: KeyType
-    ) -> List[SparkJobABC]:
-        # TODO: Implement KeyType throughout schema_registry to avoid .value conversions
-        if type(key_type) is str:
-            key_type = KeyType.HUB if key_type == 'hub' else KeyType.LINK
-        return [
-            InputKeys.get_or_create(self, satellite, satellite_owner)
-            for satellite_owner in satellite.input_keys(key_type.value).values()
-        ]
-
-    def satellite_owner_output_keys(
-        self,
-        satellite: Satellite,
-        satellite_owner: SatelliteOwner,
-        key_type: KeyType
-    ) -> SparkJobABC:
-        # TODO: Implement KeyType throughout schema_registry to avoid .value conversions
-        if type(key_type) is str:
-            key_type = KeyType.HUB if key_type == 'hub' else KeyType.LINK
-        if satellite_owner.name not in satellite.input_keys(key_type.value):
-            job_class = OutputKeysFromSatellite
-        elif satellite_owner.name not in satellite.produced_keys(key_type.value):
-            job_class = OutputKeysFromDependencies
-        else:
-            job_class = OutputKeysFromBoth
-        return job_class.get_or_create(self, satellite, satellite_owner)
-
-    def output_keys(
-        self,
-        satellite: Satellite,
-        key_type: KeyType
-    ) -> List[SparkJobABC]:
-        # TODO: Implement KeyType throughout schema_registry to avoid .value conversions
-        if type(key_type) is str:
-            key_type = KeyType.HUB if key_type == 'hub' else KeyType.LINK
-        return [
-            self.satellite_owner_output_keys(satellite, satellite_owner, key_type)
-            for satellite_owner in satellite.output_keys(key_type.value).values()
-        ]
-
-    def produced_hub_keys(self, satellite: Satellite) -> List[SparkJobABC]:
-        return [
-            ProducedHubKeys.get_or_create(
-                self,
-                satellite,
-                hub
-            )
-            for hub in satellite.produced_keys('hub').values()
-        ]
-
-    def produced_link_keys(self, satellite: Satellite) -> List[SparkJobABC]:
-        return [
-            ProducedLinkKeys.get_or_create(
-                self,
-                satellite,
-                link
-            )
-            for link in satellite.produced_keys('link').values()
+            StarKeys(self, satellite_owner),
+            StarData(self, satellite_owner),
+            StarMerge(self, satellite_owner)
         ]
 
     @property

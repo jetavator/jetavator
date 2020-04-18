@@ -2,7 +2,10 @@ from .CreateSource import CreateSource
 from .DropSource import DropSource
 from .InputKeys import InputKeys
 from .OutputKeys import (
-    OutputKeysFromBoth, OutputKeysFromDependencies, OutputKeysFromSatellite
+    OutputKeys,
+    OutputKeysFromBoth,
+    OutputKeysFromDependencies,
+    OutputKeysFromSatellite
 )
 from .ProducedHubKeys import ProducedHubKeys
 from .ProducedLinkKeys import ProducedLinkKeys

@@ -1,37 +1,36 @@
+from __future__ import annotations
+
 from typing import List
 
 from jetavator.schema_registry import Satellite, Hub
 
-from .. import SparkSQLView, SparkJobABC, SparkRunnerABC
+from .. import SparkSQLView, SparkRunnerABC
 
 
 class ProducedHubKeys(SparkSQLView, register_as='produced_hub_keys'):
-    name_template = 'produced_keys_{{hub.full_name}}_{{satellite.full_name}}'
     sql_template = '''
-        {% if key_columns|length > 1 %}
-        SELECT {{ hub.key_column_name }},
+        {% if job.key_columns|length > 1 %}
+        SELECT {{ job.hub.key_column_name }},
                collect_set(key_source) AS key_source
           FROM (
-                {% for column in key_columns %}
-                SELECT {{ column.name }} AS {{ hub.key_column_name }},
+                {% for column in job.key_columns %}
+                SELECT {{ column.name }} AS {{ job.hub.key_column_name }},
                        '{{ column.source }}' AS key_source
-                  FROM vault_updates_{{satellite.full_name}}
+                  FROM vault_updates_{{job.satellite.full_name}}
 
                 {{ "UNION ALL" if not loop.last }}
                 {% endfor %}
                ) AS keys
          GROUP
-            BY {{ hub.key_column_name }}
+            BY {{ job.hub.key_column_name }}
         {% else %}
-        SELECT {{ key_columns[0].name }} AS {{ hub.key_column_name }},
-               array('{{ key_columns[0].source }}') AS key_source
-          FROM vault_updates_{{satellite.full_name}}
+        SELECT {{ job.key_columns[0].name }} AS {{ job.hub.key_column_name }},
+               array('{{ job.key_columns[0].source }}') AS key_source
+          FROM vault_updates_{{job.satellite.full_name}}
          GROUP
-            BY {{ key_columns[0].name }}
+            BY {{ job.key_columns[0].name }}
         {% endif %}
         '''
-    template_args = ['satellite', 'hub', 'key_columns']
-    key_args = ['satellite', 'hub']
     checkpoint = True
     global_view = False
 
@@ -41,15 +40,34 @@ class ProducedHubKeys(SparkSQLView, register_as='produced_hub_keys'):
         satellite: Satellite,
         hub: Hub
     ) -> None:
-        super().__init__(
-            runner,
-            satellite=satellite,
-            hub=hub,
-            key_columns=satellite.hub_key_columns[hub.name]
-        )
+        super().__init__(runner, satellite, hub)
         self.satellite = satellite
         self.hub = hub
 
     @property
-    def dependencies(self) -> List[SparkJobABC]:
-        return [self.runner.get_job('satellite_query', self.satellite)]
+    def name(self) -> str:
+        return (
+            'produced_keys'
+            f'_{self.hub.full_name}'
+            f'_{self.satellite.full_name}'
+        )
+
+    @classmethod
+    def keys_for_satellite(
+        cls,
+        runner: SparkRunnerABC,
+        satellite: Satellite
+    ) -> List[ProducedHubKeys]:
+        return [
+            cls(runner, satellite, hub)
+            for hub in satellite.produced_keys('hub').values()
+        ]
+
+    # TODO: Type signature for ProducedHubKeys.key_columns
+    @property
+    def key_columns(self):
+        return self.satellite.hub_key_columns[self.hub.name]
+
+    @property
+    def dependency_keys(self) -> List[str]:
+        return [self.construct_job_key('satellite_query', self.satellite)]

@@ -1,21 +1,17 @@
-from functools import reduce
-from typing import List
+from __future__ import annotations
 
+from typing import List
+from functools import reduce
+
+from jetavator import KeyType
 from jetavator.schema_registry import Satellite, SatelliteOwner
 
 from pyspark.sql import functions as f, DataFrame
 
-from .. import SparkJobABC, SparkView, SparkRunnerABC
+from .. import SparkView, SparkRunnerABC
 
 
 class InputKeys(SparkView, register_as='input_keys'):
-    name_template = (
-        'vault_updates'
-        '_{{satellite_owner.full_name}}'
-        '_{{satellite.full_name}}'
-    )
-    template_args = ['satellite', 'satellite_owner', 'dependent_satellites']
-    key_args = ['satellite', 'satellite_owner']
     checkpoint = False
     global_view = False
 
@@ -25,17 +21,37 @@ class InputKeys(SparkView, register_as='input_keys'):
         satellite: Satellite,
         satellite_owner: SatelliteOwner
     ) -> None:
-        super().__init__(
-            runner,
-            satellite,
-            satellite_owner,
-            dependent_satellites=satellite.dependent_satellites_by_owner(
-                satellite_owner.key)
-        )
+        super().__init__(runner, satellite, satellite_owner)
         self.satellite = satellite
         self.satellite_owner = satellite_owner
-        self.dependent_satellites = satellite.dependent_satellites_by_owner(
-            satellite_owner.key)
+
+    @property
+    def name(self) -> str:
+        return (
+            'vault_updates'
+            f'_{self.satellite_owner.full_name}'
+            f'_{self.satellite.full_name}'
+        )
+
+    @property
+    def dependent_satellites(self) -> List[Satellite]:
+        return self.satellite.dependent_satellites_by_owner(
+            self.satellite_owner.key)
+
+    @classmethod
+    def keys_for_satellite(
+        cls,
+        runner: SparkRunnerABC,
+        satellite: Satellite,
+        key_type: KeyType
+    ) -> List[InputKeys]:
+        # TODO: Implement KeyType throughout schema_registry to avoid .value conversions
+        if type(key_type) is str:
+            key_type = KeyType.HUB if key_type == 'hub' else KeyType.LINK
+        return [
+            cls(runner, satellite, satellite_owner)
+            for satellite_owner in satellite.input_keys(key_type.value).values()
+        ]
 
     def execute_view(self) -> DataFrame:
         keys = [self.satellite_owner.key_column_name]
@@ -76,13 +92,22 @@ class InputKeys(SparkView, register_as='input_keys'):
 
         return reduce(combine_key_tables, key_tables)
 
+    def satellite_owner_output_keys(
+        self,
+        satellite: Satellite
+    ) -> str:
+        owner = self.satellite_owner
+        if owner.name not in satellite.input_keys(owner.type):
+            job_class = 'output_keys_from_satellite'
+        elif owner.name not in satellite.produced_keys(owner.type):
+            job_class = 'output_keys_from_dependencies'
+        else:
+            job_class = 'output_keys_from_both'
+        return self.construct_job_key(job_class, satellite, owner)
+
     @property
-    def dependencies(self) -> List[SparkJobABC]:
+    def dependency_keys(self) -> List[str]:
         return [
-            self.runner.satellite_owner_output_keys(
-                dependent_satellite,
-                self.satellite_owner,
-                self.satellite_owner.type
-            )
+            self.satellite_owner_output_keys(dependent_satellite)
             for dependent_satellite in self.dependent_satellites
         ]

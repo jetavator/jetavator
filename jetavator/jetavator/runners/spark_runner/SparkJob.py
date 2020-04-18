@@ -24,46 +24,25 @@ COALESCE_PARTITIONS = 10
 
 class SparkJob(SparkJobABC, RegistersSubclasses, ABC):
 
-    def __init__(self, runner: SparkRunnerABC, *args, **kwargs) -> None:
-        super().__init__(runner, *args, **kwargs)
+    def __init__(self, runner: SparkRunnerABC, *args) -> None:
+        super().__init__(runner, *args)
         self.runner = runner
         self.state_timestamps = {}
-        self.state = None
         self.result = None
-        self.template_arg_values = kwargs
+        self.args = args
+        self._state = None
         self.set_state(SparkJobState.BLOCKED)
-        for arg, arg_name in zip(args, self.template_args):
-            self.template_arg_values[arg_name] = arg
-        for arg_name, value in self.template_arg_values.items():
-            self.__setattr__(arg_name, value)
-
-    @classmethod
-    def get_or_create(cls, runner: SparkRunnerABC, *args) -> SparkJobABC:
-        key = cls.construct_key(*args)
-        if key not in runner.jobs:
-            runner.jobs[key] = cls(runner, *args)
-        return runner.jobs[key]
 
     @property
     def logger(self) -> Logger:
         return self.runner.logger
 
-    @classmethod
-    def construct_key(cls, *args) -> str:
-        return '/'.join([
-            getattr(cls, 'registered_name'),
-            *[
-                '.'.join(vault_object.key)
-                for vault_object in args
-            ]
-        ])
-
     @LazyProperty
     def key(self) -> str:
-        return self.construct_key(*[
-            self.template_arg_values[arg]
-            for arg in self.key_args
-        ])
+        return self.construct_job_key(
+            self.registered_name,
+            *self.args
+        )
 
     @property
     def class_name(self) -> str:
@@ -71,42 +50,45 @@ class SparkJob(SparkJobABC, RegistersSubclasses, ABC):
 
     @property
     def primary_vault_object_key(self) -> str:
-        return self.template_arg_values[self.key_args[0]].key
+        return self.args[0].key
 
     @property
+    @abstractmethod
     def name(self) -> str:
-        return jinja2.Template(self.name_template).render(
-            self.template_arg_values
-        )
-
-    @property
-    @abstractmethod
-    def name_template(self) -> str:
         pass
 
     @property
-    @abstractmethod
-    def template_args(self) -> List[str]:
-        pass
-
-    @property
-    def key_args(self) -> List[str]:
-        return self.template_args
-
-    @property
-    def dependencies(self) -> List[SparkJob]:
+    def dependency_keys(self) -> List[str]:
         return []
+
+    @property
+    def dependencies(self) -> List[SparkJobABC]:
+        return [self.runner.jobs[key] for key in self.dependency_keys]
 
     @property
     def spark(self) -> SparkSession:
         return self.runner.compute_service.spark
+
+    @staticmethod
+    def construct_job_key(class_name: str, *args):
+        return '/'.join([
+            class_name,
+            *[
+                '.'.join(vault_object.key)
+                for vault_object in args
+            ]
+        ])
+
+    @property
+    def state(self) -> SparkJobState:
+        return self._state
 
     def set_state(self, state: SparkJobState) -> None:
         if state is SparkJobState.RUNNING:
             self.logger.info(f'Starting: {self.name}')
         elif state is SparkJobState.FINISHED:
             self.logger.info(f'Finished: {self.name}')
-        self.state = state
+        self._state = state
         self.state_timestamps[state] = datetime.datetime.now()
 
     def acknowledge(self) -> None:
@@ -204,9 +186,7 @@ class SparkSQLJob(SparkJob, ABC):
 
     @property
     def query(self) -> str:
-        return jinja2.Template(self.sql_template).render(
-            self.template_arg_values
-        )
+        return jinja2.Template(self.sql_template).render(job=self)
 
     def execute_sql(self) -> DataFrame:
         try:
