@@ -23,6 +23,7 @@ class Runner(RegistersSubclasses, ABC):
         Not intended for direct use: use
         :py:meth:`from_compute_service` instead.
         """
+        super().__init__()
         self.engine = engine
         self.compute_service = compute_service
         self.project = project

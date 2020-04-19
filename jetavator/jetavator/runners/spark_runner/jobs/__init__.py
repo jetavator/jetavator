@@ -7,8 +7,11 @@ from .OutputKeys import (
     OutputKeysFromDependencies,
     OutputKeysFromSatellite
 )
-from .ProducedHubKeys import ProducedHubKeys
-from .ProducedLinkKeys import ProducedLinkKeys
+from .ProducedKeys import (
+    ProducedKeys,
+    ProducedLinkKeys,
+    ProducedHubKeys
+)
 from .SatelliteQuery import SatelliteQuery
 from .SerialiseSatellite import SerialiseSatellite
 from .StarData import StarData

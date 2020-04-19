@@ -69,6 +69,7 @@ class SparkJob(SparkJobABC, RegistersSubclasses, ABC):
     def spark(self) -> SparkSession:
         return self.runner.compute_service.spark
 
+    # TODO: Replace construct_job_key with class SparkJobKey
     @staticmethod
     def construct_job_key(class_name: str, *args):
         return '/'.join([

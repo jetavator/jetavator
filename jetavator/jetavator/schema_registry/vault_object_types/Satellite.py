@@ -1,5 +1,9 @@
+from typing import Set
+
 from ..VaultObject import VaultObject, HubKeyColumn
 from .pipelines import SatellitePipeline
+from .SatelliteOwner import SatelliteOwner
+from .Link import Link
 
 from jetavator import utils
 
@@ -115,52 +119,39 @@ class Satellite(VaultObject, register_as="satellite"):
         return columns
 
     @lru_cache(maxsize=None)
-    def input_keys(self, type):
-        return {
-            name: self.project[type, name]
-            for name in set(
-                x for dep in self.pipeline.dependencies
-                if dep.type == 'satellite'
-                for x in dep.object_reference.output_keys(type)
-            )
-        }
+    def input_keys(self) -> Set[SatelliteOwner]:
+        return set(
+            owner
+            for dep in self.pipeline.dependencies
+            if type(dep.object_reference) is Satellite
+            for owner in dep.object_reference.output_keys()
+        )
 
     @lru_cache(maxsize=None)
-    def produced_keys(self, type):
-        if (
-            type == 'hub'
-            and not self.pipeline.performance_hints.no_update_hubs
-        ):
-            return {
-                name: self.project['hub', name]
+    def produced_keys(self) -> Set[SatelliteOwner]:
+        if self.pipeline.performance_hints.no_update_hubs:
+            keys = set()
+        else:
+            keys = set(
+                self.project.hubs[name]
                 for name in self.hub_key_columns
-            }
-        elif (
-            type == 'link'
-            and self.parent.type == 'link'
+            )
+        if (
+            type(self.parent) is Link
             and not self.pipeline.performance_hints.no_update_links
         ):
-            return {
-                self.parent.name: self.parent
-            }
-        else:
-            return {}
+            keys.add(self.parent)
+        return keys
 
     @lru_cache(maxsize=None)
-    def output_keys(self, type):
-        return {
-            name: self.project[type, name]
-            for name in (
-                set(self.produced_keys(type).keys()) |
-                set(self.input_keys(type).keys())
-            )
-        }
+    def output_keys(self) -> Set[SatelliteOwner]:
+        return self.produced_keys() | self.input_keys()
 
-    def dependent_satellites_by_owner(self, key):
+    def dependent_satellites_by_owner(self, satellite_owner):
         return [
             dep.object_reference
             for dep in self.pipeline.dependencies
-            if dep.type == 'satellite'
-            for output_key in dep.object_reference.output_keys(key.type)
-            if output_key == key.name
+            if type(dep.object_reference) is Satellite
+            for output_key in dep.object_reference.output_keys()
+            if output_key is satellite_owner
         ]

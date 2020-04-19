@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import List
 from functools import reduce
 
-from jetavator import KeyType
 from jetavator.schema_registry import Satellite, SatelliteOwner
 
 from pyspark.sql import functions as f, DataFrame
@@ -36,21 +35,17 @@ class InputKeys(SparkView, register_as='input_keys'):
     @property
     def dependent_satellites(self) -> List[Satellite]:
         return self.satellite.dependent_satellites_by_owner(
-            self.satellite_owner.key)
+            self.satellite_owner)
 
     @classmethod
     def keys_for_satellite(
         cls,
         runner: SparkRunnerABC,
-        satellite: Satellite,
-        key_type: KeyType
+        satellite: Satellite
     ) -> List[InputKeys]:
-        # TODO: Implement KeyType throughout schema_registry to avoid .value conversions
-        if type(key_type) is str:
-            key_type = KeyType.HUB if key_type == 'hub' else KeyType.LINK
         return [
             cls(runner, satellite, satellite_owner)
-            for satellite_owner in satellite.input_keys(key_type.value).values()
+            for satellite_owner in satellite.input_keys()
         ]
 
     def execute_view(self) -> DataFrame:
@@ -97,9 +92,9 @@ class InputKeys(SparkView, register_as='input_keys'):
         satellite: Satellite
     ) -> str:
         owner = self.satellite_owner
-        if owner.name not in satellite.input_keys(owner.type):
+        if owner.name not in satellite.input_keys():
             job_class = 'output_keys_from_satellite'
-        elif owner.name not in satellite.produced_keys(owner.type):
+        elif owner.name not in satellite.produced_keys():
             job_class = 'output_keys_from_dependencies'
         else:
             job_class = 'output_keys_from_both'

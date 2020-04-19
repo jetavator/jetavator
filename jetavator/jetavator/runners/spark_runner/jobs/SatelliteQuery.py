@@ -35,11 +35,7 @@ class SatelliteQuery(SparkSQLView, register_as='satellite_query'):
         return [
             *[
                 self.construct_job_key('input_keys', self.satellite, satellite_owner)
-                # TODO: Refactor Satellite.input_keys to take multiple key types
-                for satellite_owner in [
-                    *self.satellite.input_keys('hub').values(),
-                    *self.satellite.input_keys('link').values()
-                ]
+                for satellite_owner in self.satellite.input_keys()
             ],
             *[
                 self.construct_job_key('serialise_satellite', dep.object_reference)

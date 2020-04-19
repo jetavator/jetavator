@@ -5,7 +5,6 @@ from typing import Dict, List
 
 import pandas as pd
 
-from jetavator import KeyType
 from jetavator.schema_registry import Source, Satellite, SatelliteOwner
 
 from . import SparkJob, SparkRunnerABC
@@ -17,8 +16,7 @@ from .jobs import (
     DropSource,
     InputKeys,
     OutputKeys,
-    ProducedHubKeys,
-    ProducedLinkKeys,
+    ProducedKeys,
     SatelliteQuery,
     SerialiseSatellite,
     StarData,
@@ -99,13 +97,10 @@ class SparkRunner(SparkRunnerABC, register_as="local_spark"):
 
     def satellite_jobs(self, satellite: Satellite) -> List[SparkJob]:
         return [
-            *InputKeys.keys_for_satellite(self, satellite, KeyType.HUB),
-            *InputKeys.keys_for_satellite(self, satellite, KeyType.LINK),
+            *InputKeys.keys_for_satellite(self, satellite),
             SatelliteQuery(self, satellite),
-            *ProducedHubKeys.keys_for_satellite(self, satellite),
-            *ProducedLinkKeys.keys_for_satellite(self, satellite),
-            *OutputKeys.keys_for_satellite(self, satellite, KeyType.HUB),
-            *OutputKeys.keys_for_satellite(self, satellite, KeyType.LINK),
+            *ProducedKeys.keys_for_satellite(self, satellite),
+            *OutputKeys.keys_for_satellite(self, satellite),
             SerialiseSatellite(self, satellite)
         ]
 

@@ -3,7 +3,6 @@ from __future__ import annotations
 from abc import ABC
 from typing import List
 
-from jetavator import KeyType
 from jetavator.schema_registry import Satellite, SatelliteOwner
 
 from .. import SparkSQLView, SparkRunnerABC
@@ -35,16 +34,11 @@ class OutputKeys(SparkSQLView, ABC):
     def keys_for_satellite(
         cls,
         runner: SparkRunnerABC,
-        satellite: Satellite,
-        key_type: KeyType
+        satellite: Satellite
     ) -> List[OutputKeys]:
-        # TODO: Implement KeyType throughout schema_registry to avoid .value conversions
-        if type(key_type) is str:
-            key_type = KeyType.HUB if key_type == 'hub' else KeyType.LINK
         return [
-            cls.satellite_owner_output_keys(
-                runner, satellite, satellite_owner, key_type)
-            for satellite_owner in satellite.output_keys(key_type.value).values()
+            cls.satellite_owner_output_keys(runner, satellite, satellite_owner)
+            for satellite_owner in satellite.output_keys()
         ]
 
     @classmethod
@@ -52,15 +46,11 @@ class OutputKeys(SparkSQLView, ABC):
         cls,
         runner: SparkRunnerABC,
         satellite: Satellite,
-        satellite_owner: SatelliteOwner,
-        key_type: KeyType
+        satellite_owner: SatelliteOwner
     ) -> OutputKeys:
-        # TODO: Implement KeyType throughout schema_registry to avoid .value conversions
-        if type(key_type) is str:
-            key_type = KeyType.HUB if key_type == 'hub' else KeyType.LINK
-        if satellite_owner.name not in satellite.input_keys(key_type.value):
+        if satellite_owner not in satellite.input_keys():
             job_class = 'output_keys_from_satellite'
-        elif satellite_owner.name not in satellite.produced_keys(key_type.value):
+        elif satellite_owner not in satellite.produced_keys():
             job_class = 'output_keys_from_dependencies'
         else:
             job_class = 'output_keys_from_both'

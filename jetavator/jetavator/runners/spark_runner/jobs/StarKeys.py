@@ -47,18 +47,18 @@ class StarKeys(SparkSQLView, register_as='star_keys'):
     def name(self) -> str:
         return f'keys_{self.satellite_owner.full_name}'
 
+    # TODO: DRY with OutputKeys.satellite_owner_output_keys
     def satellite_owner_output_keys(
         self,
         satellite: Satellite
     ) -> str:
-        owner = self.satellite_owner
-        if owner.name not in satellite.input_keys(owner.type):
+        if self.satellite_owner not in satellite.input_keys():
             job_class = 'output_keys_from_satellite'
-        elif owner.name not in satellite.produced_keys(owner.type):
+        elif self.satellite_owner not in satellite.produced_keys():
             job_class = 'output_keys_from_dependencies'
         else:
             job_class = 'output_keys_from_both'
-        return self.construct_job_key(job_class, satellite, owner)
+        return self.construct_job_key(job_class, satellite, self.satellite_owner)
 
     @property
     def dependency_keys(self) -> List[str]:

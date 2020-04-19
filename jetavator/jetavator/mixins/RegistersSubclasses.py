@@ -1,7 +1,13 @@
+from __future__ import annotations
+
+from abc import ABC
+
+from typing import Type, Optional, Any
+
 import inspect
 
 
-def get_registration_namespace(cls):
+def get_registration_namespace(cls: RegisteredSubclass) -> str:
     return [
         get_class_namespace(ancestor)
         for ancestor in inspect.getmro(cls)
@@ -9,18 +15,18 @@ def get_registration_namespace(cls):
     ][0]
 
 
-def get_class_namespace(cls):
+def get_class_namespace(cls: type) -> str:
     return f"{cls.__module__}.{cls.__name__}"
 
 
-class RegistersSubclasses(object):
+class RegistersSubclasses(ABC):
 
     registered_name = None
     _registration_namespace = None
     _registered_subclasses = {}
 
     @classmethod
-    def registration_namespace(cls):
+    def registration_namespace(cls) -> str:
         try:
             return cls._registration_namespace
         except AttributeError:
@@ -30,7 +36,11 @@ class RegistersSubclasses(object):
                 "without calling super().__init_subclass__?"
             )
 
-    def __init_subclass__(cls, register_as=None, **kwargs):
+    def __init_subclass__(
+        cls,
+        register_as: Optional[str] = None,
+        **kwargs: Any
+    ) -> None:
         super().__init_subclass__(**kwargs)
 
         cls._registration_namespace = get_registration_namespace(cls)
@@ -49,8 +59,11 @@ class RegistersSubclasses(object):
             cls._registered_subclasses[key] = cls
             cls.registered_name = str(register_as)
 
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+
     @classmethod
-    def registered_subclasses(cls):
+    def registered_subclasses(cls) -> Dict[str, RegisteredSubclass]:
         return {
             name: subclass
             for namespace, name, subclass in [
@@ -63,17 +76,25 @@ class RegistersSubclasses(object):
         }
 
     @classmethod
-    def is_base_class(cls):
-        return (get_class_namespace(cls) == cls.registration_namespace())
+    def is_base_class(cls) -> bool:
+        return get_class_namespace(cls) == cls.registration_namespace()
 
     @classmethod
-    def registered_subclass(cls, name):
-        key = (cls.registration_namespace(), str(name))
+    def registered_subclass(cls, name: str) -> RegisteredSubclass:
+        key = (cls.registration_namespace(), name)
         if key not in cls._registered_subclasses:
             raise KeyError(
                 f"Unknown registered subclass key: {name}")
         return cls._registered_subclasses[key]
 
     @classmethod
-    def registered_subclass_instance(cls, name, *args, **kwargs):
+    def registered_subclass_instance(
+        cls,
+        name: str,
+        *args: Any,
+        **kwargs: Any
+    ) -> RegistersSubclasses:
         return cls.registered_subclass(name)(*args, **kwargs)
+
+
+RegisteredSubclass = Type[RegistersSubclasses]

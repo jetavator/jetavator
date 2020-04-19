@@ -1,12 +1,10 @@
-import inspect
-
-from ast import literal_eval
 from datetime import datetime
 from collections import namedtuple
 
-from jetavator.utils import print_yaml, dict_checksum
+from jetavator.utils import print_yaml
 from jetavator.mixins import RegistersSubclasses, ValidatesYaml
 from jetavator.sql_model import HasSQLModel
+
 
 VaultObjectKey = namedtuple('VaultObjectKey', ['type', 'name'])
 HubKeyColumn = namedtuple('HubKeyColumn', ['name', 'source'])
@@ -24,6 +22,7 @@ class VaultObject(RegistersSubclasses, HasSQLModel, ValidatesYaml):
         new_object=None,
         old_object=None
     ):
+        super().__init__()
         self.project = project
         self.new_object = new_object
         self.old_object = old_object
