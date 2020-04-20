@@ -1,4 +1,6 @@
-from ..VaultObject import VaultObject
+from typing import Dict
+
+from ..VaultObject import VaultObject, HubKeyColumn
 
 
 class SatelliteOwner(VaultObject, register_as="satellite_owner"):
@@ -49,7 +51,7 @@ class SatelliteOwner(VaultObject, register_as="satellite_owner"):
     def hashed_columns(self):
         return self.satellite_columns
 
-    def hub_key_columns(self, satellite):
+    def hub_key_columns(self, satellite) -> Dict[str, HubKeyColumn]:
         raise NotImplementedError
 
     def option(self, option_name):

@@ -6,22 +6,34 @@ from . import SparkJob, SparkSQLJob
 
 
 class SparkView(SparkJob, ABC):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    """
+    Base class for all Spark jobs that are registered in the metastore
+    as a temporary view after execution.
+    """
 
     @property
     @abstractmethod
     def checkpoint(self) -> bool:
+        """
+        This property should be set to True if the a Spark local
+        checkpoint should be created for the resulting DataFrame.
+        """
         pass
 
     @property
     @abstractmethod
     def global_view(self) -> bool:
+        """
+        This property should be set to True if the temporary view
+        should be registered as a global view in the metastore.
+        """
         pass
 
     @abstractmethod
     def execute_view(self) -> DataFrame:
+        """
+        Construct the underlying Spark DataFrame for this view.
+        """
         pass
 
     def execute(self) -> DataFrame:
@@ -39,6 +51,10 @@ class SparkView(SparkJob, ABC):
 
 
 class SparkSQLView(SparkView, SparkSQLJob, ABC):
+    """
+    Base class for all Spark jobs that register a temporary view and
+    generate declarative Spark SQL to produce that view.
+    """
 
     def execute_view(self) -> DataFrame:
         return self.execute_sql()

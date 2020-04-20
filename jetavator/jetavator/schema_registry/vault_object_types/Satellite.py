@@ -1,4 +1,4 @@
-from typing import Set
+from typing import Set, Dict
 
 from ..VaultObject import VaultObject, HubKeyColumn
 from .pipelines import SatellitePipeline
@@ -105,7 +105,7 @@ class Satellite(VaultObject, register_as="satellite"):
         return f'sat_{self.name}'
 
     @property
-    def hub_key_columns(self):
+    def hub_key_columns(self) -> Dict[str, HubKeyColumn]:
         # check if this can be safely refactored to
         # a function hub_key_columns(self, hub_name)
         columns = self.parent.hub_key_columns(self)

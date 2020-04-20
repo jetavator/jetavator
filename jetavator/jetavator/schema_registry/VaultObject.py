@@ -39,6 +39,10 @@ class VaultObject(RegistersSubclasses, HasSQLModel, ValidatesYaml):
             if self.old_object.type != self.new_object.type:
                 raise RuntimeError("Object types must match.")
 
+    def __repr__(self) -> str:
+        class_name = type(self).__name__
+        return f'{class_name}({self.name})'
+
     @classmethod
     def subclass_instance(
         cls,

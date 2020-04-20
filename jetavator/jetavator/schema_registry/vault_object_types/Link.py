@@ -1,3 +1,5 @@
+from typing import Dict
+
 from .SatelliteOwner import SatelliteOwner
 from ..VaultObject import HubKeyColumn
 
@@ -37,7 +39,7 @@ class Link(SatelliteOwner, register_as="link"):
             for hub_name in set(x.name for x in self.hubs.values())
         }
 
-    def hub_key_columns(self, satellite):
+    def hub_key_columns(self, satellite) -> Dict[str, HubKeyColumn]:
         columns = {}
         for alias, hub in self.link_hubs.items():
             columns.setdefault(hub.name, []).append(

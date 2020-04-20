@@ -7,18 +7,33 @@ from jetavator.schema_registry import Satellite, SatelliteOwner
 
 from pyspark.sql import functions as f, DataFrame
 
-from .. import SparkView, SparkRunnerABC
+from .. import SparkView, SparkRunner, SparkJob
 
 
 class InputKeys(SparkView, register_as='input_keys'):
+    """
+    Computes a DataFrame containing the `Hub` or `Link` key values for any
+    satellite row that has been created, updated or deleted by one
+    of this satellite's dependencies.
+
+    :param runner:          The `SparkRunner` that created this object.
+    :param satellite:       The `Satellite` object that is receiving the
+                            updated keys.
+    :param satellite_owner: A `Hub` or `Link` describing the grain of the updated
+                            keys. This does not necessarily have to be the same as
+                            `satellite.parent` (or in the case of `Link`s, in
+                            `satellite.parent.link_hubs`), as  dependent satellites
+                            can have different data grain from this satellite.
+    """
+
     checkpoint = False
     global_view = False
 
     def __init__(
-        self,
-        runner: SparkRunnerABC,
-        satellite: Satellite,
-        satellite_owner: SatelliteOwner
+            self,
+            runner: SparkRunner,
+            satellite: Satellite,
+            satellite_owner: SatelliteOwner
     ) -> None:
         super().__init__(runner, satellite, satellite_owner)
         self.satellite = satellite
@@ -39,10 +54,20 @@ class InputKeys(SparkView, register_as='input_keys'):
 
     @classmethod
     def keys_for_satellite(
-        cls,
-        runner: SparkRunnerABC,
-        satellite: Satellite
+            cls,
+            runner: SparkRunner,
+            satellite: Satellite
     ) -> List[InputKeys]:
+        """
+        Generate an `InputKeys` job for any `Hub` or `Link`, if that Hub
+        or Link can have keys generated for it by one of this satellite's
+        eventual dependencies.
+
+        :param runner:    The `SparkRunner` that is creating these objects.
+        :param satellite: The `Satellite` to search for output keys for.
+        :return:          A list of `OutputKeys` jobs containing output keys
+                          for all relevant `Hub`s and `Link`s.
+        """
         return [
             cls(runner, satellite, satellite_owner)
             for satellite_owner in satellite.input_keys()
@@ -57,16 +82,13 @@ class InputKeys(SparkView, register_as='input_keys'):
             ]
 
         key_tables = [
-            self.spark.table(
-                f'keys_{self.satellite_owner.full_name}'
-                f'_{dependent_satellite.full_name}'
-            )
-            for dependent_satellite in self.dependent_satellites
+            self.spark.table(job.name)
+            for job in self.dependencies
         ]
 
         def combine_key_tables(
-            left: DataFrame,
-            right: DataFrame
+                left: DataFrame,
+                right: DataFrame
         ) -> DataFrame:
             return (
                 left.join(
@@ -87,22 +109,9 @@ class InputKeys(SparkView, register_as='input_keys'):
 
         return reduce(combine_key_tables, key_tables)
 
-    def satellite_owner_output_keys(
-        self,
-        satellite: Satellite
-    ) -> str:
-        owner = self.satellite_owner
-        if owner.name not in satellite.input_keys():
-            job_class = 'output_keys_from_satellite'
-        elif owner.name not in satellite.produced_keys():
-            job_class = 'output_keys_from_dependencies'
-        else:
-            job_class = 'output_keys_from_both'
-        return self.construct_job_key(job_class, satellite, owner)
-
     @property
-    def dependency_keys(self) -> List[str]:
+    def dependencies(self) -> List[SparkJob]:
         return [
-            self.satellite_owner_output_keys(dependent_satellite)
+            self.runner.get_job('output_keys', dependent_satellite, self.satellite_owner)
             for dependent_satellite in self.dependent_satellites
         ]

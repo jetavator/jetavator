@@ -1,11 +1,20 @@
 from typing import List
 
-from jetavator.schema_registry import SatelliteOwner, Satellite
+from jetavator.schema_registry import SatelliteOwner
 
-from .. import SparkSQLView, SparkRunnerABC
+from .. import SparkSQLView, SparkRunner, SparkJob
 
 
 class StarKeys(SparkSQLView, register_as='star_keys'):
+    """
+    Collects all the key values for any `Satellite` row that has been created,
+    updated or deleted for this particular `Hub` or `Link`.
+
+    :param runner:          The `SparkRunner` that created this object.
+    :param satellite_owner: The `Hub` or `Link` object that is being used to create
+                            a Dimension or Fact table, respectively.
+    """
+
     sql_template = '''
         SELECT {{ job.satellite_owner.key_column_name }},
                {% if job.satellite_owner.type == "link" %}
@@ -15,7 +24,7 @@ class StarKeys(SparkSQLView, register_as='star_keys'):
                {% endif %}
                flatten(collect_set(key_source)) AS key_source
           FROM (
-                {% for satellite in job.satellite_owner.satellites_containing_keys.values() %}
+                {% for dep in job.dependencies %}
                 SELECT
                        {{ job.satellite_owner.key_column_name }},
                        {% if job.satellite_owner.type == "link" %}
@@ -24,8 +33,7 @@ class StarKeys(SparkSQLView, register_as='star_keys'):
                        {% endfor %}
                        {% endif %}
                        key_source
-                  FROM keys_{{job.satellite_owner.full_name}}_{{satellite.full_name}}
-
+                  FROM {{ dep.name }}
                 {{ "UNION ALL" if not loop.last }}
                 {% endfor %}
                ) AS keys
@@ -36,9 +44,9 @@ class StarKeys(SparkSQLView, register_as='star_keys'):
     global_view = False
 
     def __init__(
-        self,
-        runner: SparkRunnerABC,
-        satellite_owner: SatelliteOwner
+            self,
+            runner: SparkRunner,
+            satellite_owner: SatelliteOwner
     ) -> None:
         super().__init__(runner, satellite_owner)
         self.satellite_owner = satellite_owner
@@ -47,23 +55,10 @@ class StarKeys(SparkSQLView, register_as='star_keys'):
     def name(self) -> str:
         return f'keys_{self.satellite_owner.full_name}'
 
-    # TODO: DRY with OutputKeys.satellite_owner_output_keys
-    def satellite_owner_output_keys(
-        self,
-        satellite: Satellite
-    ) -> str:
-        if self.satellite_owner not in satellite.input_keys():
-            job_class = 'output_keys_from_satellite'
-        elif self.satellite_owner not in satellite.produced_keys():
-            job_class = 'output_keys_from_dependencies'
-        else:
-            job_class = 'output_keys_from_both'
-        return self.construct_job_key(job_class, satellite, self.satellite_owner)
-
     @property
-    def dependency_keys(self) -> List[str]:
+    def dependencies(self) -> List[SparkJob]:
         return [
-            self.satellite_owner_output_keys(satellite)
+            self.runner.get_job('output_keys', satellite, self.satellite_owner)
             for satellite
             in self.satellite_owner.satellites_containing_keys.values()
         ]

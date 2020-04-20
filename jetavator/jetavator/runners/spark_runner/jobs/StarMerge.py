@@ -2,15 +2,23 @@ from typing import List
 
 from jetavator.schema_registry import SatelliteOwner
 
-from .. import SparkJob, SparkRunnerABC
+from .. import SparkJob, SparkRunner
 
 
 class StarMerge(SparkJob, register_as='star_merge'):
+    """
+    Merges the created, updated or deleted rows into the the star schema
+    Delta Lake table for this particular `Hub` or `Link`.
+
+    :param runner:          The `SparkRunner` that created this object.
+    :param satellite_owner: The `Hub` or `Link` object that is being used to create
+                            a Dimension or Fact table, respectively.
+    """
 
     def __init__(
-        self,
-        runner: SparkRunnerABC,
-        satellite_owner: SatelliteOwner
+            self,
+            runner: SparkRunner,
+            satellite_owner: SatelliteOwner
     ) -> None:
         super().__init__(runner, satellite_owner)
         self.satellite_owner = satellite_owner
@@ -29,10 +37,7 @@ class StarMerge(SparkJob, register_as='star_merge'):
             if row['col_name'] == 'Location'
         ][0]['data_type']
 
-        source = self.spark.table(
-            'updates_' +
-            self.satellite_owner.sql_model.star_table_name
-        )
+        source = self.spark.table(self.star_data_job.name)
 
         # Import has to happen inline because delta library is installed
         # at runtime by PySpark. Not ideal as not PEP8 compliant!
@@ -70,5 +75,12 @@ class StarMerge(SparkJob, register_as='star_merge'):
         )
 
     @property
-    def dependency_keys(self) -> List[str]:
-        return [self.construct_job_key('star_data', self.satellite_owner)]
+    def star_data_job(self) -> SparkJob:
+        """
+        :return: The `StarData` job that contains the updated keys and data.
+        """
+        return self.runner.get_job('star_data', self.satellite_owner)
+
+    @property
+    def dependencies(self) -> List[SparkJob]:
+        return [self.star_data_job]

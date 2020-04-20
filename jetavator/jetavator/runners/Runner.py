@@ -2,6 +2,7 @@ from __future__ import annotations  # Remove in Python 3.8
 
 from abc import ABC, abstractmethod
 
+from logging import Logger
 from pandas import DataFrame
 
 from jetavator import Engine
@@ -48,6 +49,14 @@ class Runner(RegistersSubclasses, ABC):
             compute_service,
             project
         )
+
+    @property
+    @abstractmethod
+    def logger(self) -> Logger:
+        """
+        Python `Logger` instance for raising log messages.
+        """
+        pass
 
     @abstractmethod
     def run(self) -> None:

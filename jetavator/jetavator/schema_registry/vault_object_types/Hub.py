@@ -1,3 +1,5 @@
+from typing import Dict
+
 from .SatelliteOwner import SatelliteOwner
 from ..VaultObject import HubKeyColumn
 
@@ -30,7 +32,7 @@ class Hub(SatelliteOwner, register_as="hub"):
             if self.name in link.unique_hubs.keys()
         }
 
-    def hub_key_columns(self, satellite):
+    def hub_key_columns(self, satellite) -> Dict[str, HubKeyColumn]:
         return {
             self.name: [HubKeyColumn(
                 self.key_column_name, f'sat_{satellite.name}'

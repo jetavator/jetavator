@@ -1,9 +1,12 @@
-from enum import Enum, auto
+from enum import IntEnum
 
 
-class SparkJobState(Enum):
-    BLOCKED = auto()
-    READY = auto()
-    RUNNING = auto()
-    FINISHED = auto()
-    ACKNOWLEDGED = auto()
+class SparkJobState(IntEnum):
+    """
+    Indicates the current execution state of a `SparkJob`.
+    """
+    BLOCKED = 1
+    READY = 2
+    RUNNING = 3
+    FINISHED = 4
+    ACKNOWLEDGED = 5
