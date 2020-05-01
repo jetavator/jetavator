@@ -2,18 +2,22 @@ from __future__ import annotations
 
 from typing import Dict, Any
 
-from .Base import Base
-from .Deployment import Deployment
-
-from jetavator.utils import dict_checksum
+import json
+import binascii
 
 from datetime import datetime
+from hashlib import sha1
+
+# TODO: For safety, use json instead of literal_eval to
+#       serialise/deserialise definitions
+from ast import literal_eval
 
 from sqlalchemy import Column, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import *
 
-from ast import literal_eval
+from .Base import Base
+from .Deployment import Deployment
 
 
 class ObjectDefinition(Base):
@@ -40,7 +44,7 @@ class ObjectDefinition(Base):
             _name=definition_dict["name"],
             _version=deployment.version,
             _definition=str(definition_dict),
-            _checksum=dict_checksum(definition_dict)
+            _checksum=cls.dict_checksum(definition_dict)
         )
 
     def __init__(
@@ -59,7 +63,7 @@ class ObjectDefinition(Base):
         self._verify_checksum()
 
     def _verify_checksum(self):
-        generated_checksum = dict_checksum(self.definition)
+        generated_checksum = self.dict_checksum(self.definition)
         if self._checksum != generated_checksum:
             raise RuntimeError(
                 f"""
@@ -131,3 +135,11 @@ class ObjectDefinition(Base):
 
     deployment: relationship = relationship(
         "Deployment", back_populates="object_definitions")
+
+    @staticmethod
+    def dict_checksum(object_to_checksum):
+        return binascii.hexlify(
+            sha1(
+                json.dumps(object_to_checksum, sort_keys=True).encode()
+            ).digest()
+        ).decode("ascii")

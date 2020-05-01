@@ -17,14 +17,15 @@ from databricks_cli.sdk import (
     SecretService,
     ClusterService
 )
+
+import jetavator_cli.cli
+import jetavator_cli.print_to_console
 from jetavator.config import SecretSubstitutingConfig
 from lazy_property import LazyProperty
 from sqlalchemy.schema import CreateColumn
 
 from jetavator import REQUIRED, Config
 
-# TODO: Rationalise utils, remove any unused ones and remove duplicates across libraries
-from jetavator_cli import utils
 from jetavator.runners import Runner
 
 mssql_dialect = sqlalchemy.databases.mssql.dialect()
@@ -288,7 +289,7 @@ class DatabricksJob(object):
         ])
 
     def create(self):
-        utils.print_to_console(f'Deploying script: {self.filename}')
+        jetavator_cli.print_to_console.print_to_console(f'Deploying script: {self.filename}')
         self.runner.workspace_api.mkdirs(self.notebook_dir)
         self.runner.workspace_api.import_workspace(
             path=self.notebook_path,
@@ -299,7 +300,7 @@ class DatabricksJob(object):
         )
 
     def run(self):
-        utils.print_to_console(
+        jetavator_cli.print_to_console.print_to_console(
             f'Running {self.filename} on remote databricks '
             f'with run_uuid [{self.runner.engine.config.session.run_uuid}]'
         )
@@ -337,7 +338,7 @@ class DatabricksJob(object):
                     )):
                         messages = list(self.runner.compute_service.log_listener)
                         for message in messages:
-                            utils.print_to_console(message)
+                            jetavator_cli.print_to_console.print_to_console(message)
                 raise Exception(f'''
                 Job completed with error:
                 {run_output}
@@ -346,11 +347,11 @@ class DatabricksJob(object):
         time.sleep(JOB_POLL_FREQUENCY_SECS)
         self.print_log_messages()
         self.runner.compute_service.log_listener.delete_queue()
-        utils.print_to_console('\nRun complete')
+        jetavator_cli.print_to_console.print_to_console('\nRun complete')
 
     def print_log_messages(self):
         for message in self.runner.compute_service.log_listener:
-            utils.print_to_console(message)
+            jetavator_cli.print_to_console.print_to_console(message)
 
 
 class DatabricksRunner(Runner, register_as='remote_databricks'):
@@ -394,7 +395,7 @@ class DatabricksRunner(Runner, register_as='remote_databricks'):
         )
 
     def load_csv(self, csv_file, source):
-        utils.print_to_console(f"{source.name}.csv: Uploading file")
+        jetavator_cli.print_to_console.print_to_console(f"{source.name}.csv: Uploading file")
         with open(csv_file, "rb") as data:
             self.engine.source_storage_service.upload_blob(
                 filename=(
@@ -420,7 +421,7 @@ class DatabricksRunner(Runner, register_as='remote_databricks'):
     def load_yaml(self, relative_path):
         dbfs_path = self.dbfs_definitions_dir + relative_path.replace(
             '\\', '/')
-        utils.print_to_console(f'Uploading YAML: {dbfs_path}')
+        jetavator_cli.print_to_console.print_to_console(f'Uploading YAML: {dbfs_path}')
         self.dbfs_api.put_file(
             os.path.join(self.engine.config.model_path, relative_path),
             DbfsPath(dbfs_path),
@@ -455,14 +456,14 @@ class DatabricksRunner(Runner, register_as='remote_databricks'):
 
     def load_config(self):
         dbfs_path = f'{DBFS_JOB_ROOT}/{self.config.schema}/config.json'
-        utils.print_to_console(f'Uploading config: {dbfs_path}')
+        jetavator_cli.print_to_console.print_to_console(f'Uploading config: {dbfs_path}')
         self.save_as_dbfs_file(
             dbfs_path,
             self.build_remote_config()._to_json()
         )
 
     def create_secrets(self):
-        utils.print_to_console(f'Creating secrets')
+        jetavator_cli.print_to_console.print_to_console(f'Creating secrets')
         scope_name = 'jetavator'
         if self.secrets_api.list_scopes():
             if any(
@@ -487,7 +488,7 @@ class DatabricksRunner(Runner, register_as='remote_databricks'):
                     )
 
     def load_wheel(self):
-        utils.print_to_console(
+        jetavator_cli.print_to_console.print_to_console(
             f'Writing wheel to {self.dbfs_wheel_path}')
         self.dbfs_api.put_file(
             self.engine.config.wheel_path,
@@ -504,7 +505,7 @@ class DatabricksRunner(Runner, register_as='remote_databricks'):
             and library['library'].get('whl') != self.dbfs_wheel_path
         ]
         if to_uninstall:
-            utils.print_to_console(
+            jetavator_cli.print_to_console.print_to_console(
                 'Uninstalling previous versions of library: '
                 f'{[x["whl"] for x in to_uninstall]}'
             )
@@ -512,7 +513,7 @@ class DatabricksRunner(Runner, register_as='remote_databricks'):
                 self.config.cluster_id,
                 to_uninstall
             )
-        utils.print_to_console(f'Requesting wheel installation')
+        jetavator_cli.print_to_console.print_to_console(f'Requesting wheel installation')
         self.libraries_api.install_libraries(
             self.config.cluster_id,
             libraries={'whl': self.dbfs_wheel_path}
@@ -637,18 +638,18 @@ class DatabricksRunner(Runner, register_as='remote_databricks'):
     def start_cluster(self):
         state = self.get_cluster_state()
         while state == 'TERMINATING':
-            utils.print_to_console('Waiting for cluster to terminate')
+            jetavator_cli.print_to_console.print_to_console('Waiting for cluster to terminate')
             time.sleep(CLUSTER_START_POLL_FREQUENCY_SECS)
             state = self.get_cluster_state()
         if state == 'TERMINATED':
-            utils.print_to_console('Starting cluster')
+            jetavator_cli.print_to_console.print_to_console('Starting cluster')
             self.clusters_api.start_cluster(self.config.cluster_id)
             state = self.get_cluster_state()
         while state in ('PENDING', 'RESTARTING'):
-            utils.print_to_console('Waiting for cluster to start')
+            jetavator_cli.print_to_console.print_to_console('Waiting for cluster to start')
             time.sleep(CLUSTER_START_POLL_FREQUENCY_SECS)
             state = self.get_cluster_state()
         if state in ('RUNNING', 'RESIZING'):
-            utils.print_to_console('Cluster is running')
+            jetavator_cli.print_to_console.print_to_console('Cluster is running')
         else:
             raise Exception(f'Cluster in unexpected state: {state}')

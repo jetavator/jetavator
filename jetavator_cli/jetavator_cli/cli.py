@@ -1,4 +1,4 @@
-'''
+"""
 jetavator
 
 Usage:
@@ -38,10 +38,8 @@ Options:
 Help:
   For help using this tool, please open an issue on the Github repository:
   https://github.com/jetavator/jetavator
-'''
+"""
 
-import os
-import pathlib
 import traceback
 import jsonschema
 
@@ -51,13 +49,13 @@ from textwrap import indent
 
 from . import __version__ as VERSION
 from .Client import Client
+from .print_to_console import print_to_console
 from .testing.behave import BehaveClient
 from .config import KeyringConfig, CommandLineConfig
-from .utils import print_to_console
 
 
 def main(argv=None, exit_callback=None):
-    '''Main CLI entrypoint.'''
+    """Main CLI entrypoint."""
 
     docopt_kwargs = {'version': VERSION}
 

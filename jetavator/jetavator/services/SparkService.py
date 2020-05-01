@@ -11,7 +11,6 @@ import sqlparse
 from jetavator.sqlalchemy_delta import DeltaDialect
 from lazy_property import LazyProperty
 
-from jetavator import utils
 from .DBService import DBService
 
 SPARK_APP_NAME = 'jetavator'
@@ -267,7 +266,7 @@ class SparkService(DBService):
             jobs = sql_elements
         else:
             jobs = {
-                utils.sql_script_filename(sql_element): sql_element
+                self.sql_script_filename(sql_element): sql_element
                 for sql_element in sql_elements
             }
         for job in jobs.values():

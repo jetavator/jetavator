@@ -1,10 +1,5 @@
 from lazy_property import LazyProperty
 
-from datetime import datetime, timedelta
-
-from jetavator import utils
-
-from azure.storage.queue import QueueClient
 from azure.core.exceptions import ResourceNotFoundError
 
 MESSAGE_BATCH_SIZE = 32
@@ -15,9 +10,10 @@ class LogListener(object):
     def __init__(self, config, storage_service):
         self.config = config
         self.storage_service = storage_service
-        utils.print_to_console(
+        print(
             'Listening for log events for run_uuid '
-            f'[{self.config.session.run_uuid}]'
+            f'[{self.config.session.run_uuid}]',
+            flush=True
         )
 
     def __iter__(self):

@@ -1,5 +1,5 @@
 from ...Client import Client
-from ...utils import print_to_console
+from ...print_to_console import print_to_console
 
 from .Assertions import Assertions
 

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from typing import Any, Dict, List
 from abc import ABC, abstractmethod
 
-from typing import Any, Dict, List
+import yaml
+
 from datetime import datetime
 from collections import namedtuple
 
@@ -12,7 +14,6 @@ from .sqlalchemy_tables import ObjectDefinition
 
 from jetavator import json_schema_objects as jso
 
-from jetavator.utils import print_yaml
 from jetavator.services import DBService
 
 VaultObjectKey = namedtuple('VaultObjectKey', ['type', 'name'])
@@ -75,7 +76,11 @@ class VaultObject(jso.Object, ABC):
 
     @property
     def yaml(self) -> str:
-        return print_yaml(self.definition)
+        dumper = yaml.dumper.SafeDumper
+        dumper.ignore_aliases = lambda self_, data: True
+        return yaml.dump(
+            yaml_object, Dumper=noalias_dumper, default_flow_style=False
+        )
 
     @property
     def compute_service(self) -> DBService:

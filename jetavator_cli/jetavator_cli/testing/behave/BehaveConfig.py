@@ -2,7 +2,7 @@ import os
 
 from ...config.BaseConfig import BaseConfig
 
-from ...utils import load_yaml
+from jetavator.schema_registry import YamlProjectLoader
 
 BEHAVE_ALIASES = {
     "db": "schema",
@@ -25,7 +25,7 @@ class BehaveConfig(BaseConfig):
 
         # Layer 1: load YAML file if specified
         if 'config' in behave_context.config.userdata:
-            property_values.update(load_yaml(
+            property_values.update(YamlProjectLoader.load_yaml(
                 behave_context.config.userdata['config']
             ))
 

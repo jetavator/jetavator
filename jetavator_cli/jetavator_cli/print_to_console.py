@@ -1,6 +1,3 @@
-callback = None
-
-
 def print_to_console(print_output, *args, **kwargs):
     if callback:
         callback(str(print_output))
@@ -15,3 +12,6 @@ def listen_to_console(set_callback):
 def unlisten_to_console():
     global callback
     callback = None
+
+
+callback = None

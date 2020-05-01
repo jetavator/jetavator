@@ -12,13 +12,13 @@ from sqlalchemy.sql import and_, select
 
 from behave_pandas import table_to_dataframe
 
+import jetavator_cli.cli
+import jetavator_cli.print_to_console
 from . import from_behave_context
 
 from ast import literal_eval
 
 from jetavator_cli.cli import main as cli_main
-
-from jetavator_cli import utils
 
 SCHEMA_METADATA_TABLE = {
     "table": "INFORMATION_SCHEMA.TABLES",
@@ -43,7 +43,7 @@ def run_cli(
     def exit_callback(code):
         exit_code = code
 
-    utils.listen_to_console(stdout_callback)
+    jetavator_cli.print_to_console.listen_to_console(stdout_callback)
 
     assert retry_limit > 0, "retry_limit must be greater than zero"
 
@@ -80,7 +80,7 @@ def run_cli(
                 else:
                     return command_output + str(e), exit_code
 
-    utils.unlisten_to_console()
+    jetavator_cli.print_to_console.unlisten_to_console()
 
     # if print_output:
     #     utils.print_to_console(command_output)

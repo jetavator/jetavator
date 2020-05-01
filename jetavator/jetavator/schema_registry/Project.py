@@ -7,10 +7,10 @@ import semver
 from datetime import datetime
 from itertools import groupby
 
-from ..utils import dict_checksum, load_yamls_in_dir
-
 from .VaultObject import VaultObject, VaultObjectKey
 from .VaultObjectCollection import VaultObjectMapping
+from .YamlProjectLoader import YamlProjectLoader
+
 from .sqlalchemy_tables import Deployment, ObjectDefinition
 
 from jetavator import __version__
@@ -45,7 +45,7 @@ class Project(VaultObjectMapping):
             directory_path: str
     ) -> Project:
 
-        file_dicts = load_yamls_in_dir(directory_path)
+        file_dicts = YamlProjectLoader(directory_path).load_files()
 
         projects = [x for x in file_dicts if x["type"] == "project"]
         non_projects = [x for x in file_dicts if x["type"] != "project"]
@@ -127,7 +127,7 @@ class Project(VaultObjectMapping):
 
     @property
     def checksum(self) -> str:
-        return dict_checksum({
+        return ObjectDefinition.dict_checksum({
             f"{x.type}.{x.name}": x.definition
             for x in self._vault_objects.values()
             if x.type != "project"

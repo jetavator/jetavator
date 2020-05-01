@@ -1,8 +1,12 @@
+import glob
+import os
+
 import yaml
+from setuptools import sandbox
 
 import jetavator
 
-from . import utils
+from .print_to_console import print_to_console
 
 
 class Client(object):
@@ -137,7 +141,7 @@ class Client(object):
         self.engine.clear_database()
 
     def build_wheel(self):
-        self.config.wheel_path = utils.build_wheel(
+        self.config.wheel_path = self._build_wheel_file(
             self.config.jetavator_source_path
         )
         self.config.save()
@@ -151,19 +155,19 @@ class Client(object):
 
         if not self.config.deploy_scripts_only:
 
-            utils.print_to_console(f'Creating tables...')
+            print_to_console(f'Creating tables...')
 
             self.connection.execute_sql_elements_async(
                 self.sql_model.create_tables(action)
             )
 
-            utils.print_to_console(f'Creating history views...')
+            print_to_console(f'Creating history views...')
 
             self.connection.execute_sql_elements_async(
                 self.sql_model.history_views(action)
             )
 
-            utils.print_to_console(f'Creating current views...')
+            print_to_console(f'Creating current views...')
 
             self.connection.execute_sql_elements_async(
                 self.sql_model.current_views(action)
@@ -171,12 +175,33 @@ class Client(object):
 
         else:
 
-            utils.print_to_console(f'Creating tables... [SKIPPED]')
-            utils.print_to_console(f'Creating history views... [SKIPPED]')
-            utils.print_to_console(f'Creating current views... [SKIPPED]')
+            print_to_console(f'Creating tables... [SKIPPED]')
+            print_to_console(f'Creating history views... [SKIPPED]')
+            print_to_console(f'Creating current views... [SKIPPED]')
 
         if not self.config.deploy_scripts_only:
-            utils.print_to_console(f'Updating schema registry...')
+            print_to_console(f'Updating schema registry...')
             self.schema_registry.write_definitions_to_sql()
         else:
-            utils.print_to_console(f'Updating schema registry... [SKIPPED]')
+            print_to_console(f'Updating schema registry... [SKIPPED]')
+
+    @staticmethod
+    def _build_wheel_file(source_path):
+        sandbox.run_setup(
+            os.path.join(source_path, 'setup.py'),
+            ['sdist', 'bdist_wheel']
+        )
+        version_script = {}
+        with open(os.path.join(source_path, 'jetavator', '__version__.py')) as f:
+            exec(f.read(), version_script)
+            version = version_script['__version__']
+        wheels = glob.glob(
+            os.path.join(source_path, 'dist', f'jetavator-{version}-*.whl')
+        )
+        if len(wheels) < 1:
+            raise Exception(
+                f'No wheel found matching "jetavator-{version}-*.whl"')
+        if len(wheels) > 1:
+            raise Exception(
+                f'Cannot determine correct wheel from ambiguous set: {wheels}')
+        return wheels[0]

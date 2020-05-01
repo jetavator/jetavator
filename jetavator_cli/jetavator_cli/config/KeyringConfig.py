@@ -5,7 +5,7 @@ import yaml
 
 from .BaseConfig import BaseConfig
 from .CommandLineConfig import CommandLineConfig
-from jetavator_cli.utils import print_to_console
+from ..print_to_console import print_to_console
 
 from pathlib import Path
 

@@ -1,6 +1,6 @@
 from .BaseConfig import BaseConfig
 
-from ..utils import load_yaml
+from jetavator.schema_registry import YamlProjectLoader
 
 
 class CommandLineConfig(BaseConfig):
@@ -15,7 +15,8 @@ class CommandLineConfig(BaseConfig):
 
         # Layer 1: load YAML file if specified
         if options.get("--config-file"):
-            property_values.update(load_yaml(options["--config-file"]))
+            property_values.update(
+                YamlProjectLoader.load_yaml(options["--config-file"]))
 
         # layer 2: override with any command line parameters
         property_values.update(dict(

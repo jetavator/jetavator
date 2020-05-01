@@ -4,7 +4,6 @@ from shutil import copyfile
 from lazy_property import LazyProperty
 from pyspark.sql import SparkSession
 
-from jetavator import utils
 from .SparkService import SparkService, SPARK_APP_NAME, DELTA_VERSION
 
 
@@ -49,7 +48,7 @@ class LocalSparkService(SparkService, register_as="local_spark"):
         return os.path.exists(self.csv_file_path(source))
 
     def load_csv(self, csv_file, source):
-        utils.print_to_console(f"{source.name}.csv: Uploading file")
+        self.logger.info(f"{source.name}.csv: Uploading file")
         try:
             os.makedirs(
                 os.path.dirname(

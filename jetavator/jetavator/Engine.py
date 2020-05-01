@@ -29,7 +29,6 @@ import pandas
 import yaml
 from lazy_property import LazyProperty
 
-from . import utils
 from .runners import Runner
 from .config import Config
 from .schema_registry import Project
@@ -385,7 +384,7 @@ class Engine(object):
         registry = registry or self.schema_registry.loaded
         try:
             user_defined_dtypes = {
-                k: PANDAS_DTYPE_MAPPINGS[utils.sql_basic_type(v["type"])]
+                k: PANDAS_DTYPE_MAPPINGS[v["type"].split("(")[0].lower()]
                 for k, v in registry[
                     "source", table_name
                 ].definition[

@@ -4,13 +4,9 @@ import time
 import thrift
 from lazy_property import LazyProperty
 
-from LogListener import LogListener
-
-from jetavator import utils
+from jetavator_cli import LogListener
 
 from jetavator.services.SparkService import SparkService
-
-from ..runners import DatabricksRunner
 
 from TCLIService.ttypes import TOperationState
 
@@ -24,15 +20,15 @@ DBFS_DATA_ROOT = 'dbfs:/jetavator/data'
 
 def retry_if_cluster_not_ready(original_function):
     @wraps(original_function)
-    def decorated_function(*args, **kwargs):
+    def decorated_function(self, *args, **kwargs):
         retry = True
         while retry:
             retry = False
             try:
-                return original_function(*args, **kwargs)
+                return original_function(self, *args, **kwargs)
             except thrift.Thrift.TApplicationException as e:
                 if "TEMPORARILY_UNAVAILABLE" in str(e):
-                    utils.print_to_console(
+                    self.logger.info(
                         "Cluster is starting: retrying in 15 seconds")
                     time.sleep(CLUSTER_RETRY_INTERVAL_SECS)
                     retry = True
@@ -206,7 +202,7 @@ class DatabricksService(SparkService, register_as='remote_databricks'):
             jobs = sql_elements
         else:
             jobs = {
-                utils.sql_script_filename(sql_element): sql_element
+                self.sql_script_filename(sql_element): sql_element
                 for sql_element in sql_elements
             }
         running_jobs = {
@@ -217,11 +213,11 @@ class DatabricksService(SparkService, register_as='remote_databricks'):
             for key, cursor in running_jobs.items():
                 if cursor:
                     for message in cursor.fetch_logs():
-                        utils.print_to_console(f'{key}: {message}')
+                        self.logger.info(f'{key}: {message}')
                     state = cursor.poll().operationState
                     if state == TOperationState.FINISHED_STATE:
                         running_jobs[key] = None
-                        utils.print_to_console(
+                        self.logger.info(
                             f'Finished executing '
                             f'{list(running_jobs.values()).count(None)} of '
                             f'{len(running_jobs)}: {key}'
