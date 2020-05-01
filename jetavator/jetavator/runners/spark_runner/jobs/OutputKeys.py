@@ -20,7 +20,7 @@ class OutputKeys(SparkSQLView, ABC, register_as='output_keys'):
                             updated keys.
     :param satellite_owner: A `Hub` or `Link` describing the grain of the updated
                             keys. This must be either `satellite.parent`,or in the
-                            case of `Link`s, in `satellite.parent.link_hubs`.
+                            case of `Link`s, in `satellite.parent.hubs`.
     """
 
     checkpoint = True
@@ -62,7 +62,7 @@ class OutputKeys(SparkSQLView, ABC, register_as='output_keys'):
         """
         return [
             cls(runner, satellite, satellite_owner)
-            for satellite_owner in satellite.output_keys()
+            for satellite_owner in satellite.output_keys
         ]
 
     @LazyProperty
@@ -71,7 +71,7 @@ class OutputKeys(SparkSQLView, ABC, register_as='output_keys'):
         :return: Returns True if there are keys that have been updated
                  by this satellite's dependencies for this `SatelliteOwner`.
         """
-        return self.satellite_owner in self.satellite.input_keys()
+        return self.satellite_owner in self.satellite.input_keys
 
     @LazyProperty
     def owner_in_produced_keys(self) -> bool:
@@ -79,7 +79,7 @@ class OutputKeys(SparkSQLView, ABC, register_as='output_keys'):
         :return: Returns True if there are keys that have been updated
                  by this satellite for this `SatelliteOwner`.
         """
-        return self.satellite_owner in self.satellite.produced_keys()
+        return self.satellite_owner in self.satellite.produced_keys
 
     @property
     def input_keys_job(self) -> SparkJob:
@@ -117,7 +117,7 @@ class OutputKeys(SparkSQLView, ABC, register_as='output_keys'):
                                 produced_keys.{{ job.satellite_owner.key_column_name }})
                              AS {{ job.satellite_owner.key_column_name }},
                        {% if job.satellite_owner.type == "link" %}
-                       {% for alias in job.satellite_owner.link_hubs.keys() %}
+                       {% for alias in job.satellite_owner.hubs.keys() %}
                        COALESCE(input_keys.hub_{{ alias }}_key,
                                 produced_keys.hub_{{ alias }}_key)
                              AS hub_{{alias}}_key,

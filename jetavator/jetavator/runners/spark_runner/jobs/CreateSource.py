@@ -44,8 +44,7 @@ class CreateSource(SparkSQLJob, register_as='create_source'):
         :return: The Spark SQL DDL statement to create this `Source` table.
         """
         ddl = self.runner.compute_service.compile_sqlalchemy(
-            self.source.sql_model.create_table(
-                self.source.sql_model.table)[0])
+            self.source.create_table_statement)
         if self.csv_path:
             return ddl.replace('CREATE TABLE', 'CREATE TEMPORARY TABLE')
         else:

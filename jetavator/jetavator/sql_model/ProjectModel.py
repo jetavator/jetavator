@@ -1,16 +1,12 @@
+from typing import List
+
+from sqlalchemy.schema import DDLElement
+
+from jetavator.config import Config
+from jetavator.services import DBService
+from jetavator.schema_registry import Project, VaultObjectMapping
+
 from .BaseModel import BaseModel
-
-from ..schema_registry.sqlalchemy_tables import (
-    Deployment,
-    Log,
-    ObjectDefinition,
-    ObjectLoad,
-    PerformanceLog
-)
-
-from sqlalchemy import text, Column, literal_column
-from sqlalchemy.schema import CreateSchema
-from sqlalchemy.types import *
 
 SCHEMAS = [
     "jetavator",
@@ -26,79 +22,54 @@ SCHEMAS = [
 ]
 
 
-class ProjectModel(BaseModel, register_as="project"):
+class ProjectModel(VaultObjectMapping[BaseModel]):
 
-    def create_tables_ddl(self, action):
+    def __init__(
+            self,
+            config: Config,
+            compute_service: DBService,
+            new_definition: Project,
+            old_definition: Project
+    ) -> None:
+        super().__init__()
+        self.config = config
+        self.compute_service = compute_service
+        self.new_definition = new_definition
+        self.old_definition = old_definition
+        keys = (
+                set(self.new_definition.keys()) |
+                set(self.old_definition.keys())
+        )
+        self._data = {
+            key: BaseModel.subclass_instance(
+                self,
+                self.new_definition.get(key),
+                self.old_definition.get(key)
+            )
+            for key in keys
+        }
+
+    def create_tables_ddl(self) -> List[DDLElement]:
         files = []
 
-        # if action == "create":
-        #     files += self.create_tables(self.registry_tables)
+        for satellite_owner_model in self.satellite_owners.values():
+            files += satellite_owner_model.files
 
-        for satellite_owner in self.satellite_owners:
-            files += satellite_owner.sql_model.files
-
-        for satellite in self.definition.satellites.values():
-            files += satellite.sql_model.files
+        for satellite_model in self.satellites.values():
+            files += satellite_model.files
 
         return files
 
-    def create_star_tables_ddl(self, action, with_index=False):
-        files = []
-
-        for satellite_owner in self.satellite_owners:
-            files += satellite_owner.sql_model.star_files(with_index)
-
-        return files
-
-    @property
-    def tables(self):
-        return [
-            satellite.sql_model.table
-            for satellite in self.definition.satellites.values()
-            if satellite.action != "drop"
-        ] + [
-            satellite_owner.sql_model.table
-            for satellite_owner in self.satellite_owners
-        ] + [
-            satellite_owner.sql_model.star_table
-            for satellite_owner in self.satellite_owners
-            if not satellite_owner.exclude_from_star_schema
-        ]
-
-    def create_history_views(self, action):
+    def create_history_views(self) -> List[DDLElement]:
         return [
             view
-            for satellite in self.definition.satellites.values()
-            for view in satellite.sql_model.history_views
+            for satellite_model in self.satellites.values()
+            for view in satellite_model.history_views
         ]
 
-    def create_current_views(self, action):
+    def create_current_views(self) -> List[DDLElement]:
         return [
             view
-            for satellite in self.definition.satellites.values()
-            for view in satellite.sql_model.current_views
-        ]
-
-    def dml_scripts(self, action):
-        return [
-            script
-            for satellite in self.definition.satellites.values()
-            for script in satellite.sql_model.dml_scripts
-        ]
-
-    @property
-    def registry_tables(self):
-        return [
-            Deployment.__table__,
-            ObjectDefinition.__table__,
-            ObjectLoad.__table__,
-            Log.__table__,
-            PerformanceLog.__table__
-        ]
-
-    @property
-    def satellite_owners(self):
-        return [
-            *self.definition.hubs.values(),
-            *self.definition.links.values()
+            for satellite_model in self.satellites.values()
+            for view in satellite_model.current_views
         ]

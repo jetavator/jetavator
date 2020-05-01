@@ -22,7 +22,7 @@ class InputKeys(SparkView, register_as='input_keys'):
     :param satellite_owner: A `Hub` or `Link` describing the grain of the updated
                             keys. This does not necessarily have to be the same as
                             `satellite.parent` (or in the case of `Link`s, in
-                            `satellite.parent.link_hubs`), as  dependent satellites
+                            `satellite.parent.hubs`), as  dependent satellites
                             can have different data grain from this satellite.
     """
 
@@ -70,7 +70,7 @@ class InputKeys(SparkView, register_as='input_keys'):
         """
         return [
             cls(runner, satellite, satellite_owner)
-            for satellite_owner in satellite.input_keys()
+            for satellite_owner in satellite.input_keys
         ]
 
     def execute_view(self) -> DataFrame:
@@ -78,7 +78,7 @@ class InputKeys(SparkView, register_as='input_keys'):
         if self.satellite_owner.type == 'link':
             keys += [
                 f'hub_{alias}_key'
-                for alias in self.satellite_owner.link_hubs.keys()
+                for alias in self.satellite_owner.hubs.keys()
             ]
 
         key_tables = [

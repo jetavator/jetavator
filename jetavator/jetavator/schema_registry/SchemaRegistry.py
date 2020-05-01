@@ -1,13 +1,23 @@
+from typing import Union, Tuple, Iterator
+
+from collections.abc import Mapping
+
 from jetavator.config import Config
 from jetavator.services import DBService
 
-from .Project import Project, ProjectChangeSet
+from .Project import Project
 from .sqlalchemy_tables import Deployment
 
 
-class SchemaRegistry(object):
+class SchemaRegistry(Mapping):
 
-    def __init__(self, config: Config, compute_service: DBService):
+    loaded: Project = None
+
+    def __init__(
+            self,
+            config: Config,
+            compute_service: DBService
+    ) -> None:
         self.config = config
         self.compute_service = compute_service
         if self.config.model_path:
@@ -15,36 +25,37 @@ class SchemaRegistry(object):
         else:
             self.load_from_database()
 
-    def load_from_disk(self):
-        self.loaded = Project.from_directory(
+    def __getitem__(
             self,
-            self.config.model_path)
-
-    def load_from_database(self):
-        self.loaded = self.deployed
-
-    def __getitem__(self, key):
+            key: Union[str, Tuple[str, str]]
+    ) -> Project:
         session = self.compute_service.session()
         deployment = session.query(Deployment).get(key)
-        return Project.from_sqlalchemy_object(self, deployment)
+        return Project.from_sqlalchemy_object(
+            self.config, self.compute_service, deployment)
 
-    def keys(self):
+    def __len__(self) -> int:
+        return len(list(session.query(Deployment)))
+
+    def __iter__(self) -> Iterator[str]:
         session = self.compute_service.session()
-        return [
+        return iter(
             deployment.version
             for deployment in session.query(Deployment)
-        ]
+        )
 
-    def values(self):
-        session = self.compute_service.session()
-        return [
-            Project.from_sqlalchemy_object(self, deployment)
-            for deployment in session.query(Deployment)
-        ]
+    def load_from_disk(self) -> None:
+        self.loaded = Project.from_directory(
+            self.config,
+            self.compute_service,
+            self.config.model_path)
+
+    def load_from_database(self) -> None:
+        self.loaded = self.deployed
 
     # TODO: Implement storage/retrieval of deployed definitions on Spark/Hive
     @property
-    def deployed(self):
+    def deployed(self) -> Project:
         # self.compute_service.test()
         # session = self.compute_service.session()
         # try:
@@ -60,13 +71,10 @@ class SchemaRegistry(object):
         # if deployment is None:
         #     deployment = Deployment()
         # return Project.from_sqlalchemy_object(self, deployment)
-        return Project.from_sqlalchemy_object(self, Deployment())
+        return Project.from_sqlalchemy_object(
+            self.config, self.compute_service, Deployment())
 
-    @property
-    def changeset(self):
-        return ProjectChangeSet(self.loaded, self.deployed)
-
-    def write_definitions_to_sql(self):
+    def write_definitions_to_sql(self) -> None:
         session = self.compute_service.session()
         session.add(self.loaded.export_sqlalchemy_object())
         session.add_all([

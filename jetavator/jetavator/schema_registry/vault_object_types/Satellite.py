@@ -1,62 +1,50 @@
-from typing import Set, Dict
+from __future__ import annotations
 
-from ..VaultObject import VaultObject, HubKeyColumn
-from .pipelines import SatellitePipeline
+from typing import Dict
+
+from lazy_property import LazyProperty
+
+from sqlalchemy import Column
+
+from sqlalchemy.types import *
+
+from jetavator import json_schema_objects as jso
+
+from ..VaultObject import (
+    VaultObject, VaultObjectKey, HubKeyColumn
+)
+from ..VaultObjectCollection import VaultObjectSet
+from .SatelliteColumn import SatelliteColumn
 from .SatelliteOwner import SatelliteOwner
-from .Link import Link
-
-from jetavator import utils
-
-from functools import lru_cache
+from .pipelines import SatellitePipeline
 
 
-class SatelliteColumn(object):
+class VaultObjectReference(jso.Object):
 
-    def __init__(self, definition):
-        self.definition = definition
+    type: str = jso.Property(jso.String)
+    name: str = jso.Property(jso.String)
 
-    def __getattr__(self, key):
-        return self.definition.get(key)
+    @LazyProperty
+    def key(self) -> VaultObjectKey:
+        return VaultObjectKey(self.type, self.name)
 
 
 class Satellite(VaultObject, register_as="satellite"):
 
-    required_yaml_properties = ["parent", "columns", "pipeline"]
+    _parent: VaultObjectReference = jso.Property(
+        VaultObjectReference, name="parent")
 
-    optional_yaml_properties = ["exclude_from_star_schema"]
-
-    # Do this to trigger validation of self.pipeline at init time
-    # Improve this in future - implement generic mechanism for populating
-    # and validating object tree from YAML
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        try:
-            self.pipeline
-        except Exception as e:
-            raise Exception(
-                str(e) + '\n'
-                f' in object [{self.name}]'
-                f' with type [{self.type}]'
-            )
+    columns: Dict[str, SatelliteColumn] = jso.Property(
+        jso.Dict[SatelliteColumn])
+    pipeline: SatellitePipeline = jso.Property(SatellitePipeline)
+    exclude_from_star_schema: bool = jso.Property(jso.Bool, default=False)
 
     @property
-    def columns(self):
-        return {
-            k: SatelliteColumn(v)
-            for k, v in self.definition["columns"].items()
-        }
+    def parent(self) -> SatelliteOwner:
+        return self.project[self._parent.key]
 
     @property
-    def pipeline(self):
-        return SatellitePipeline.registered_subclass_instance(
-            name=self.definition["pipeline"]["type"],
-            project=self.project,
-            parent=self,
-            definition=self.definition["pipeline"]
-        )
-
-    @property
-    def hub_reference_columns(self):
+    def hub_reference_columns(self) -> Dict[str, SatelliteColumn]:
         return {
             k: v
             for k, v in self.columns.items()
@@ -64,44 +52,17 @@ class Satellite(VaultObject, register_as="satellite"):
         }
 
     @property
-    def referenced_hubs(self):
+    def referenced_hubs(self) -> Dict[str, SatelliteOwner]:
         return {
             hub_name: self.project["hub", hub_name]
-            for hub_name in set(
+            for hub_name in VaultObjectSet(
                 x.hub_reference
                 for x in self.hub_reference_columns.values()
             )
         }
 
     @property
-    def parent(self):
-        return self._resolve_reference(self.definition["parent"])
-
-    @property
-    def dependencies_by_owner(self):
-        dependencies = [
-            x.object_reference
-            for x in self.pipeline.dependencies
-            if x.type == 'satellite'
-        ]
-        return [
-            (self.project[k], list(v))
-            for k, v in utils.sort_and_group_by(
-                dependencies, key=lambda x: (x.parent.type, x.parent.name))
-        ]
-
-    @property
-    def has_dependencies_in_same_owner(self):
-        return any([
-            True
-            for x in self.pipeline.dependencies
-            if x.type == 'satellite'
-            and x.object_reference.parent.name == self.parent.name
-            and x.object_reference.parent.type == self.parent.type
-        ])
-
-    @property
-    def full_name(self):
+    def full_name(self) -> str:
         return f'sat_{self.name}'
 
     @property
@@ -118,40 +79,61 @@ class Satellite(VaultObject, register_as="satellite"):
                     HubKeyColumn(column_name, f'hub_{column.hub_reference}'))
         return columns
 
-    @lru_cache(maxsize=None)
-    def input_keys(self) -> Set[SatelliteOwner]:
-        return set(
+    @LazyProperty
+    def input_keys(self) -> VaultObjectSet[SatelliteOwner]:
+        return VaultObjectSet(
             owner
             for dep in self.pipeline.dependencies
             if type(dep.object_reference) is Satellite
-            for owner in dep.object_reference.output_keys()
+            for owner in dep.object_reference.output_keys
         )
 
-    @lru_cache(maxsize=None)
-    def produced_keys(self) -> Set[SatelliteOwner]:
+    @LazyProperty
+    def produced_keys(self) -> VaultObjectSet[SatelliteOwner]:
         if self.pipeline.performance_hints.no_update_hubs:
-            keys = set()
+            keys = VaultObjectSet()
         else:
-            keys = set(
+            keys = VaultObjectSet(
                 self.project.hubs[name]
                 for name in self.hub_key_columns
             )
         if (
-            type(self.parent) is Link
+            self.parent.registered_name == 'link'
             and not self.pipeline.performance_hints.no_update_links
         ):
             keys.add(self.parent)
         return keys
 
-    @lru_cache(maxsize=None)
-    def output_keys(self) -> Set[SatelliteOwner]:
-        return self.produced_keys() | self.input_keys()
+    @LazyProperty
+    def output_keys(self) -> VaultObjectSet[SatelliteOwner]:
+        return self.produced_keys | self.input_keys
 
-    def dependent_satellites_by_owner(self, satellite_owner):
+    def dependent_satellites_by_owner(self, satellite_owner) -> List[Satellite]:
         return [
             dep.object_reference
             for dep in self.pipeline.dependencies
             if type(dep.object_reference) is Satellite
-            for output_key in dep.object_reference.output_keys()
+            for output_key in dep.object_reference.output_keys
             if output_key is satellite_owner
         ]
+
+    def validate(self) -> None:
+        if self._parent.key not in self.project:
+            raise KeyError(
+                f"Could not find parent object {self._parent.key}")
+        self.pipeline.validate()
+
+    @property
+    def satellite_columns(self):
+        return [
+            Column(
+                column_name,
+                eval(column.type.upper().replace("MAX", "None")),
+                nullable=True
+            )
+            for column_name, column in self.columns.items()
+        ]
+
+    @property
+    def table_name(self):
+        return f"vault_sat_{self.name}"

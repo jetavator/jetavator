@@ -19,7 +19,7 @@ class StarData(SparkSQLView, register_as='star_data'):
         SELECT keys.{{job.satellite_owner.key_column_name}}
 
                {% if job.satellite_owner.type == "link" %}
-               {% for alias in job.satellite_owner.link_hubs.keys() %}
+               {% for alias in job.satellite_owner.hubs.keys() %}
                , keys.hub_{{alias}}_key
                {% endfor %}
                {% endif %}
@@ -74,7 +74,7 @@ class StarData(SparkSQLView, register_as='star_data'):
 
     @property
     def name(self) -> str:
-        return f'updates_{self.satellite_owner.sql_model.star_table_name}'
+        return f'updates_{self.satellite_owner.star_table_name}'
 
     @property
     def star_keys_job(self) -> SparkJob:

@@ -17,7 +17,7 @@ class KeyringConfig(BaseConfig):
         cls.make_config_dir()
         if os.path.exists(cls.config_file()):
             with open(cls.config_file(), 'r') as f:
-                new_object = cls(yaml.load(f) or {})
+                new_object = cls(yaml.safe_load(f) or {})
         else:
             new_object = cls({})
         if other_config:
@@ -38,7 +38,7 @@ class KeyringConfig(BaseConfig):
             os.makedirs(cls.config_dir())
 
     def save(self):
-        config_dict = yaml.load(self._to_json())
+        config_dict = yaml.safe_load(self._to_json())
         # Don't save session specific config info
         if 'session' in config_dict:
             del config_dict['session']

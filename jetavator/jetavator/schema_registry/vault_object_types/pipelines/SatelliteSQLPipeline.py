@@ -1,22 +1,27 @@
+from typing import Optional, Dict, List
+
 import jinja2
 
-from ....sql_model import SatelliteSQLPipelineModel
+from jetavator import json_schema_objects as jso
 
-from .SatellitePipeline import SatellitePipeline, SatellitePipelineDependency
+from .SatellitePipeline import SatellitePipeline
+from .SatellitePipelineDependency import SatellitePipelineDependency
 
 
 class SatelliteSQLPipeline(
     SatellitePipeline,
-    register_as="sql",
-    sql_model_class="satellite_sql_pipeline"
+    register_as="sql"
 ):
 
-    required_yaml_properties = ["sql"]
-
-    optional_yaml_properties = ["load_dt", "deleted_ind", "dependencies"]
+    type: str = jso.Property(jso.Const['sql'])
+    _sql: str = jso.Property(jso.String, name="sql")
+    load_dt: Optional[str] = jso.Property(jso.String, default=None)
+    deleted_ind: Optional[str] = jso.Property(jso.String, default=None)
+    dependencies: List[SatellitePipelineDependency] = jso.Property(
+        jso.List[SatellitePipelineDependency], default=[])
 
     @property
-    def sql(self):
+    def sql(self) -> str:
         # refactor SparkRunner classes into schema_registry object model
         # and refer to them here, so these temp table names are defined in
         # one place only
@@ -56,12 +61,13 @@ class SatelliteSQLPipeline(
                 for satellite in self.project.satellites.values()
             }
         }
-        return jinja2.Template(self.definition["sql"]).render(table_aliases)
+        return jinja2.Template(self._sql).render(table_aliases)
 
+    # TODO: Refactor to make this more readable (if it's still needed)
     @property
-    def key_columns(self):
-        if "key_columns" in self.definition:
-            return self.definition["key_columns"]
+    def key_columns(self) -> Dict[str, str]:
+        if self._key_columns:
+            return self._key_columns
         elif self.satellite.parent.type == "hub":
             return {
                 self.satellite.parent.name: self.satellite.parent.name
@@ -69,18 +75,10 @@ class SatelliteSQLPipeline(
         elif self.satellite.parent.type == "link":
             return {
                 hub_alias: hub_alias
-                for hub_alias in self.satellite.parent.link_hubs.keys()
+                for hub_alias in self.satellite.parent.hubs.keys()
             }
         else:
             raise Exception(
                 "Unexpected value for satellite.parent.type: "
                 f"{satellite.parent.type}"
             )
-
-    @property
-    def dependencies(self):
-        return [
-            SatellitePipelineDependency(self.project, self, dependency)
-            for dependency in
-            self.definition.get("dependencies", [])
-        ]

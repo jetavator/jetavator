@@ -1,22 +1,26 @@
-from ....sql_model import SatelliteSourcePipelineModel
+from typing import Dict, List
 
-from .SatellitePipeline import SatellitePipeline, SatellitePipelineDependency
+from jetavator import json_schema_objects as jso
+
+from .. import Source
+
+from .SatellitePipeline import SatellitePipeline
+from .SatellitePipelineDependency import SatellitePipelineDependency
 
 
 class SatelliteSourcePipeline(
     SatellitePipeline,
-    register_as="source",
-    sql_model_class="satellite_source_pipeline"
+    register_as="source"
 ):
 
-    required_yaml_properties = ["source"]
+    type: str = jso.Property(jso.Const['source'])
+    _source: str = jso.Property(jso.String, name="source")
 
-    optional_yaml_properties = []
-
+    # TODO: Refactor this property to make it more readable (if it's still needed)
     @property
-    def key_columns(self):
-        if "key_columns" in self.definition:
-            return self.definition["key_columns"]
+    def key_columns(self) -> Dict[str, str]:
+        if self._key_columns:
+            return self._key_columns
         elif self.satellite.parent.type == "hub":
             return {
                 self.satellite.parent.name: list(self.source.columns.keys())[0]
@@ -25,9 +29,9 @@ class SatelliteSourcePipeline(
             return {
                 x[0]: x[1]
                 for x in zip(
-                    list(self.satellite.parent.link_hubs.keys()),
+                    list(self.satellite.parent.hubs.keys()),
                     list(self.source.columns.keys())[
-                        :len(self.satellite.parent.link_hubs)])
+                        :len(self.satellite.parent.hubs)])
                 }
         else:
             raise Exception(
@@ -36,15 +40,14 @@ class SatelliteSourcePipeline(
             )
 
     @property
-    def source(self):
-        return self.project["source", self.definition["source"]]
+    def source(self) -> Source:
+        return self.project["source", self._source]
 
     @property
-    def dependencies(self):
+    def dependencies(self) -> List[SatellitePipelineDependency]:
         return [
             SatellitePipelineDependency(
-                self.project,
-                self,
-                {'name': self.definition["source"], 'type': 'source'}
+                {'name': self._source, 'type': 'source'},
+                _document=self._document
             )
         ]

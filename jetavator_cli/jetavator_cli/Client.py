@@ -47,7 +47,7 @@ class Client(object):
     def add(self, new_object, load_full_history=False, version=None):
 
         if isinstance(new_object, str):
-            new_object_dict = yaml.load(new_object)
+            new_object_dict = yaml.safe_load(new_object)
         elif isinstance(new_object, dict):
             new_object_dict = new_object
         else:

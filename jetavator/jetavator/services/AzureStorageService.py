@@ -1,13 +1,15 @@
+# TODO: Move AzureStorageService to plugin library
+
 from lazy_property import LazyProperty
 import base64
 
 from .Service import Service
 
 from jetavator.config import ServiceConfig
-from jetavator.config import json_schema_objects as jso
+from .. import json_schema_objects as jso
 
 from azure.storage.queue import QueueClient
-from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
+from azure.storage.blob import BlobServiceClient
 from azure.core.exceptions import ResourceExistsError
 
 

@@ -34,6 +34,7 @@ from .runners import Runner
 from .config import Config
 from .schema_registry import Project
 from .schema_registry import SchemaRegistry
+from .VaultAction import VaultAction
 from .services import Service, DBService
 from .sql_model import ProjectModel
 
@@ -97,6 +98,7 @@ def logged(function_to_decorate: Callable) -> Callable:
         except Exception as e:
             self.logger.exception(str(e))
             raise
+
     return decorated_function
 
 
@@ -110,8 +112,8 @@ class Engine(object):
     """
 
     def __init__(
-        self,
-        config: Config
+            self,
+            config: Config
     ) -> None:
         """Default constructor
         """
@@ -192,10 +194,15 @@ class Engine(object):
     def schema_registry(self) -> SchemaRegistry:
         return SchemaRegistry(self.config, self.compute_service)
 
-    # TODO: Engine.sql_model doesn't really make sense. Deprecate this!
-    @property
+    # TODO: See above - unclear how this relates to SchemaRegistry
+    @LazyProperty
     def sql_model(self) -> ProjectModel:
-        return self.schema_registry.changeset.sql_model
+        return ProjectModel(
+            self.config,
+            self.compute_service,
+            self.schema_registry.loaded,
+            self.schema_registry.deployed
+        )
 
     # TODO: Is there any reason for an Engine only to have one project?
     #       Should this be Engine.projects?
@@ -221,8 +228,8 @@ class Engine(object):
                 self.compute_service.drop_schema()
                 self.compute_service.create_schema()
             elif (
-                not self.compute_service.schema_empty
-                and not self.config.skip_deploy
+                    not self.compute_service.schema_empty
+                    and not self.config.skip_deploy
             ):
                 raise Exception(
                     f"Database {self.config.schema} already exists, "
@@ -232,12 +239,12 @@ class Engine(object):
         else:
             self.logger.info(f'Creating database {self.config.schema}')
             self.compute_service.create_schema()
-        self._deploy_template(action="create")
+        self._deploy_template(action=VaultAction.CREATE)
 
     @logged
     def run(
-        self,
-        load_type: LoadType = LoadType.DELTA
+            self,
+            load_type: LoadType = LoadType.DELTA
     ) -> None:
         """Run the data pipelines for the current project
 
@@ -269,10 +276,10 @@ class Engine(object):
     # TODO: Move load_full_history functionality to a new VaultObject method
     # TODO: Enforce semver compatibility for user-supplied version strings?
     def add(
-        self,
-        new_object: Union[str, dict],
-        load_full_history: bool = False,
-        version: str = None
+            self,
+            new_object: Union[str, dict],
+            load_full_history: bool = False,
+            version: str = None
     ) -> None:
         """Add a new object to the current project
 
@@ -286,7 +293,7 @@ class Engine(object):
         """
 
         if isinstance(new_object, str):
-            new_object_dict = yaml.load(new_object)
+            new_object_dict = yaml.safe_load(new_object)
         elif isinstance(new_object, dict):
             new_object_dict = new_object
         else:
@@ -305,10 +312,10 @@ class Engine(object):
     #       iteration through a list of VaultObjects? Possibly decouple
     #       from the version increment to give users more control?
     def drop(
-        self,
-        object_type: str,
-        object_name: str,
-        version: str = None
+            self,
+            object_type: str,
+            object_name: str,
+            version: str = None
     ) -> None:
         """Drop an object from the current project
 
@@ -328,9 +335,9 @@ class Engine(object):
     #       the YAML folder - move this functionality into an extendable
     #       loader object elsewhere. Instead pass in a whole project object.
     def update(
-        self,
-        model_path: str = None,
-        load_full_history: bool = False
+            self,
+            model_path: str = None,
+            load_full_history: bool = False
     ) -> None:
         """Updates the current project with a new set of object definitions
         from disk
@@ -367,9 +374,9 @@ class Engine(object):
     # TODO: Review if Engine.table_dtypes is still needed. Refactor it to
     #       somewhere more appropriate (Source?) if it is, deprecate it if not
     def table_dtypes(
-        self,
-        table_name: str,
-        registry: Project = None   # rename this to project?
+            self,
+            table_name: str,
+            registry: Project = None  # rename this to project?
     ) -> Dict[str, str]:
         """Generates a set of pandas dtypes for a given named Source
 
@@ -395,11 +402,11 @@ class Engine(object):
     # TODO: Refactor file loading responsibilities out of Engine
     # TODO: DRY in the try/except block of Engine.csv_to_dataframe
     def csv_to_dataframe(
-        self,
-        csv_file: str,
-        table_name: str,
-        registry: Project = None   # rename this to project?
-    ) -> pandas.DataFrame :
+            self,
+            csv_file: str,
+            table_name: str,
+            registry: Project = None  # rename this to project?
+    ) -> pandas.DataFrame:
         """Loads a CSV file from disk and into a compatible pandas `DataFrame`
         """
         registry = registry or self.schema_registry.loaded
@@ -438,10 +445,10 @@ class Engine(object):
     # TODO: Nothing should ever return a type signature this complex!
     #       It should be an object instead
     def source_def_from_dataframe(
-        self,
-        df: pandas.DataFrame,
-        table_name: str,
-        use_as_pk: str
+            self,
+            df: pandas.DataFrame,
+            table_name: str,
+            use_as_pk: str
     ) -> Dict[str, Union[str, Dict[str, Dict[str, Union[str, bool]]]]]:
         """Constructs a valid Source definition from a pandas dataframe
 
@@ -475,10 +482,10 @@ class Engine(object):
     # TODO: Deprecate after Engine.source_def_from_dataframe has been added
     #       as a constructor for the Source object
     def add_dataframe_as_source(
-        self,
-        df: pandas.DataFrame,
-        table_name: str,
-        use_as_pk: str
+            self,
+            df: pandas.DataFrame,
+            table_name: str,
+            use_as_pk: str
     ) -> None:
         """Adds a pandas dataframe as a Source for this project
 
@@ -494,15 +501,15 @@ class Engine(object):
     # TODO: Re-implement assume_schema_integrity for loading CSVs
     #       (perhaps with a header line safety check!)
     def load_csvs(
-        self,
-        table_name: str,
-        csv_files: List[str]
-        # , assume_schema_integrity=False
+            self,
+            table_name: str,
+            csv_files: List[str]
+            # , assume_schema_integrity=False
     ) -> None:
         """Loads a list of CSV files into a single named Source
 
         :param table_name: Name of the new Source object to load
-        :param csv_files:  List of paths on disk of the CSV filess
+        :param csv_files:  List of paths on disk of the CSV files
         """
         # if assume_schema_integrity:
         #     source = self.schema_registry.loaded["source", table_name]
@@ -524,8 +531,8 @@ class Engine(object):
     #       Engine. For Engine.load_csv_folder, these should be two methods
     #       of an extendable loader class (or possibly subclasses?)
     def load_csv_folder(
-        self,
-        folder_path: str
+            self,
+            folder_path: str
     ) -> None:
         """Loads a folder of CSV files into a set of Sources. The CSV files
         must each be named <source>.csv where <source> is a valid Source name
@@ -542,15 +549,15 @@ class Engine(object):
 
     # TODO: Deprecate Engine.call_stored_procedure as it's specific to MSSQL
     def call_stored_procedure(
-        self,
-        procedure_name: str
+            self,
+            procedure_name: str
     ):
         raise NotImplementedError
 
     # TODO: Deprecate Engine.sql_query_single_value
     def sql_query_single_value(
-        self,
-        sql: str
+            self,
+            sql: str
     ):
         raise NotImplementedError
 
@@ -560,17 +567,17 @@ class Engine(object):
         raise NotImplementedError
 
     def _update_database_model(
-        self,
-        load_full_history: bool = False
+            self,
+            load_full_history: bool = False
     ) -> None:
-        self._deploy_template(action="alter")
+        self._deploy_template(action=VaultAction.ALTER)
         if load_full_history:
             raise NotImplementedError
 
     # TODO: Refactor responsibility for loading YAML files away from Engine.
     def update_model_from_dir(
-        self,
-        new_model_path: str = None
+            self,
+            new_model_path: str = None
     ) -> None:
         if new_model_path:
             self.config.model_path = new_model_path
@@ -581,7 +588,7 @@ class Engine(object):
         return Runner.from_compute_service(
             self,
             self.compute_service,
-            self.sql_model.definition
+            self.schema_registry.loaded
         )
 
     # TODO: Do we need both clear_database and drop_schemas?
@@ -593,8 +600,8 @@ class Engine(object):
 
     # TODO: Make action an enum?
     def _deploy_template(
-        self,
-        action: str
+            self,
+            action: VaultAction
     ) -> None:
 
         if not self.schema_registry.loaded.valid:
@@ -605,19 +612,19 @@ class Engine(object):
         self.logger.info(f'Creating tables...')
 
         self.vault_storage_service.create_tables(
-            self.sql_model.create_tables_ddl(action)
+            self.sql_model.create_tables_ddl()
         )
 
         self.logger.info(f'Creating history views...')
 
         self.vault_storage_service.execute_sql_elements_async(
-            self.sql_model.create_history_views(action)
+            self.sql_model.create_history_views()
         )
 
         self.logger.info(f'Creating current views...')
 
         self.vault_storage_service.execute_sql_elements_async(
-            self.sql_model.create_current_views(action)
+            self.sql_model.create_current_views()
         )
 
         # self.logger.info(f'Updating schema registry...')

@@ -44,7 +44,7 @@ class DeltaDDLCompiler(compiler.DDLCompiler):
 
 class DeltaTypeCompiler(HiveTypeCompiler):
 
-    def visit_FLOAT(self, type_):
+    def visit_FLOAT(self, type_, **kwargs):
         return 'DOUBLE'
 
 

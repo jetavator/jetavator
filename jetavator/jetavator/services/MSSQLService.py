@@ -1,4 +1,8 @@
+# TODO: Move MSSQLService to plugin library
+
 import sqlalchemy
+from sqlalchemy.exc import ProgrammingError, DBAPIError
+
 from lazy_property import LazyProperty
 
 from .DBService import DBService
@@ -38,16 +42,14 @@ class MSSQLService(DBService, register_as='mssql'):
         return meta
 
     def execute(self, sql):
-       for sql_statement in sql.encode(
-            "ascii", "ignore"
+        for sql_statement in sql.encode(
+                "ascii", "ignore"
         ).decode("ascii").split("GO\n"):
             try:
                 self.sqlalchemy_connection.execute(
                     sql_statement
                 )
-            except (
-                sqlalchemy.exc.ProgrammingError, sqlalchemy.exc.DBAPIError
-            ) as e:
+            except (ProgrammingError, DBAPIError) as e:
                 raise Exception(
                     f"""
                     Config dump:
@@ -56,8 +58,7 @@ class MSSQLService(DBService, register_as='mssql'):
                     Error while strying to run script:
                     {sql_statement}
                     """ + str(e)
-                    )
-
+                )
 
     def drop_schema(self):
         self.sqlalchemy_connection.execute(
@@ -95,17 +96,17 @@ class MSSQLService(DBService, register_as='mssql'):
     @property
     def schema_empty(self):
         return (
-            len(
-                self.sqlalchemy_connection.execute(
-                    f"""
+                len(
+                    self.sqlalchemy_connection.execute(
+                        f"""
                     SELECT TOP 1
                            TABLE_NAME
                       FROM INFORMATION_SCHEMA.TABLES
                      WHERE TABLE_CATALOG = '{self.config.database}'
                        AND TABLE_SCHEMA = '{self.config.schema}'
                     """
-                ).fetchall()
-            ) == 0
+                    ).fetchall()
+                ) == 0
         )
 
     @property

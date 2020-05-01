@@ -1,7 +1,9 @@
+from abc import ABCMeta
+
 from .JSONSchemaElement import JSONSchemaElement
 
 
-class JSONSchemaConstMeta(type):
+class JSONSchemaConstMeta(ABCMeta):
 
     def __getitem__(cls, value):
         return type(
@@ -13,10 +15,10 @@ class JSONSchemaConstMeta(type):
 
 class JSONSchemaConst(JSONSchemaElement, metaclass=JSONSchemaConstMeta):
 
-    def __new__(self, value, _document=None):
-        if value != self.value:
+    def __new__(cls, value, _document=None):
+        if value != cls.value:
             raise ValueError(f'Constant can only take value "{value}".')
-        return self.value
+        return cls.value
 
     @classmethod
     def _schema(cls):

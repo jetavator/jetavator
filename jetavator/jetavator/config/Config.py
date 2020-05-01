@@ -1,3 +1,5 @@
+from typing import List
+
 import os
 import random
 import uuid
@@ -5,8 +7,7 @@ import uuid
 import yaml
 from lazy_property import LazyProperty
 
-from . import json_schema_objects as jso
-from .ConfigProperty import ConfigProperty
+from .. import json_schema_objects as jso
 from .secret_lookup import SecretLookup
 
 PROPERTIES_TO_PRINT = [
@@ -23,7 +24,7 @@ class SecretSubstitutingConfig(jso.Object):
     @LazyProperty
     def _secret_lookup(self):
         return SecretLookup.registered_subclass_instance(
-            self._document['secret_lookup']
+            self._document.secret_lookup
         )
 
     def __getattr__(self, key):
@@ -34,11 +35,11 @@ class SecretSubstitutingConfig(jso.Object):
 
 
 class ServiceConfig(SecretSubstitutingConfig):
-    properties = {
-        'type': jso.String,
-        'name': jso.String
-    }
+
     index = 'name'
+
+    type: str = jso.Property(jso.String)
+    name: str = jso.Property(jso.String)
 
     def __new__(cls, *args, **kwargs):
         subclass = cls.registered_subclass(
@@ -48,73 +49,42 @@ class ServiceConfig(SecretSubstitutingConfig):
 
 
 class DBServiceConfig(ServiceConfig):
-    properties = {
-        'type': jso.String,
-        'name': jso.String,
-        'schema': jso.String
-    }
 
-    @property
-    def schema(self):
-        if self.get('schema'):
-            return self['schema']
-        else:
-            return self._document.schema
+    type: str = jso.Property(jso.String)
+    name: str = jso.Property(jso.String)
+    schema: str = jso.Property(jso.String, default=lambda self: self._document.schema)
 
 
 class LocalSparkConfig(DBServiceConfig, register_as='local_spark'):
-    properties = {
-        'type': jso.Const['local_spark'],
-        'name': jso.String,
-        'schema': jso.String
-    }
+
+    type: str = jso.Property(jso.Const['local_spark'])
 
 
 class MSSQLConfig(DBServiceConfig, register_as='mssql'):
-    properties = {
-        'type': jso.Const['mssql'],
-        'name': jso.String,
-        'schema': jso.String,
-        'database': jso.String,
-        'server': jso.String,
-        'username': jso.String,
-        'password': jso.String,
-        'trusted_connection': jso.Bool
-    }
+
+    type: str = jso.Property(jso.Const['mssql'])
+    database: str = jso.Property(jso.String)
+    server: str = jso.Property(jso.String)
+    username: str = jso.Property(jso.String)
+    password: str = jso.Property(jso.String)
+    trusted_connection: bool = jso.Property(jso.Bool)
 
 
 class StorageConfig(SecretSubstitutingConfig):
-    properties = {
-        'source': jso.String,
-        'vault': jso.String,
-        'star': jso.String,
-        'logs': jso.String
-    }
+
+    source: str = jso.Property(jso.String)
+    vault: str = jso.Property(jso.String)
+    star: str = jso.Property(jso.String)
+    logs: str = jso.Property(jso.String)
 
 
 class SessionConfig(SecretSubstitutingConfig):
-    properties = {
-        'run_uuid': jso.String
-    }
-    run_uuid = ConfigProperty("run_uuid", lambda self: str(uuid.uuid4()))
+    run_uuid = jso.Property(jso.String, default=lambda self: str(uuid.uuid4()))
 
 
 # TODO: add validation (or defaults) for required properties e.g. services
 
 class Config(SecretSubstitutingConfig):
-    properties = {
-        'model_path': jso.String,
-        'schema': jso.String,
-        'prefix': jso.String,
-        'drop_schema_if_exists': jso.String,
-        'skip_deploy': jso.String,
-        'environment_type': jso.String,
-        'session': SessionConfig,
-        'services': jso.List[ServiceConfig],
-        'storage': StorageConfig,
-        'compute': jso.String,
-        'secret_lookup': jso.String
-    }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -126,19 +96,23 @@ class Config(SecretSubstitutingConfig):
             for i in range(0, 3)
         ])
 
-    model_path = ConfigProperty("model_path", lambda self: os.getcwd())
-    schema = ConfigProperty("schema", _generate_uid)
-    prefix = ConfigProperty("prefix", "jetavator")
-    drop_schema_if_exists = ConfigProperty("drop_schema_if_exists", False)
-    skip_deploy = ConfigProperty("skip_deploy", False)
-    environment_type = ConfigProperty("environment_type", "local_spark")
-    session = ConfigProperty("session", SessionConfig({}))
+    model_path: str = jso.Property(jso.String, default=lambda self: os.getcwd())
+    schema: str = jso.Property(jso.String, default=_generate_uid)
+    prefix: str = jso.Property(jso.String, default="jetavator")
+    drop_schema_if_exists: bool = jso.Property(jso.Bool, default=False)
+    skip_deploy: bool = jso.Property(jso.Bool, default=False)
+    environment_type: str = jso.Property(jso.String, default="local_spark")
+    session: SessionConfig = jso.Property(SessionConfig, default=SessionConfig({}))
+    services: List[ServiceConfig] = jso.Property(jso.List[ServiceConfig])
+    storage: StorageConfig = jso.Property(StorageConfig)
+    compute: str = jso.Property(jso.String)
+    secret_lookup: str = jso.Property(jso.String)
 
     def reset_session(self):
         self['session'] = SessionConfig({})
 
     def __str__(self):
         return yaml.dump(
-            yaml.load(self._to_json()),
+            yaml.safe_load(self._to_json()),
             default_flow_style=False
         )

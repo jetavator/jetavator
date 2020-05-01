@@ -25,14 +25,14 @@ class StarMerge(SparkJob, register_as='star_merge'):
 
     @property
     def name(self) -> str:
-        return f'merge_{self.satellite_owner.sql_model.star_table_name}'
+        return f'merge_{self.satellite_owner.star_table_name}'
 
     def execute(self):
         path = [
             row
             for row in self.spark.sql(
                 'DESCRIBE FORMATTED ' +
-                self.satellite_owner.sql_model.star_table_name
+                self.satellite_owner.star_table_name
             ).collect()
             if row['col_name'] == 'Location'
         ][0]['data_type']

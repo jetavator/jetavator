@@ -2,17 +2,16 @@ import logging
 import os
 import socket
 
-from azure.storage.queue import QueueClient
 from azure.core.exceptions import ResourceNotFoundError
 
 
 class AzureQueueHandler(logging.Handler):
 
     def __init__(self,
-        service,
-        protocol='https',
-        queue='logs'
-    ):
+                 service,
+                 protocol='https',
+                 queue='logs'
+                 ):
         super().__init__()
         self.meta = {'hostname': socket.gethostname(), 'process': os.getpid()}
         self.queue = service.queue_client(
@@ -29,7 +28,7 @@ class AzureQueueHandler(logging.Handler):
             )
         except (KeyboardInterrupt, SystemExit):
             raise
-        except:
+        except RuntimeError:
             self.handleError(record)
 
     @property

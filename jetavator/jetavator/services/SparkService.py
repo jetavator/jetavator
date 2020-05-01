@@ -72,6 +72,7 @@ class SparkService(DBService):
     def spark(self):
         raise NotImplementedError
 
+    # TODO: Require to avoid need for try/except block
     def compile_sqlalchemy(self, sqlalchemy_executable):
         try:
             formatted = sqlparse.format(
@@ -82,7 +83,7 @@ class SparkService(DBService):
                 reindent=True,
                 keyword_case='upper'
             )
-        except Exception as e:
+        except Exception:
             formatted = sqlparse.format(
                 str(sqlalchemy_executable.compile(
                     dialect=DeltaDialect()
@@ -189,7 +190,7 @@ class SparkService(DBService):
                 Config dump:
                 {self.config}
 
-                Error while strying to run script:
+                Error while trying to run script:
                 {sql}
                 """ + str(e)
             )
@@ -203,7 +204,7 @@ class SparkService(DBService):
                 Config dump:
                 {self.config}
 
-                Error while strying to run script:
+                Error while trying to run script:
                 {sql}
                 """ + str(e)
             )

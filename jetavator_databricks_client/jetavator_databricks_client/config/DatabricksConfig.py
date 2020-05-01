@@ -1,17 +1,18 @@
+from typing import List
+
 from jetavator.config import DBServiceConfig
-from jetavator.config import json_schema_objects as jso
+from jetavator import json_schema_objects as jso
 
 from .DatabricksLibraryConfig import DatabricksLibraryConfig
 
 
 class DatabricksConfig(DBServiceConfig, register_as='remote_databricks'):
-    properties = {
-        'type': jso.Const['remote_databricks'],
-        'name': jso.String,
-        'schema': jso.String,
-        'host': jso.String,
-        'cluster_id': jso.String,
-        'org_id': jso.String,
-        'token': jso.String,
-        'libraries': jso.List[DatabricksLibraryConfig]
-    }
+
+    type: str = jso.Property(jso.Const['remote_databricks'])
+    name: str = jso.Property(jso.String)
+    schema: str = jso.Property(jso.String)
+    host: str = jso.Property(jso.String)
+    cluster_id: str = jso.Property(jso.String)
+    org_id: str = jso.Property(jso.String)
+    token: str = jso.Property(jso.String)
+    libraries: List[DatabricksLibraryConfig] = jso.Property(jso.List[DatabricksLibraryConfig])

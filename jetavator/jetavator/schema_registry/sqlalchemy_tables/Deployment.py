@@ -1,26 +1,28 @@
 from .Base import Base
 
+from datetime import datetime
+
 from sqlalchemy import Column
 from sqlalchemy.orm import relationship
+# noinspection PyProtectedMember
 from sqlalchemy.orm.session import object_session
 from sqlalchemy.types import *
-# from sqlalchemy.dialects.mssql import BIT
 
 
 class Deployment(Base):
 
     __tablename__ = "jetavator_deployments"
 
-    name = Column(VARCHAR(124))
-    version = Column(VARCHAR(124), primary_key=True)
-    jetavator_version = Column(VARCHAR(124))
-    checksum = Column(CHAR(40))
-    deploy_dt = Column(TIMESTAMP, default="1900-01-01 00:00:00.000")
+    name: str = Column(VARCHAR(124))
+    version: str = Column(VARCHAR(124), primary_key=True)
+    jetavator_version: str = Column(VARCHAR(124))
+    checksum: str = Column(CHAR(40))
+    deploy_dt: datetime = Column(TIMESTAMP, default="1900-01-01 00:00:00.000")
 
-    object_definitions = relationship(
+    object_definitions: relationship = relationship(
         "ObjectDefinition", back_populates="deployment")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             "<Deployment("
             f"name='{self.name}', "
@@ -32,8 +34,9 @@ class Deployment(Base):
         )
 
     @property
-    def is_latest(self):
+    def is_latest(self) -> bool:
         cls = type(self)
         latest_deployment = object_session(self).query(cls).order_by(
             cls.deploy_dt.desc()).first()
-        return (self is latest_deployment)
+        return self is latest_deployment
+

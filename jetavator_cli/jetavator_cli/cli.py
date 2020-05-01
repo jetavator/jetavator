@@ -199,7 +199,7 @@ def main(argv=None, exit_callback=None):
                             version.name,
                             version.version,
                             version.deployed_time,
-                            version.latest_version
+                            version.is_latest_version
                         )
                         for version
                         in client.project_history.values()

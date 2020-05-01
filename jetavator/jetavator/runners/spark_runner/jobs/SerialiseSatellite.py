@@ -16,7 +16,7 @@ class SerialiseSatellite(SparkSQLJob, register_as='serialise_satellite'):
 
     sql_template = '''
         INSERT
-          INTO {{ job.satellite.sql_model.table.name }}
+          INTO {{ job.satellite.table_name }}
         SELECT *
           FROM {{ job.satellite_query_job.name }} AS source
         '''

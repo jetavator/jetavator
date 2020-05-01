@@ -18,7 +18,7 @@ class StarKeys(SparkSQLView, register_as='star_keys'):
     sql_template = '''
         SELECT {{ job.satellite_owner.key_column_name }},
                {% if job.satellite_owner.type == "link" %}
-               {% for alias in job.satellite_owner.link_hubs.keys() %}
+               {% for alias in job.satellite_owner.hubs.keys() %}
                first(hub_{{alias}}_key) AS hub_{{alias}}_key,
                {% endfor %}
                {% endif %}
@@ -28,7 +28,7 @@ class StarKeys(SparkSQLView, register_as='star_keys'):
                 SELECT
                        {{ job.satellite_owner.key_column_name }},
                        {% if job.satellite_owner.type == "link" %}
-                       {% for alias in job.satellite_owner.link_hubs.keys() %}
+                       {% for alias in job.satellite_owner.hubs.keys() %}
                        hub_{{alias}}_key,
                        {% endfor %}
                        {% endif %}

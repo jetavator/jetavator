@@ -57,7 +57,7 @@ class ProducedKeys(SparkSQLView, ABC):
                 satellite,
                 satellite_owner
             )
-            for satellite_owner in satellite.produced_keys()
+            for satellite_owner in satellite.produced_keys
         ]
 
     @property
@@ -90,7 +90,7 @@ class ProducedLinkKeys(ProducedKeys, register_as='produced_link_keys'):
     sql_template = '''
         SELECT {{ job.satellite_owner.key_column_name }}
                , array('sat_{{ job.satellite.name }}') AS key_source
-               {% for alias in job.satellite_owner.link_hubs.keys() %}
+               {% for alias in job.satellite_owner.hubs.keys() %}
                , hub_{{alias}}_key
                {% endfor %}
           FROM {{ job.satellite_query_job.name }}

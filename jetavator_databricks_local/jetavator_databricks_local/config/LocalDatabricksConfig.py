@@ -1,10 +1,9 @@
 from jetavator.config import DBServiceConfig
-from jetavator.config import json_schema_objects as jso
+from jetavator import json_schema_objects as jso
 
 
 class LocalDatabricksConfig(DBServiceConfig, register_as='local_databricks'):
-    properties = {
-        'type': jso.Const['local_databricks'],
-        'name': jso.String,
-        'schema': jso.String
-    }
+
+    type: str = jso.Property(jso.Const['local_databricks'])
+    name: str = jso.Property(jso.String)
+    schema: str = jso.Property(jso.String)
