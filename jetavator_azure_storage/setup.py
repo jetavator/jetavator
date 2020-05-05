@@ -3,17 +3,15 @@
 import io
 import os
 
-
 from setuptools import setup, find_packages
-
 
 # Package metadata
 # ----------------
 
-NAME = 'jetavator_cli'
+SHORT_NAME = 'azure_storage'
+NAME = 'jetavator_azure_storage'
 DESCRIPTION = (
-    'A tool for publishing derived data sets '
-    'and data science models as OLAP cubes'
+    'Azure storage support for the Jetavator engine'
 )
 URL = 'https://github.com/jetavator/jetavator'
 EMAIL = 'joetaylorconsulting@gmail.com'
@@ -23,22 +21,10 @@ VERSION = None
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'pandas>=0.23,<1',
-    'pyodbc>=4.0,<5',
-    'SQLAlchemy>=1.3,<1.4',
-    'sqlalchemy-views>=0.2.3,<1',
-    'PyYAML>=5.3.1,<6',
-    'tabulate>=0.8,<1',
-    'behave>=1.2,<2',
-    'docopt>=0.6,<1',
-    'keyring>=19.0,<20',
-    'sqlparse>=0.3.0,<1',
-    'semver>=2.8.1,<3',
-    'databricks-dbapi>=0.3.0,<1',
-    'future>=0.18.2,<1',
+    'jetavator>=0.1.5',
     'lazy-property>=0.0.1,<1',
-    'databricks-cli>=0.9.1,<1',
-    'nbformat>=5.0.3,<6'
+    'azure-storage-blob>=12.1.0,<13',
+    'azure-storage-queue>=12.1.0,<13',
 ]
 
 # What packages are optional?
@@ -92,9 +78,5 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.7'
     ],
-    entry_points={
-        'console_scripts': [
-            'jetavator=jetavator_cli.cli:main',
-        ],
-    }
+    entry_points={'jetavator.plugins': f'{SHORT_NAME} = {NAME}'}
 )

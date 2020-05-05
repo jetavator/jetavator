@@ -1,5 +1,5 @@
-from ...Client import Client
-from ...print_to_console import print_to_console
+from jetavator.Engine import Engine
+from jetavator.print_to_console import print_to_console
 
 from .Assertions import Assertions
 
@@ -8,7 +8,7 @@ import os
 from behave.__main__ import main as behave_main
 
 
-class BehaveClient(Client):
+class BehaveEngine(Engine):
 
     @property
     def assert_that(self):

@@ -1,9 +1,9 @@
-from .BaseConfig import BaseConfig
+from .Config import Config
 
-from jetavator.schema_registry import YamlProjectLoader
+from jetavator.schema_registry.YamlProjectLoader import YamlProjectLoader
 
 
-class CommandLineConfig(BaseConfig):
+class CommandLineConfig(Config):
 
     def __init__(
         self,

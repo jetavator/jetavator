@@ -13,8 +13,6 @@ REQUIRED = [
     'pyspark-asyncactions>=0.0.2,<3',
     'pyhive>=0.6.1,<2',
     'thrift>=0.13.0<1',
-    'azure-storage-blob>=12.1.0,<13',
-    'azure-storage-queue>=12.1.0,<13',
     'jinja2>=2.10.3,<3',
     'jsonschema>=3.2.0,<4'
 ]

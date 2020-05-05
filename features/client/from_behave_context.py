@@ -1,10 +1,10 @@
 from .BehaveConfig import BehaveConfig
-from .BehaveClient import BehaveClient
+from .BehaveEngine import BehaveEngine
 
 
 def from_behave_context(context, config=None, **kwargs):
 
-    instance = BehaveClient(
+    instance = BehaveEngine(
         config=(
             config
             or getattr(context, "jetavator_config", None)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC
 
-from typing import Type, Optional, Any
+from typing import Type, Optional, Any, Dict
 
 import inspect
 
@@ -83,7 +83,7 @@ class RegistersSubclasses(ABC):
         i.e. the class that first declared RegisteredSubclasses as
         one of its bases.
         """
-        return get_class_namespace(cls) == cls.registration_namespace()
+        return cls._get_class_namespace(cls) == cls.registration_namespace()
 
     @classmethod
     def registered_subclass(cls, name: str) -> RegisteredSubclass:

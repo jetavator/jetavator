@@ -8,11 +8,10 @@ from setuptools import setup, find_packages
 # Package metadata
 # ----------------
 
-SHORT_NAME = 'databricks_client'
-NAME = 'jetavator_databricks_client'
+SHORT_NAME = 'mssql'
+NAME = 'jetavator_mssql'
 DESCRIPTION = (
-    'Databricks support for the Jetavator engine '
-    'to be installed on the client system'
+    'Azure storage support for the Jetavator engine'
 )
 URL = 'https://github.com/jetavator/jetavator'
 EMAIL = 'joetaylorconsulting@gmail.com'

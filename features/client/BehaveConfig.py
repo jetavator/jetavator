@@ -1,6 +1,6 @@
 import os
 
-from ...config.BaseConfig import BaseConfig
+from jetavator.config import Config
 
 from jetavator.schema_registry import YamlProjectLoader
 
@@ -12,7 +12,7 @@ BEHAVE_ALIASES = {
 IGNORE_KEYS = ['config']
 
 
-class BehaveConfig(BaseConfig):
+class BehaveConfig(Config):
 
     def __init__(
         self,

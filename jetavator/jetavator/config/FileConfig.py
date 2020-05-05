@@ -1,16 +1,13 @@
 import os
-import uuid
-import json
 import yaml
 
-from .BaseConfig import BaseConfig
+from .Config import Config
 from .CommandLineConfig import CommandLineConfig
-from ..print_to_console import print_to_console
 
 from pathlib import Path
 
 
-class KeyringConfig(BaseConfig):
+class FileConfig(Config):
 
     @classmethod
     def load(cls, other_config=None):
@@ -26,7 +23,7 @@ class KeyringConfig(BaseConfig):
 
     @classmethod
     def config_dir(cls):
-        return os.path.join(Path.home(), '.jetavator')
+        return os.path.join(str(Path.home()), '.jetavator')
 
     @classmethod
     def config_file(cls):

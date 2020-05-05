@@ -5,7 +5,7 @@ from sqlalchemy.exc import ProgrammingError, DBAPIError
 
 from lazy_property import LazyProperty
 
-from .DBService import DBService
+from jetavator.services.DBService import DBService
 
 
 class MSSQLService(DBService, register_as='mssql'):

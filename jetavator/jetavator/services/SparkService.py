@@ -11,6 +11,8 @@ import sqlparse
 from jetavator.sqlalchemy_delta import DeltaDialect
 from lazy_property import LazyProperty
 
+from jetavator import DEFAULT_LOGGER_CONFIG
+
 from .DBService import DBService
 
 SPARK_APP_NAME = 'jetavator'
@@ -35,27 +37,7 @@ class SparkService(DBService):
 
     @property
     def logger_config(self):
-        return {
-            'version': 1,
-            'formatters': {
-                'simple': {
-                    'format': '%(asctime)s %(message)s',
-                }
-            },
-            'handlers': {
-                'console': {
-                    'level': 'DEBUG',
-                    'class': 'logging.StreamHandler',
-                    'formatter': 'simple',
-                },
-            },
-            'loggers': {
-                'jetavator': {
-                    'handlers': ['console'],
-                    'level': 'DEBUG',
-                },
-            }
-        }
+        return DEFAULT_LOGGER_CONFIG
 
     @LazyProperty
     def logger(self):

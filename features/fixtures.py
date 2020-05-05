@@ -5,7 +5,7 @@ import os
 
 from behave import fixture
 
-from jetavator_cli.testing.behave import from_behave_context
+from client import from_behave_context
 
 fixture_registry = {}
 fixture_hook_registry = {}
@@ -125,4 +125,4 @@ def fixture_jetavator(context):
         bool(context.config.userdata.get("keepdb"))
         or "setup" in context.tags
     ):
-        context.jetavator.engine.drop_schemas()
+        context.jetavator.drop_schemas()

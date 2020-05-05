@@ -1,6 +1,5 @@
-from lazy_property import LazyProperty
-
 from azure.core.exceptions import ResourceNotFoundError
+from lazy_property import LazyProperty
 
 MESSAGE_BATCH_SIZE = 32
 

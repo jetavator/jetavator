@@ -1,8 +1,8 @@
-from behave.fixture import use_fixture_by_tag, fixture_call_params
+from behave.fixture import use_fixture_by_tag
 
-from fixtures import fixture_registry, fixture_hook_registry, run_fixture_hooks
+from fixtures import fixture_registry, run_fixture_hooks
 
-from jetavator_cli.testing.behave import BehaveConfig
+from client import BehaveConfig
 
 
 def before_all(context):

@@ -5,10 +5,6 @@ Usage:
   jetavator config [--test] [--config-file=<config_file>]
     [--set <option>=<value>]...
   jetavator build
-  jetavator test [-d | --drop-if-exists] [-n | --nodeploy]
-    [-s | --deploy-scripts-only]
-    [--behave=<behave_opts>]
-    [--set <option>=<value>]...
   jetavator deploy [-d|--drop-if-exists] [--set <option>=<value>]...
   jetavator update [--set <option>=<value>]...
   jetavator run [delta|full] [--csv <target_table>=<source_csv>]...
@@ -42,16 +38,16 @@ Help:
 
 import traceback
 import jsonschema
+import logging
 
 from docopt import docopt
 from tabulate import tabulate
 from textwrap import indent
 
 from . import __version__ as VERSION
-from .Client import Client
-from .print_to_console import print_to_console
-from .testing.behave import BehaveClient
-from .config import KeyringConfig, CommandLineConfig
+from .default_logger import default_logger
+from .Engine import Engine
+from .config import FileConfig, CommandLineConfig
 
 
 def main(argv=None, exit_callback=None):
@@ -60,13 +56,13 @@ def main(argv=None, exit_callback=None):
     docopt_kwargs = {'version': VERSION}
 
     if argv:
-        print_to_console(f'calling docopt with argv')
+        # Simulating CLI entry point call from Python
         docopt_kwargs['argv'] = argv
 
     try:
         options = docopt(__doc__, **docopt_kwargs)
     except SystemExit as e:
-        print_to_console(str(e))
+        default_logger.error(str(e))
         if exit_callback:
             exit_callback(1)
             return
@@ -74,14 +70,14 @@ def main(argv=None, exit_callback=None):
             exit(1)
 
     try:
-        config = KeyringConfig.load(
+        config = FileConfig.load(
             CommandLineConfig(options)
         )
     except jsonschema.exceptions.ValidationError:
         config = CommandLineConfig(options)
 
     config.reset_session()
-    client = Client(config)
+    engine = Engine(config)
 
     printable_options = [
         k
@@ -93,81 +89,78 @@ def main(argv=None, exit_callback=None):
         if v and v is not True and not k == '--password'
     ]
 
-    print_to_console(
+    default_logger.info(
         f'''
         Jetavator {VERSION} - running command:
         {' '.join(printable_options)}
 
         Jetavator config:
-{indent(str(client.config), '        ')}
+{indent(str(engine.config), '        ')}
         '''
     )
 
     if options.get('-d') or options.get('--drop-if-exists'):
-        client.config.drop_schema_if_exists = True
+        engine.config.drop_schema_if_exists = True
 
     if options.get('-n') or options.get('--nodeploy'):
-        client.config.skip_deploy = True
+        engine.config.skip_deploy = True
 
     if options.get('--behave'):
-        client.config.behave_options = options.get('--behave')
+        engine.config.behave_options = options.get('--behave')
 
     try:
 
         if options['config']:
-            KeyringConfig.command_line_options_to_keyring(options)
-            test_config = KeyringConfig.load()
+            FileConfig.command_line_options_to_keyring(options)
+            test_config = FileConfig.load()
             if options['--test']:
-                test_engine = Client(config=test_config)
+                test_engine = Engine(config=test_config)
                 if test_engine.connection.test(master=True):
-                    print_to_console(
+                    default_logger.info(
                         'Successfully logged in and connected to '
-                        f'[{client.config.environment_type}]'
+                        f'[{engine.config.environment_type}]'
                     )
                 else:
-                    print_to_console(
+                    default_logger.error(
                         'Unable to log in or connect to '
-                        f'[{client.config.environment_type}]'
+                        f'[{engine.config.environment_type}]'
                     )
 
         elif options['build']:
-            client.build_wheel()
+            engine.build_wheel()
 
         elif options['deploy']:
-            client.deploy()
-
-        elif options['test']:
-            BehaveClient(client.config).test()
+            engine.deploy()
 
         elif options['update']:
-            client.update()
+            engine.update()
 
         elif options['drop'] and options['satellite']:
-            client.drop('satellite', options['<name>'])
+            engine.drop('satellite', options['<name>'])
 
         elif options['run']:
             load_type=('full' if options['full'] else 'delta')
-            print_to_console(f'Client: Performing {load_type} load.')
+            default_logger.info(f'Engine: Performing {load_type} load.')
             if options['<target_table>=<source_csv>']:
                 table_csvs = {}
                 for option in options['<target_table>=<source_csv>']:
                     table_name, csv_file = option.split('=')
                     table_csvs.setdefault(table_name, []).append(csv_file)
                 for table_name, csv_files in table_csvs.items():
-                    print_to_console(
+                    default_logger.info(
                         f'Loading {len(csv_files)} CSVs '
                         f'into table: {table_name}'
                     )
-                    client.engine.load_csvs(table_name, csv_files)
+                    engine.load_csvs(table_name, csv_files)
             if options['--folder']:
-                client.engine.load_csv_folder(folder_path=options['--folder'])
-            client.run(load_type='full')
+                engine.load_csv_folder(folder_path=options['--folder'])
+            engine.run(load_type='full')
 
         elif options['performance']:
-            df = client.get_performance_data()
+            df = engine.get_performance_data()
 
             if options['--pivot']:
-                print_to_console(
+                default_logger.info(
                     f'Displaying report for: {options["--pivot"]}'
                 )
                 df = df.pivot_table(
@@ -181,16 +174,16 @@ def main(argv=None, exit_callback=None):
                 df.to_csv(options['--outfile'])
 
             if not options['--no-print']:
-                print_to_console(
+                default_logger.info(
                     tabulate(df, headers='keys', tablefmt='grid')
                 )
 
         elif options['show']:
             if options['project']:
                 if options['name']:
-                    print_to_console(client.project.name)
+                    default_logger.info(engine.project.name)
                 elif options['version']:
-                    print_to_console(client.project.version)
+                    default_logger.info(engine.project.version)
                 elif options['history']:
                     version_history = [
                         (
@@ -200,9 +193,9 @@ def main(argv=None, exit_callback=None):
                             version.is_latest_version
                         )
                         for version
-                        in client.project_history.values()
+                        in engine.project_history.values()
                     ]
-                    print_to_console(
+                    default_logger.info(
                         tabulate(
                             version_history,
                             headers=[
@@ -213,7 +206,7 @@ def main(argv=None, exit_callback=None):
                             ]))
 
     except Exception as e:
-        print_to_console(traceback.format_exc())
+        default_logger.error(traceback.format_exc())
         if exit_callback:
             exit_callback(1)
         else:

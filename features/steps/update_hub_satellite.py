@@ -1,5 +1,3 @@
-from jetavator_cli import Client
-
 from behave import given, when, then
 
 

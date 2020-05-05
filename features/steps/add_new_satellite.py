@@ -1,6 +1,6 @@
 from behave import given, when, then
 
-from jetavator_cli.testing.behave import from_behave_context
+from client import from_behave_context
 
 
 @when(u"we write a new {type} definition to disk")

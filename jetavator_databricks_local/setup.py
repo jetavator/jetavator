@@ -8,6 +8,7 @@ from setuptools import setup, find_packages
 # Package metadata
 # ----------------
 
+SHORT_NAME = 'databricks_local'
 NAME = 'jetavator_databricks_local'
 DESCRIPTION = (
     'Databricks support for the Jetavator engine '
@@ -75,5 +76,6 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.7'
-    ]
+    ],
+    entry_points={'jetavator.plugins': f'{SHORT_NAME} = {NAME}'}
 )

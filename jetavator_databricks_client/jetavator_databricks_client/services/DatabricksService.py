@@ -2,9 +2,8 @@ import sqlalchemy
 import os
 import time
 import thrift
-from lazy_property import LazyProperty
 
-from jetavator_cli import LogListener
+from lazy_property import LazyProperty
 
 from jetavator.services.SparkService import SparkService
 
@@ -12,9 +11,12 @@ from TCLIService.ttypes import TOperationState
 
 from functools import wraps
 
+from .. import LogListener
+
+
 CLUSTER_RETRY_INTERVAL_SECS = 15
 
-#TODO: Move all the constants and filepath generation into the same place
+# TODO: Move all the constants and filepath generation into the same place
 DBFS_DATA_ROOT = 'dbfs:/jetavator/data'
 
 
