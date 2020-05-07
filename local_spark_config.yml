@@ -1,10 +1,9 @@
 services:
-  - name: spark
+  spark:
     type: local_spark
 storage:
   vault: spark
   star: spark
   logs: azure_queue
 compute: spark
-environment_type: local_spark
 secret_lookup: environment

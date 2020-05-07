@@ -48,6 +48,6 @@ class SatelliteSourcePipeline(
         return [
             SatellitePipelineDependency(
                 {'name': self._source, 'type': 'source'},
-                _document=self._document
+                dom_info=jso.DOMInfo(document=jso.document(self), parent=self)
             )
         ]

@@ -13,8 +13,9 @@ from ..VaultObject import VaultObject, HubKeyColumn
 class Hub(SatelliteOwner, register_as="hub"):
     star_prefix = "dim"
 
-    key_length: int = jso.Property(jso.Int)
-    key_type: Optional[str] = jso.Property(jso.String, default=None)
+    key_length: int = jso.Property(jso.Integer)
+    # TODO: Allow key_type to be None
+    key_type: Optional[str] = jso.Property(jso.String, default="")
     static_columns: Dict[str, SatelliteColumn] = jso.Property(
         jso.Dict[SatelliteColumn], default={})
 

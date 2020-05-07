@@ -15,8 +15,10 @@ class SatelliteSQLPipeline(
 
     type: str = jso.Property(jso.Const['sql'])
     _sql: str = jso.Property(jso.String, name="sql")
-    load_dt: Optional[str] = jso.Property(jso.String, default=None)
-    deleted_ind: Optional[str] = jso.Property(jso.String, default=None)
+    # TODO: Allow to be None
+    load_dt: Optional[str] = jso.Property(jso.String, default="")
+    # TODO: Allow to be None
+    deleted_ind: Optional[str] = jso.Property(jso.String, default="")
     dependencies: List[SatellitePipelineDependency] = jso.Property(
         jso.List[SatellitePipelineDependency], default=[])
 

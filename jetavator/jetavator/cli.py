@@ -110,6 +110,8 @@ def main(argv=None, exit_callback=None):
 
     try:
 
+        # TODO: allow an corrupt or invalid config to be overwritten
+        #       using this command
         if options['config']:
             FileConfig.command_line_options_to_keyring(options)
             test_config = FileConfig.load()

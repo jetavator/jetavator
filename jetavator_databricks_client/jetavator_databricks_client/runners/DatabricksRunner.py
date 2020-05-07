@@ -18,7 +18,7 @@ from databricks_cli.sdk import (
     ClusterService
 )
 
-from jetavator.config import SecretSubstitutingConfig
+from jetavator.config.secret_lookup import SecretLookup
 from lazy_property import LazyProperty
 from sqlalchemy.schema import CreateColumn
 
@@ -437,7 +437,7 @@ class DatabricksRunner(Runner, register_as='remote_databricks'):
         remote_config = Config({
             k: v
             for k, v in deepcopy(self.engine.config).items()
-            if k in Config.properties
+            if k in Config._properties
         })
         databricks_services = [
             service
@@ -474,16 +474,17 @@ class DatabricksRunner(Runner, register_as='remote_databricks'):
             scope_name,
             initial_manage_principal='users'
         )
+        secret_lookup = SecretLookup.registered_subclass_instance(
+            self.engine.config.secret_lookup
+        )
         for config_object, key, value in self.engine.config._walk():
-            if isinstance(config_object, SecretSubstitutingConfig):
-                secret = config_object._secret_lookup.get_secret_name(value)
-                secret_value = config_object._secret_lookup(value)
-                if secret:
-                    self.secrets_api.put_secret(
-                        scope_name,
-                        secret,
-                        str(config_object._secret_lookup(value))
-                    )
+            secret = secret_lookup.get_secret_name(value)
+            if secret:
+                self.secrets_api.put_secret(
+                    scope_name,
+                    secret,
+                    secret_lookup(value)
+                )
 
     def load_wheel(self):
         self.logger.info(

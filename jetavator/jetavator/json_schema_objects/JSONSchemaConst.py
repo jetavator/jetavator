@@ -1,6 +1,6 @@
 from abc import ABCMeta
 
-from .JSONSchemaElement import JSONSchemaElement
+from .JSONSchemaElement import JSONSchemaElement, JSONSchemaDOMInfo
 
 
 class JSONSchemaConstMeta(ABCMeta):
@@ -15,7 +15,12 @@ class JSONSchemaConstMeta(ABCMeta):
 
 class JSONSchemaConst(JSONSchemaElement, metaclass=JSONSchemaConstMeta):
 
-    def __new__(cls, value, _document=None):
+    def __new__(
+            cls,
+            value: str,
+            dom_info: JSONSchemaDOMInfo = None,
+            **kwargs
+    ) -> None:
         if value != cls.value:
             raise ValueError(f'Constant can only take value "{value}".')
         return cls.value

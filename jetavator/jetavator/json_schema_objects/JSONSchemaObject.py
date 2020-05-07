@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import Any, Iterator
+from typing import Any, Iterator, Dict
+
+from collections.abc import Mapping, MutableMapping
 
 import inspect
 import json
@@ -9,17 +11,18 @@ from jsonschema.validators import validator_for
 
 from copy import deepcopy
 
-from .JSONSchemaElement import JSONSchemaElement
-from .JSONSchemaProperty import JSONSchemaProperty
-
 from jetavator.mixins import RegistersSubclasses
 
+from .JSONSchemaElement import JSONSchemaElement, JSONSchemaDOMInfo
+from . import document
+from .JSONSchemaProperty import JSONSchemaProperty
+from .JSONSchemaValidationError import JSONSchemaValidationError
 
-class JSONSchemaObject(dict, JSONSchemaElement, RegistersSubclasses):
 
-    properties = {}
-    additional_properties: Optional[Type[JSONSchemaElement]] = None
-    index = None
+class JSONSchemaObject(JSONSchemaElement, MutableMapping, RegistersSubclasses):
+    _element_data: Dict[str, JSONSchemaElement] = None
+    _properties = {}
+    _additional_properties: Optional[Type[JSONSchemaElement]] = None
 
     def __init_subclass__(cls, *args: Any, **kwargs: Any) -> None:
         cls._populate_properties()
@@ -28,52 +31,76 @@ class JSONSchemaObject(dict, JSONSchemaElement, RegistersSubclasses):
 
     def __init__(
             self,
-            *args: Any,
-            _document: JSONSchemaElement = None,
+            value: Mapping[str, Any] = None,
+            dom_info: JSONSchemaDOMInfo = None,
             **kwargs: Any
     ) -> None:
-        if _document is None:
-            self._document = self
-        else:
-            self._document = _document
-        super().__init__({
-            k: (
-                self.properties[k]._instance_for_item(v, _document=self._document)
-                if k in self.properties
-                else (
-                    self.additional_properties._instance_for_item(v)
-                    if self.additional_properties
-                    else v
+        if value and not isinstance(value, Mapping):
+            raise JSONSchemaValidationError(
+                f"Cannot validate input. Object is not a mapping: {value}"
+            )
+        super().__init__(value, dom_info, **kwargs)
+        self._element_data = {}
+        self._populate_properties()
+        for key, value in {**(value or {}), **kwargs}.items():
+            self[key] = value
+
+    def __getitem__(self, key: str) -> JSONSchemaElement:
+        return self._element_data[key]
+
+    def __setitem__(self, key: str, value: JSONSchemaElement) -> None:
+        item_class = self._properties.get(key, self._additional_properties)
+        if item_class:
+            self._element_data[key] = item_class._instance_for_item(
+                value,
+                JSONSchemaDOMInfo(
+                    document=document(self),
+                    parent=self,
+                    element_key=key
                 )
             )
-            for k, v in dict(*args, **kwargs).items()
-        })
-        self._populate_properties()
+        else:
+            self._element_data[key] = value
+
+    def __delitem__(self, key: str) -> None:
+        del self._element_data[key]
+
+    def __len__(self) -> int:
+        return len(self._element_data)
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._element_data)
+
+    def __repr__(self):
+        return repr(self._element_data)
+
+    def __str__(self):
+        return str(self._element_data)
 
     @classmethod
     def _populate_properties(cls) -> None:
         class_properties = {}
+        class_properties.update(cls._properties)
         for k, v in cls.__dict__.items():
             if isinstance(v, JSONSchemaProperty):
                 if not v.name:
                     v.name = k
                 class_properties[v.name] = v.schema_type
-        class_properties.update(cls.properties)
-        cls.properties = class_properties
+        cls._properties = class_properties
 
     @classmethod
     def _update_inherited_properties(cls) -> None:
         inherited_properties = {}
         for superclass in reversed(list(cls._schema_superclasses())):
-            inherited_properties.update(superclass.properties)
-        cls.properties = inherited_properties
+            inherited_properties.update(superclass._properties)
+        cls._properties = inherited_properties
 
     @classmethod
     def _schema_superclasses(cls) -> Iterator[Type[JSONSchemaElement]]:
         for superclass in inspect.getmro(cls):
             if (
-                issubclass(superclass, JSONSchemaElement)
-                and superclass is not JSONSchemaElement
+                    issubclass(superclass, JSONSchemaElement)
+                    and superclass is not JSONSchemaElement
             ):
                 yield superclass
 
@@ -97,7 +124,7 @@ class JSONSchemaObject(dict, JSONSchemaElement, RegistersSubclasses):
             cls,
             item_type: Optional[Type[JSONSchemaElement]] = None
     ) -> Dict[str, Any]:
-        additional_properties = item_type or cls.additional_properties
+        additional_properties = item_type or cls._additional_properties
         if cls.registered_subclasses():
             return {
                 'anyOf': [
@@ -110,7 +137,7 @@ class JSONSchemaObject(dict, JSONSchemaElement, RegistersSubclasses):
                 'type': 'object',
                 'properties': {
                     k: v._schema()
-                    for k, v in cls.properties.items()
+                    for k, v in cls._properties.items()
                 },
                 "additionalProperties": (
                     additional_properties._schema()
@@ -120,7 +147,7 @@ class JSONSchemaObject(dict, JSONSchemaElement, RegistersSubclasses):
             }
 
     def _to_json(self) -> str:
-        return json.JSONEncoder().encode(self)
+        return json.JSONEncoder().encode(self._value)
 
     @staticmethod
     def _decode_json(json_string: str) -> Dict[str, Any]:
@@ -148,6 +175,13 @@ class JSONSchemaObject(dict, JSONSchemaElement, RegistersSubclasses):
                 yield from value._walk()
             else:
                 yield self, key, value
+
+    @property
+    def _value(self) -> Dict[str, Any]:
+        return {
+            k: getattr(v, "_value", v)
+            for k, v in self.items()
+        }
 
     def __copy__(self) -> JSONSchemaObject:
         cls = self.__class__

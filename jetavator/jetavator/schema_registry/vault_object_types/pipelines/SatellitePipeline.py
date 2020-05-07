@@ -16,15 +16,15 @@ class SatellitePipeline(jso.Object, RegistersSubclasses, ABC):
 
     type: str = jso.Property(jso.String)
     performance_hints: PerformanceHints = jso.Property(
-        PerformanceHints, default=PerformanceHints({}))
+        PerformanceHints, default={})
     _key_columns: Dict[str, str] = jso.Property(
         jso.Dict[jso.String], name="key_columns", default={})
 
     @property
     def satellite(self) -> VaultObject:
-        # TODO: Add self._parent to jso as well as self._document
-        if isinstance(self._document, VaultObject):
-            return self._document
+        parent = jso.parent(self)
+        if isinstance(parent, VaultObject):
+            return parent
         else:
             raise TypeError('Parent is not a subclass of VaultObject')
 

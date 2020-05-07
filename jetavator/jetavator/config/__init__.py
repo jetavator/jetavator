@@ -1,5 +1,6 @@
+from . import secret_lookup
+from .ConfigProperty import ConfigProperty
 from .Config import (
-    SecretSubstitutingConfig,
     Config,
     ServiceConfig,
     DBServiceConfig,
@@ -7,7 +8,3 @@ from .Config import (
 )
 from .FileConfig import FileConfig
 from .CommandLineConfig import CommandLineConfig
-from .secret_lookup import (
-    SecretLookup,
-    EnvironmentSecretLookup
-)

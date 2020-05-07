@@ -37,7 +37,7 @@ class Satellite(VaultObject, register_as="satellite"):
     columns: Dict[str, SatelliteColumn] = jso.Property(
         jso.Dict[SatelliteColumn])
     pipeline: SatellitePipeline = jso.Property(SatellitePipeline)
-    exclude_from_star_schema: bool = jso.Property(jso.Bool, default=False)
+    exclude_from_star_schema: bool = jso.Property(jso.Boolean, default=False)
 
     @property
     def parent(self) -> SatelliteOwner:

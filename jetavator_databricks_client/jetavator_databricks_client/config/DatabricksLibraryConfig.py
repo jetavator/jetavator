@@ -1,8 +1,5 @@
-from jetavator.config import SecretSubstitutingConfig
+from jetavator import json_schema_objects as jso
 
 
-class DatabricksLibraryConfig(
-    SecretSubstitutingConfig,
-    register_as='remote_databricks_library'
-):
+class DatabricksLibraryConfig(jso.Dict):
     pass

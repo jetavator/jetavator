@@ -1,6 +1,6 @@
 from typing import Type, TypeVar, Generic, Any, Optional, Dict
 
-from .JSONSchemaElement import JSONSchemaElement
+from .JSONSchemaElement import JSONSchemaElement, JSONSchemaDOMInfo
 
 T_co = TypeVar('T_co', covariant=True)
 
@@ -23,11 +23,12 @@ class JSONSchemaGenericProxy(Generic[T_co]):
 
     def _instance_for_item(
             self,
-            item: Any,
-            _document: Optional[JSONSchemaElement] = None
+            value: Any,
+            dom_info: JSONSchemaDOMInfo = None,
+            **kwargs: Any
     ) -> Dict[str, Any]:
         return self.origin._instance_for_item(
-            item, _document=_document, _item_type=self.item_type)
+            value, dom_info, _item_type=self.item_type, **kwargs)
 
 
 class JSONSchemaGeneric(object):

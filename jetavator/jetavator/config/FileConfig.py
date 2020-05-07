@@ -7,6 +7,8 @@ from .CommandLineConfig import CommandLineConfig
 from pathlib import Path
 
 
+# TODO: Review if this class is necessary or if it can be integrated into Config
+
 class FileConfig(Config):
 
     @classmethod
@@ -18,7 +20,7 @@ class FileConfig(Config):
         else:
             new_object = cls({})
         if other_config:
-            new_object.update(other_config)
+            new_object.update(other_config._value)
         return new_object
 
     @classmethod
@@ -50,6 +52,6 @@ class FileConfig(Config):
 
     @classmethod
     def command_line_options_to_keyring(cls, options, delete_previous=True):
-        keyring_config = cls(CommandLineConfig(options))
+        keyring_config = cls(CommandLineConfig(options)._value)
         keyring_config.save()
         return keyring_config

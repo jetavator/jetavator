@@ -183,8 +183,8 @@ class Engine(object):
         :return: A dictionary of class:`jetavator.services.Service` by name
         """
         return {
-            service_config.name: Service.from_config(self, service_config)
-            for service_config in self.config.services
+            name: Service.from_config(self, config)
+            for name, config in self.config.services.items()
         }
 
     # TODO: The role of SchemaRegistry is unclear. Can we refactor its

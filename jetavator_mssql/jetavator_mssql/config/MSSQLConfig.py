@@ -9,4 +9,4 @@ class MSSQLConfig(DBServiceConfig, register_as='mssql'):
     server: str = jso.Property(jso.String)
     username: str = jso.Property(jso.String)
     password: str = jso.Property(jso.String)
-    trusted_connection: bool = jso.Property(jso.Bool)
+    trusted_connection: bool = jso.Property(jso.Boolean)

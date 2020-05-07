@@ -10,7 +10,8 @@ class SatellitePipelineDependency(jso.Object):
 
     name: str = jso.Property(jso.String)
     type: str = jso.Property(jso.String)
-    view: Optional[str] = jso.Property(jso.String, default=None)
+    # TODO: Allow to be None
+    view: Optional[str] = jso.Property(jso.String, default="")
 
     @property
     def object_reference_key(self) -> VaultObjectKey:
@@ -18,7 +19,7 @@ class SatellitePipelineDependency(jso.Object):
 
     @property
     def project(self) -> Project:
-        return self._document.project
+        return jso.document(self).project
 
     @property
     def object_reference(self) -> VaultObject:

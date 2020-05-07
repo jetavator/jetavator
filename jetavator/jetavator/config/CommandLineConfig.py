@@ -3,6 +3,8 @@ from .Config import Config
 from jetavator.schema_registry.YamlProjectLoader import YamlProjectLoader
 
 
+# TODO: Review if this class is necessary or if it can be integrated into Config
+
 class CommandLineConfig(Config):
 
     def __init__(

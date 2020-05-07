@@ -1,84 +1,116 @@
 from __future__ import annotations
 
-from typing import Generic, TypeVar, Optional, Any, Iterable, Dict, Tuple
+from abc import abstractmethod
+
+from collections.abc import MutableSequence
+
+from typing import Generic, TypeVar, Optional, Any, Iterable, Dict, List, Tuple, overload
 
 from copy import deepcopy
 
-from .JSONSchemaElement import JSONSchemaElement
+from .JSONSchemaElement import JSONSchemaElement, JSONSchemaDOMInfo
+from . import document
 from .JSONSchemaGeneric import JSONSchemaGeneric
+from .JSONSchemaValidationError import JSONSchemaValidationError
 
 T_co = TypeVar('T_co', covariant=True, bound=JSONSchemaElement)
 
 
-class JSONSchemaList(list, JSONSchemaGeneric, Generic[T_co], JSONSchemaElement):
+class JSONSchemaList(JSONSchemaElement, MutableSequence, JSONSchemaGeneric, Generic[T_co]):
+
+    _element_data: List[JSONSchemaElement] = None
 
     def __init__(
             self,
-            iterable: Iterable,
-            _document: Optional[T_co] = None,
-            _item_type: Optional[Type[JSONSchemaElement]] = None
+            value: Iterable,
+            dom_info: JSONSchemaDOMInfo = None,
+            _item_type: Optional[Type[T_co]] = None,
+            **kwargs: Any
     ) -> None:
-        self._document = self if _document is None else _document
+        if value and not isinstance(value, Iterable):
+            raise JSONSchemaValidationError(
+                f"Cannot validate input. Object is not iterable: {value}"
+            )
+        super().__init__(value, dom_info, **kwargs)
+        self._element_data = []
         if _item_type is not None:
             self.item_type = _item_type
-        super().__init__(
-            self.item_type._instance_for_item(item, _document=self._document)
-            for item in iterable
+        self[:] = value
+
+    @overload
+    @abstractmethod
+    def __getitem__(self, i: int) -> T_co: ...
+
+    @overload
+    @abstractmethod
+    def __getitem__(self, s: slice) -> MutableSequence[T_co]: ...
+
+    def __getitem__(self, i: Union[int, slice]) -> Union[T_co, MutableSequence[T_co]]:
+        return self._element_data[i]
+
+    @overload
+    @abstractmethod
+    def __setitem__(self, i: int, o: T_co) -> None: ...
+
+    @overload
+    @abstractmethod
+    def __setitem__(self, s: slice, o: Iterable[T_co]) -> None: ...
+
+    def __setitem__(self, i: Union[int, slice], o: Union[T_co, MutableSequence[T_co]]) -> None:
+        if type(i) is int:
+            self._element_data[i] = self._new_child_item(o)
+        else:
+            self._element_data[i] = (self._new_child_item(x) for x in o)
+
+    def _new_child_item(self, item: Any):
+        return self.item_type._instance_for_item(
+            item,
+            JSONSchemaDOMInfo(
+                document=document(self),
+                parent=self
+            )
         )
-        # TODO: Deprecate indexed lists in favour of JSONSchemaDict
-        if self.item_type.index:
-            if len(self) != len(set(
-                item[self.item_type.index]
-                for item in iterable
-            )):
-                raise ValueError(
-                    'Cannot have more than one item with the same '
-                    f'property "{self.item_type.index}".'
-                )
 
-    def __getitem__(self, key: Union[str, int, slice]) -> T_co:
-        if self.item_type.index:
-            for item in self:
-                if item[self.item_type.index] == key:
-                    return item
-            raise KeyError(f'Item not found: {key}')
-        else:
-            return super().__getitem__(key)
+    @overload
+    @abstractmethod
+    def __delitem__(self, i: int) -> None: ...
 
-    def __setitem__(self, key: str, value: T_co) -> None:
-        if self.item_type.index:
-            for count, item in enumerate(self):
-                if item[self.item_type.index] == key:
-                    self.pop(count)
-            value[self.item_type.index] = key
-            new_item = self.item_type(value)
-            new_item._validate()
-            self.append(new_item)
-        else:
-            raise AttributeError(
-                'Cannot use __setitem__ for a list with no index.')
+    @overload
+    @abstractmethod
+    def __delitem__(self, i: slice) -> None: ...
 
-    def __delitem__(self, key: str) -> None:
-        if self.item_type.index:
-            for count, item in enumerate(self):
-                if item[self.item_type.index] == key:
-                    self.pop(count)
-                    return
-            raise KeyError(f'Item not found: {key}')
-        else:
-            raise AttributeError(
-                'Cannot use __delitem__ for a list with no index.')
+    def __delitem__(self, i: int) -> None:
+        del self._element_data[i]
+
+    def __len__(self) -> int:
+        return len(self._element_data)
+
+    def __repr__(self):
+        return repr(self._element_data)
+
+    def __str__(self):
+        return str(self._element_data)
+
+    def insert(self, index: int, item: Any) -> None:
+        self._element_data.insert(index, self._new_child_item(item))
 
     @classmethod
     def _schema(
             cls,
-            item_type: Optional[Type[JSONSchemaElement]] = None
+            item_type: Optional[Type[T_co]] = None
     ) -> Dict[str, Any]:
         return {
             'array': {
                 'items': (item_type or cls.item_type)._schema()
             }
         }
+
+    @property
+    def _value(self) -> List[Any]:
+        return [
+            getattr(v, "_value", v)
+            for v in self
+        ]
 
     def _walk(self) -> Iterator[Tuple[JSONSchemaElement, Optional[str], JSONSchemaElement]]:
         for value in self:

@@ -10,7 +10,8 @@ class JSONSchemaPrimitive(JSONSchemaElement):
     def __new__(
             cls,
             value: Any,
-            _document: JSONSchemaElement = None
+            dom_info: JSONSchemaDOMInfo = None,
+            **kwargs: Any
     ) -> JSONSchemaPrimitive:
         return cls.python_primitive(value)
 
@@ -35,7 +36,7 @@ class JSONSchemaString(
     pass
 
 
-class JSONSchemaBool(
+class JSONSchemaBoolean(
     JSONSchemaPrimitive,
     python_primitive=bool,
     type_name='boolean'
@@ -43,7 +44,7 @@ class JSONSchemaBool(
     pass
 
 
-class JSONSchemaInt(
+class JSONSchemaInteger(
     JSONSchemaPrimitive,
     python_primitive=int,
     type_name='integer'
@@ -64,7 +65,8 @@ class JSONSchemaNone(JSONSchemaElement):
     def __new__(
             cls,
             value: None,
-            _document: JSONSchemaElement = None
+            dom_info: JSONSchemaDOMInfo = None,
+            **kwargs: Any
     ) -> None:
         if value is not None:
             raise ValueError('Value can only be None.')

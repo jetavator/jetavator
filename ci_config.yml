@@ -1,5 +1,5 @@
 services:
-  - name: databricks
+  databricks:
     type: remote_databricks
     host: $DATABRICKS_ADDRESS
     cluster_id: $DATABRICKS_CLUSTER_ID
@@ -8,13 +8,13 @@ services:
     libraries:
       - maven:
           coordinates: com.microsoft.azure:azure-sqldb-spark:1.0.2
-  - name: mssql
+  mssql:
     type: mssql
     server: $MSSQL_SERVER
     database: $MSSQL_DATABASE
     username: $MSSQL_USERNAME
     password: $MSSQL_PASSWORD
-  - name: azure_storage
+  azure_storage:
     type: azure_storage
     account_name: $AZURE_STORAGE_ACCOUNT
     account_key: $AZURE_STORAGE_KEY
@@ -25,6 +25,5 @@ storage:
   star: mssql
   logs: azure_storage
 compute: databricks
-environment_type: remote_databricks
 secret_lookup: environment
 jetavator_source_path: $JETAVATOR_SOURCE_PATH
