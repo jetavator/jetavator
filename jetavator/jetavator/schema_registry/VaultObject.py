@@ -22,8 +22,8 @@ HubKeyColumn = namedtuple('HubKeyColumn', ['name', 'source'])
 
 class VaultObject(jso.Object, ABC):
 
-    name: str = jso.Property(jso.String)
-    type: str = jso.Property(jso.String)
+    name: str = jso.Property(str)
+    type: str = jso.Property(str)
 
     optional_yaml_properties = []
 

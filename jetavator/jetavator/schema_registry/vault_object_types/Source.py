@@ -13,7 +13,7 @@ from ..VaultObject import VaultObject
 
 
 class Source(VaultObject, register_as="source"):
-    columns: Dict[str, SourceColumn] = jso.Property(jso.Dict[SourceColumn])
+    columns: Dict[str, SourceColumn] = jso.Property(jso.Dict(SourceColumn))
 
     @property
     def primary_key_columns(self) -> Dict[str, SourceColumn]:

@@ -29,4 +29,4 @@ class CommandLineConfig(Config):
         # layer 3: override with any values specified in kwargs
         property_values.update(kwargs)
 
-        super().__init__(**property_values)
+        super().__init__(property_values)

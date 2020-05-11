@@ -3,10 +3,9 @@ from jetavator import json_schema_objects as jso
 
 
 class AzureStorageConfig(ServiceConfig, register_as='azure_storage'):
-    _properties = {
-        'type': jso.Const['azure_storage'],
-        'name': jso.String,
-        'account_name': jso.String,
-        'account_key': jso.String,
-        'blob_container_name': jso.String
-    }
+
+    type = jso.Property(jso.Const('azure_storage'))
+    name = jso.Property(str)
+    account_name = jso.Property(str)
+    account_key = jso.Property(str)
+    blob_container_name = jso.Property(str)

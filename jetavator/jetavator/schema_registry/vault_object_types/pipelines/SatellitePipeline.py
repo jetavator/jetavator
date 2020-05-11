@@ -14,11 +14,11 @@ from ... import VaultObject, Project
 
 class SatellitePipeline(jso.Object, RegistersSubclasses, ABC):
 
-    type: str = jso.Property(jso.String)
+    type: str = jso.Property(str)
     performance_hints: PerformanceHints = jso.Property(
         PerformanceHints, default={})
     _key_columns: Dict[str, str] = jso.Property(
-        jso.Dict[jso.String], name="key_columns", default={})
+        jso.Dict(str), name="key_columns", default={})
 
     @property
     def satellite(self) -> VaultObject:

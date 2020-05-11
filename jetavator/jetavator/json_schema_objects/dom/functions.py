@@ -1,6 +1,8 @@
 from typing import Optional
 
-from jetavator.json_schema_objects.JSONSchemaElement import JSONSchemaElement, JSONSchemaDOMInfo
+from ..JSONSchemaElement import JSONSchemaElement
+
+from .JSONSchemaDOMInfo import JSONSchemaDOMInfo
 
 
 def dom(element: JSONSchemaElement) -> JSONSchemaDOMInfo:

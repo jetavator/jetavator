@@ -21,8 +21,8 @@ from .pipelines import SatellitePipeline
 
 class VaultObjectReference(jso.Object):
 
-    type: str = jso.Property(jso.String)
-    name: str = jso.Property(jso.String)
+    type: str = jso.Property(str)
+    name: str = jso.Property(str)
 
     @LazyProperty
     def key(self) -> VaultObjectKey:
@@ -35,9 +35,9 @@ class Satellite(VaultObject, register_as="satellite"):
         VaultObjectReference, name="parent")
 
     columns: Dict[str, SatelliteColumn] = jso.Property(
-        jso.Dict[SatelliteColumn])
+        jso.Dict(SatelliteColumn))
     pipeline: SatellitePipeline = jso.Property(SatellitePipeline)
-    exclude_from_star_schema: bool = jso.Property(jso.Boolean, default=False)
+    exclude_from_star_schema: bool = jso.Property(bool, default=False)
 
     @property
     def parent(self) -> SatelliteOwner:

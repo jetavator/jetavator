@@ -24,7 +24,7 @@ PROPERTIES_TO_PRINT = [
 
 class ServiceConfig(jso.Object):
 
-    type: str = ConfigProperty(jso.String)
+    type: str = ConfigProperty(str)
 
     def name(self) -> str:
         return jso.key(self)
@@ -36,25 +36,27 @@ class DBServiceConfig(ServiceConfig):
         if not jso.document(self) is self:
             return jso.document(self).schema
 
-    type: str = ConfigProperty(jso.String)
-    schema: str = ConfigProperty(jso.String, default_function=_get_default_schema)
+    type: str = ConfigProperty(str)
+    # TODO: Update jso behaviour so default and default_function
+    #       don't set a value persistently
+    schema: str = ConfigProperty(str, default_function=_get_default_schema)
 
 
 class LocalSparkConfig(DBServiceConfig, register_as='local_spark'):
 
-    type: str = ConfigProperty(jso.Const['local_spark'])
+    type: str = ConfigProperty(jso.Const('local_spark'))
 
 
 class StorageConfig(jso.Object):
 
-    source: str = ConfigProperty(jso.String)
-    vault: str = ConfigProperty(jso.String)
-    star: str = ConfigProperty(jso.String)
-    logs: str = ConfigProperty(jso.String)
+    source: str = ConfigProperty(str)
+    vault: str = ConfigProperty(str)
+    star: str = ConfigProperty(str)
+    logs: str = ConfigProperty(str)
 
 
 class SessionConfig(jso.Object):
-    run_uuid = ConfigProperty(jso.String, default_function=lambda self: str(uuid.uuid4()))
+    run_uuid = ConfigProperty(str, default_function=lambda self: str(uuid.uuid4()))
 
 
 # TODO: add validation (or defaults) for required properties e.g. secret_lookup, services
@@ -65,23 +67,25 @@ class Config(jso.Object):
         super().__init__(*args, **kwargs)
         self._validate()
 
+    # TODO: Move this to testing framework - this isn't a feature
+    #       required outside of self-testing
     def _generate_uid(self):
         return self.prefix + "_" + "_".join([
             "%04x" % random.randrange(16**4)
             for i in range(0, 3)
         ])
 
-    model_path: str = ConfigProperty(jso.String, default_function=lambda self: os.getcwd())
-    schema: str = ConfigProperty(jso.String, default_function=_generate_uid)
-    prefix: str = ConfigProperty(jso.String, default="jetavator")
-    drop_schema_if_exists: bool = ConfigProperty(jso.Boolean, default=False)
-    skip_deploy: bool = ConfigProperty(jso.Boolean, default=False)
-    environment_type: str = ConfigProperty(jso.String, default="local_spark")
+    model_path: str = ConfigProperty(str, default_function=lambda self: os.getcwd())
+    schema: str = ConfigProperty(str, default_function=_generate_uid)
+    prefix: str = ConfigProperty(str, default="jetavator")
+    drop_schema_if_exists: bool = ConfigProperty(bool, default=False)
+    skip_deploy: bool = ConfigProperty(bool, default=False)
+    environment_type: str = ConfigProperty(str, default="local_spark")
     session: SessionConfig = ConfigProperty(SessionConfig, default={})
     services: Dict[str, ServiceConfig] = ConfigProperty(
-        jso.Dict[ServiceConfig], default={})
+        jso.Dict(ServiceConfig), default={})
     storage: StorageConfig = ConfigProperty(StorageConfig)
-    compute: str = ConfigProperty(jso.String)
+    compute: str = ConfigProperty(str)
 
     @LazyProperty
     def secret_lookup(self) -> SecretLookup:
@@ -89,7 +93,7 @@ class Config(jso.Object):
             self._secret_lookup_name
         )
 
-    _secret_lookup_name: str = jso.Property(jso.String, name="secret_lookup")
+    _secret_lookup_name: str = jso.Property(str, name="secret_lookup")
 
     def reset_session(self):
         self.session.clear()

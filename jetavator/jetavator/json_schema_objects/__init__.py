@@ -1,14 +1,9 @@
-from .JSONSchemaValidationError import JSONSchemaValidationError
-from .dom_functions import dom, document, parent, key
-from .JSONSchemaElement import JSONSchemaDOMInfo as DOMInfo
+from .exceptions import JSONSchemaValidationError
+from .dom.functions import dom, document, parent, key
+from .dom import JSONSchemaDOMInfo as DOMInfo
 from .JSONSchemaElement import JSONSchemaElement as Element
-from .JSONSchemaConst import JSONSchemaConst as Const
-from .JSONSchemaList import JSONSchemaList as List
-from .JSONSchemaDict import JSONSchemaDict as Dict
-from .JSONSchemaObject import JSONSchemaObject as Object
-from .JSONSchemaPrimitive import JSONSchemaString as String
-from .JSONSchemaPrimitive import JSONSchemaBoolean as Boolean
-from .JSONSchemaPrimitive import JSONSchemaInteger as Integer
-from .JSONSchemaPrimitive import JSONSchemaFloat as Float
-from .JSONSchemaPrimitive import JSONSchemaNone as NoneSchema
-from .JSONSchemaProperty import JSONSchemaProperty as Property
+from .schema import JSONSchemaConst as Const
+from .schema import JSONSchemaArray as List
+from .schema import JSONSchemaDict as Dict
+from .user_objects import JSONSchemaUserProperty as Property
+from .user_objects import JSONSchemaUserObject as Object

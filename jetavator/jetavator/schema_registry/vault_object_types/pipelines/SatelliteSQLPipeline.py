@@ -13,14 +13,14 @@ class SatelliteSQLPipeline(
     register_as="sql"
 ):
 
-    type: str = jso.Property(jso.Const['sql'])
-    _sql: str = jso.Property(jso.String, name="sql")
+    type: str = jso.Property(jso.Const('sql'))
+    _sql: str = jso.Property(str, name="sql")
     # TODO: Allow to be None
-    load_dt: Optional[str] = jso.Property(jso.String, default="")
+    load_dt: Optional[str] = jso.Property(str, default="")
     # TODO: Allow to be None
-    deleted_ind: Optional[str] = jso.Property(jso.String, default="")
+    deleted_ind: Optional[str] = jso.Property(str, default="")
     dependencies: List[SatellitePipelineDependency] = jso.Property(
-        jso.List[SatellitePipelineDependency], default=[])
+        jso.List(SatellitePipelineDependency), default=[])
 
     @property
     def sql(self) -> str:

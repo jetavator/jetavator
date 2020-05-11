@@ -4,6 +4,6 @@ services:
 storage:
   vault: spark
   star: spark
-  logs: azure_queue
+  logs: spark
 compute: spark
 secret_lookup: environment

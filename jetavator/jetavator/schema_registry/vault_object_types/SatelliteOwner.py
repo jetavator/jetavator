@@ -12,8 +12,8 @@ from ..VaultObject import VaultObject, HubKeyColumn
 
 
 class SatelliteOwner(VaultObject, ABC, register_as="satellite_owner"):
-    options: List[str] = jso.Property(jso.List[jso.String], default=[])
-    exclude_from_star_schema: bool = jso.Property(jso.Boolean, default=False)
+    options: List[str] = jso.Property(jso.List(str), default=[])
+    exclude_from_star_schema: bool = jso.Property(bool, default=False)
 
     @property
     def satellites(self) -> Dict[str, VaultObject]:

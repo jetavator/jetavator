@@ -50,6 +50,7 @@ class FileConfig(Config):
                 )
             )
 
+    # TODO: Rename to reflect actual role
     @classmethod
     def command_line_options_to_keyring(cls, options, delete_previous=True):
         keyring_config = cls(CommandLineConfig(options)._value)

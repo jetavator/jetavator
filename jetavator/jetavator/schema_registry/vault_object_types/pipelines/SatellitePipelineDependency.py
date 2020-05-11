@@ -8,10 +8,10 @@ from ... import VaultObject, VaultObjectKey, Project
 
 class SatellitePipelineDependency(jso.Object):
 
-    name: str = jso.Property(jso.String)
-    type: str = jso.Property(jso.String)
+    name: str = jso.Property(str)
+    type: str = jso.Property(str)
     # TODO: Allow to be None
-    view: Optional[str] = jso.Property(jso.String, default="")
+    view: Optional[str] = jso.Property(str, default="")
 
     @property
     def object_reference_key(self) -> VaultObjectKey:

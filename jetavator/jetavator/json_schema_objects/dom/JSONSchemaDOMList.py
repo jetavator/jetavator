@@ -4,34 +4,39 @@ from abc import abstractmethod
 
 from collections.abc import MutableSequence
 
-from typing import Generic, TypeVar, Optional, Any, Iterable, Dict, List, Tuple, overload
+from typing import (
+    Generic, TypeVar, Optional, Any, Iterable, Dict, List, Tuple, overload
+)
 
 from copy import deepcopy
 
-from .JSONSchemaElement import JSONSchemaElement, JSONSchemaDOMInfo
-from . import document
-from .JSONSchemaGeneric import JSONSchemaGeneric
-from .JSONSchemaValidationError import JSONSchemaValidationError
+from ..JSONSchema import JSONSchema
+from ..exceptions import JSONSchemaValidationError
 
-T_co = TypeVar('T_co', covariant=True, bound=JSONSchemaElement)
+from .JSONSchemaDOMElement import JSONSchemaDOMElement
+from .JSONSchemaDOMInfo import JSONSchemaDOMInfo
+from .functions import document
+
+T_co = TypeVar('T_co')
 
 
-class JSONSchemaList(JSONSchemaElement, MutableSequence, JSONSchemaGeneric, Generic[T_co]):
+class JSONSchemaDOMList(JSONSchemaDOMElement, MutableSequence, Generic[T_co]):
 
-    _element_data: List[JSONSchemaElement] = None
+    _element_data: List[JSONSchemaDOMElement] = None
 
     def __init__(
             self,
             value: Iterable,
-            dom_info: JSONSchemaDOMInfo = None,
-            _item_type: Optional[Type[T_co]] = None,
+            _dom_info: Optional[JSONSchemaDOMInfo] = None,
+            _schema: Optional[JSONSchema] = None,
+            _item_type: Optional[JSONSchema] = None,
             **kwargs: Any
     ) -> None:
         if value and not isinstance(value, Iterable):
             raise JSONSchemaValidationError(
                 f"Cannot validate input. Object is not iterable: {value}"
             )
-        super().__init__(value, dom_info, **kwargs)
+        super().__init__(value, _dom_info, _schema, **kwargs)
         self._element_data = []
         if _item_type is not None:
             self.item_type = _item_type
@@ -62,8 +67,8 @@ class JSONSchemaList(JSONSchemaElement, MutableSequence, JSONSchemaGeneric, Gene
         else:
             self._element_data[i] = (self._new_child_item(x) for x in o)
 
-    def _new_child_item(self, item: Any):
-        return self.item_type._instance_for_item(
+    def _new_child_item(self, item: Any) -> JSONSchemaDOMElement:
+        return self.item_type(
             item,
             JSONSchemaDOMInfo(
                 document=document(self),
@@ -94,17 +99,6 @@ class JSONSchemaList(JSONSchemaElement, MutableSequence, JSONSchemaGeneric, Gene
     def insert(self, index: int, item: Any) -> None:
         self._element_data.insert(index, self._new_child_item(item))
 
-    @classmethod
-    def _schema(
-            cls,
-            item_type: Optional[Type[T_co]] = None
-    ) -> Dict[str, Any]:
-        return {
-            'array': {
-                'items': (item_type or cls.item_type)._schema()
-            }
-        }
-
     @property
     def _value(self) -> List[Any]:
         return [
@@ -112,18 +106,18 @@ class JSONSchemaList(JSONSchemaElement, MutableSequence, JSONSchemaGeneric, Gene
             for v in self
         ]
 
-    def _walk(self) -> Iterator[Tuple[JSONSchemaElement, Optional[str], JSONSchemaElement]]:
+    def _walk(self) -> Iterator[Tuple[JSONSchemaDOMElement, Optional[str], JSONSchemaDOMElement]]:
         for value in self:
-            if isinstance(value, JSONSchemaElement):
+            if isinstance(value, JSONSchemaDOMElement):
                 yield from value._walk()
             else:
                 yield self, None, value
 
-    def __copy__(self) -> JSONSchemaList:
+    def __copy__(self) -> JSONSchemaDOMList:
         cls = self.__class__
         return cls(list(self))
 
-    def __deepcopy__(self, memo: Dict[int, JSONSchemaElement]) -> JSONSchemaList:
+    def __deepcopy__(self, memo: Dict[int, JSONSchemaDOMElement]) -> JSONSchemaDOMList:
         cls = self.__class__
         result = cls(deepcopy(list(self), memo))
         memo[id(self)] = result

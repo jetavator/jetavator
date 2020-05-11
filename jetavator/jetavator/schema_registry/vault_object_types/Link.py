@@ -14,7 +14,7 @@ class Link(SatelliteOwner, register_as="link"):
 
     # TODO: Rename link_hubs to hubs
     _link_hubs: Dict[str, str] = jso.Property(
-        jso.Dict[jso.String], name='link_hubs')
+        jso.Dict(str), name='link_hubs')
 
     @property
     def hubs(self) -> Dict[str, VaultObject]:
