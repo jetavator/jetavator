@@ -1,11 +1,11 @@
-from jetavator import json_schema_objects as jso
+import jsdom
 
 
-class SatelliteColumn(jso.Object):
+class SatelliteColumn(jsdom.Object):
 
-    type: str = jso.Property(str)
-    nullable: bool = jso.Property(bool, default=True)
+    type: str = jsdom.Property(str)
+    nullable: bool = jsdom.Property(bool, default=True)
     # TODO: Update jso so Optional[str] is a valid type, and explicitly include non-optional
     #       properties in required_properties
-    hub_reference: str = jso.Property(str, default='')  # In future, default=None
-    index: bool = jso.Property(bool, default=False)
+    hub_reference: str = jsdom.Property(str, default='')  # In future, default=None
+    index: bool = jsdom.Property(bool, default=False)

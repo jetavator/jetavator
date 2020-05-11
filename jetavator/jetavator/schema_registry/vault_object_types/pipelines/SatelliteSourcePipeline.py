@@ -1,6 +1,6 @@
 from typing import Dict, List
 
-from jetavator import json_schema_objects as jso
+import jsdom
 
 from .. import Source
 
@@ -13,8 +13,8 @@ class SatelliteSourcePipeline(
     register_as="source"
 ):
 
-    type: str = jso.Property(jso.Const('source'))
-    _source: str = jso.Property(str, name="source")
+    type: str = jsdom.Property(jsdom.Const('source'))
+    _source: str = jsdom.Property(str, name="source")
 
     # TODO: Refactor this property to make it more readable (if it's still needed)
     @property
@@ -48,6 +48,6 @@ class SatelliteSourcePipeline(
         return [
             SatellitePipelineDependency(
                 {'name': self._source, 'type': 'source'},
-                _dom_info=jso.DOMInfo(document=jso.document(self), parent=self)
+                _dom_info=jsdom.DOMInfo(document=jsdom.document(self), parent=self)
             )
         ]

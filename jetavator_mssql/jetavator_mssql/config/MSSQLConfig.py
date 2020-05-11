@@ -1,12 +1,12 @@
-from jetavator import json_schema_objects as jso
+import jsdom
 from jetavator.config import DBServiceConfig
 
 
 class MSSQLConfig(DBServiceConfig, register_as='mssql'):
 
-    type: str = jso.Property(jso.Const('mssql'))
-    database: str = jso.Property(str)
-    server: str = jso.Property(str)
-    username: str = jso.Property(str)
-    password: str = jso.Property(str)
-    trusted_connection: bool = jso.Property(bool)
+    type: str = jsdom.Property(jsdom.Const('mssql'))
+    database: str = jsdom.Property(str)
+    server: str = jsdom.Property(str)
+    username: str = jsdom.Property(str)
+    password: str = jsdom.Property(str)
+    trusted_connection: bool = jsdom.Property(bool)

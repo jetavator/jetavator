@@ -1,11 +1,11 @@
 from jetavator.config import ServiceConfig
-from jetavator import json_schema_objects as jso
+import jsdom
 
 
 class AzureStorageConfig(ServiceConfig, register_as='azure_storage'):
 
-    type = jso.Property(jso.Const('azure_storage'))
-    name = jso.Property(str)
-    account_name = jso.Property(str)
-    account_key = jso.Property(str)
-    blob_container_name = jso.Property(str)
+    type = jsdom.Property(jsdom.Const('azure_storage'))
+    name = jsdom.Property(str)
+    account_name = jsdom.Property(str)
+    account_key = jsdom.Property(str)
+    blob_container_name = jsdom.Property(str)

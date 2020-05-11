@@ -3,7 +3,7 @@ from typing import Any, Dict
 
 from jsonschema.validators import validator_for
 
-from jetavator.json_schema_objects.dom import JSONSchemaDOMInfo
+from jsdom.dom import JSONSchemaDOMInfo
 
 
 class JSONSchema(ABC):

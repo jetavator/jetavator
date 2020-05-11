@@ -5,10 +5,9 @@ from typing import Dict
 from lazy_property import LazyProperty
 
 from sqlalchemy import Column
-
 from sqlalchemy.types import *
 
-from jetavator import json_schema_objects as jso
+import jsdom
 
 from ..VaultObject import (
     VaultObject, VaultObjectKey, HubKeyColumn
@@ -19,10 +18,10 @@ from .SatelliteOwner import SatelliteOwner
 from .pipelines import SatellitePipeline
 
 
-class VaultObjectReference(jso.Object):
+class VaultObjectReference(jsdom.Object):
 
-    type: str = jso.Property(str)
-    name: str = jso.Property(str)
+    type: str = jsdom.Property(str)
+    name: str = jsdom.Property(str)
 
     @LazyProperty
     def key(self) -> VaultObjectKey:
@@ -31,13 +30,13 @@ class VaultObjectReference(jso.Object):
 
 class Satellite(VaultObject, register_as="satellite"):
 
-    _parent: VaultObjectReference = jso.Property(
+    _parent: VaultObjectReference = jsdom.Property(
         VaultObjectReference, name="parent")
 
-    columns: Dict[str, SatelliteColumn] = jso.Property(
-        jso.Dict(SatelliteColumn))
-    pipeline: SatellitePipeline = jso.Property(SatellitePipeline)
-    exclude_from_star_schema: bool = jso.Property(bool, default=False)
+    columns: Dict[str, SatelliteColumn] = jsdom.Property(
+        jsdom.Dict(SatelliteColumn))
+    pipeline: SatellitePipeline = jsdom.Property(SatellitePipeline)
+    exclude_from_star_schema: bool = jsdom.Property(bool, default=False)
 
     @property
     def parent(self) -> SatelliteOwner:

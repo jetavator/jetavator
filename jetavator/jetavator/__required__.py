@@ -1,4 +1,5 @@
 REQUIRED = [
+    'jsdom>=0.1,<1',
     'pandas>=0.23,<1',
     'SQLAlchemy>=1.3,<1.4',
     'sqlalchemy-views>=0.2.3,<1',
@@ -13,6 +14,5 @@ REQUIRED = [
     'pyspark-asyncactions>=0.0.2,<3',
     'pyhive>=0.6.1,<2',
     'thrift>=0.13.0<1',
-    'jinja2>=2.10.3,<3',
-    'jsonschema>=3.2.0,<4'
+    'jinja2>=2.10.3,<3'
 ]

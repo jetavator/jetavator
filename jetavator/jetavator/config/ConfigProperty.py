@@ -1,15 +1,15 @@
 from typing import Type, Any
 
-from jetavator import json_schema_objects as jso
+import jsdom
 
 
-class ConfigProperty(jso.Property):
+class ConfigProperty(jsdom.Property):
 
     def __get__(
             self,
-            instance: jso.Element,
-            owner: Type[jso.Element]
+            instance: jsdom.Element,
+            owner: Type[jsdom.Element]
     ) -> Any:
-        return jso.document(instance).secret_lookup(
+        return jsdom.document(instance).secret_lookup(
             super().__get__(instance, owner)
         )

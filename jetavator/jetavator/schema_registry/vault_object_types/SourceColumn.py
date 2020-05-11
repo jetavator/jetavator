@@ -1,10 +1,10 @@
 from typing import Optional
 
-from jetavator import json_schema_objects as jso
+import jsdom
 
 
-class SourceColumn(jso.Object):
+class SourceColumn(jsdom.Object):
 
-    type: str = jso.Property(str)
-    nullable: bool = jso.Property(bool)
-    pk: Optional[bool] = jso.Property(bool, default=False)
+    type: str = jsdom.Property(str)
+    nullable: bool = jsdom.Property(bool)
+    pk: Optional[bool] = jsdom.Property(bool, default=False)

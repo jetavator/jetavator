@@ -1,5 +1,5 @@
-from jetavator import json_schema_objects as jso
+import jsdom
 
 
-class DatabricksLibraryConfig(jso.Dict):
+class DatabricksLibraryConfig(jsdom.Dict):
     pass

@@ -12,7 +12,7 @@ from lazy_property import LazyProperty
 
 from .sqlalchemy_tables import ObjectDefinition
 
-from jetavator import json_schema_objects as jso
+import jsdom
 
 from jetavator.services import DBService
 
@@ -20,10 +20,10 @@ VaultObjectKey = namedtuple('VaultObjectKey', ['type', 'name'])
 HubKeyColumn = namedtuple('HubKeyColumn', ['name', 'source'])
 
 
-class VaultObject(jso.Object, ABC):
+class VaultObject(jsdom.Object, ABC):
 
-    name: str = jso.Property(str)
-    type: str = jso.Property(str)
+    name: str = jsdom.Property(str)
+    type: str = jsdom.Property(str)
 
     optional_yaml_properties = []
 

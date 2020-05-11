@@ -1,8 +1,8 @@
-from jetavator import json_schema_objects as jso
+import jsdom
 
 
-class PerformanceHints(jso.Object):
+class PerformanceHints(jsdom.Object):
 
-    no_update_hubs: str = jso.Property(bool, default=False)
-    no_update_links: str = jso.Property(bool, default=False)
-    no_update_referenced_hubs: str = jso.Property(bool, default=False)
+    no_update_hubs: str = jsdom.Property(bool, default=False)
+    no_update_links: str = jsdom.Property(bool, default=False)
+    no_update_referenced_hubs: str = jsdom.Property(bool, default=False)

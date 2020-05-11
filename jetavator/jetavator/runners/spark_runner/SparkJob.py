@@ -13,7 +13,7 @@ from concurrent.futures import Future
 from lazy_property import LazyProperty
 from pyspark.sql import DataFrame, SparkSession
 
-from jetavator.mixins import RegistersSubclasses
+from jsdom.mixins import RegistersSubclasses
 from jetavator.schema_registry import VaultObject
 
 from .SparkJobState import SparkJobState

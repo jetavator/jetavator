@@ -1,17 +1,17 @@
 from typing import Optional
 
-from jetavator import json_schema_objects as jso
+import jsdom
 
 
 from ... import VaultObject, VaultObjectKey, Project
 
 
-class SatellitePipelineDependency(jso.Object):
+class SatellitePipelineDependency(jsdom.Object):
 
-    name: str = jso.Property(str)
-    type: str = jso.Property(str)
+    name: str = jsdom.Property(str)
+    type: str = jsdom.Property(str)
     # TODO: Allow to be None
-    view: Optional[str] = jso.Property(str, default="")
+    view: Optional[str] = jsdom.Property(str, default="")
 
     @property
     def object_reference_key(self) -> VaultObjectKey:
@@ -19,7 +19,7 @@ class SatellitePipelineDependency(jso.Object):
 
     @property
     def project(self) -> Project:
-        return jso.document(self).project
+        return jsdom.document(self).project
 
     @property
     def object_reference(self) -> VaultObject:

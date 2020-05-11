@@ -1,6 +1,6 @@
 import re
 
-from jetavator.mixins import RegistersSubclasses
+from jsdom.mixins import RegistersSubclasses
 
 
 class SecretLookup(RegistersSubclasses):

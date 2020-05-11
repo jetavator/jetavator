@@ -2,7 +2,7 @@ from typing import Optional, Dict, List
 
 import jinja2
 
-from jetavator import json_schema_objects as jso
+import jsdom
 
 from .SatellitePipeline import SatellitePipeline
 from .SatellitePipelineDependency import SatellitePipelineDependency
@@ -13,14 +13,14 @@ class SatelliteSQLPipeline(
     register_as="sql"
 ):
 
-    type: str = jso.Property(jso.Const('sql'))
-    _sql: str = jso.Property(str, name="sql")
+    type: str = jsdom.Property(jsdom.Const('sql'))
+    _sql: str = jsdom.Property(str, name="sql")
     # TODO: Allow to be None
-    load_dt: Optional[str] = jso.Property(str, default="")
+    load_dt: Optional[str] = jsdom.Property(str, default="")
     # TODO: Allow to be None
-    deleted_ind: Optional[str] = jso.Property(str, default="")
-    dependencies: List[SatellitePipelineDependency] = jso.Property(
-        jso.List(SatellitePipelineDependency), default=[])
+    deleted_ind: Optional[str] = jsdom.Property(str, default="")
+    dependencies: List[SatellitePipelineDependency] = jsdom.Property(
+        jsdom.List(SatellitePipelineDependency), default=[])
 
     @property
     def sql(self) -> str:

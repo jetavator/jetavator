@@ -2,7 +2,7 @@ from typing import Dict
 
 from sqlalchemy import literal_column
 
-from jetavator import json_schema_objects as jso
+import jsdom
 
 from .SatelliteOwner import SatelliteOwner
 from ..VaultObject import VaultObject, HubKeyColumn
@@ -13,8 +13,8 @@ class Link(SatelliteOwner, register_as="link"):
     star_prefix = "fact"
 
     # TODO: Rename link_hubs to hubs
-    _link_hubs: Dict[str, str] = jso.Property(
-        jso.Dict(str), name='link_hubs')
+    _link_hubs: Dict[str, str] = jsdom.Property(
+        jsdom.Dict(str), name='link_hubs')
 
     @property
     def hubs(self) -> Dict[str, VaultObject]:

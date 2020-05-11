@@ -9,7 +9,7 @@ import json
 
 from copy import deepcopy
 
-from jetavator.mixins import RegistersSubclasses
+from jsdom.mixins import RegistersSubclasses
 
 from ..exceptions import JSONSchemaValidationError
 from ..JSONSchema import JSONSchema

@@ -3,9 +3,7 @@ from behave import *
 import os
 import importlib.util
 
-from jetavator.json_schema_objects.dom.functions import (
-    document, parent, key
-)
+from jsdom import document, parent, key
 
 
 @given("the Python module {module}.py")
@@ -14,7 +12,7 @@ def step_impl(context, module):
         module,
         os.path.join(
             context.config.paths[0],
-            f"jsondom_examples/modules/{module}.py"
+            f"jsdom_examples/modules/{module}.py"
         )
     )
     context.module = importlib.util.module_from_spec(spec)

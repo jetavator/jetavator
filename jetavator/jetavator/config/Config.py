@@ -3,12 +3,10 @@ from typing import Dict
 import os
 import random
 import uuid
-
 import yaml
+import jsdom
 
 from lazy_property import LazyProperty
-
-from .. import json_schema_objects as jso
 
 from .secret_lookup import SecretLookup
 from .ConfigProperty import ConfigProperty
@@ -22,19 +20,19 @@ PROPERTIES_TO_PRINT = [
 ]
 
 
-class ServiceConfig(jso.Object):
+class ServiceConfig(jsdom.Object):
 
     type: str = ConfigProperty(str)
 
     def name(self) -> str:
-        return jso.key(self)
+        return jsdom.key(self)
 
 
 class DBServiceConfig(ServiceConfig):
 
     def _get_default_schema(self):
-        if not jso.document(self) is self:
-            return jso.document(self).schema
+        if not jsdom.document(self) is self:
+            return jsdom.document(self).schema
 
     type: str = ConfigProperty(str)
     # TODO: Update jso behaviour so default and default_function
@@ -44,10 +42,10 @@ class DBServiceConfig(ServiceConfig):
 
 class LocalSparkConfig(DBServiceConfig, register_as='local_spark'):
 
-    type: str = ConfigProperty(jso.Const('local_spark'))
+    type: str = ConfigProperty(jsdom.Const('local_spark'))
 
 
-class StorageConfig(jso.Object):
+class StorageConfig(jsdom.Object):
 
     source: str = ConfigProperty(str)
     vault: str = ConfigProperty(str)
@@ -55,13 +53,13 @@ class StorageConfig(jso.Object):
     logs: str = ConfigProperty(str)
 
 
-class SessionConfig(jso.Object):
+class SessionConfig(jsdom.Object):
     run_uuid = ConfigProperty(str, default_function=lambda self: str(uuid.uuid4()))
 
 
 # TODO: add validation (or defaults) for required properties e.g. secret_lookup, services
 
-class Config(jso.Object):
+class Config(jsdom.Object):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -83,7 +81,7 @@ class Config(jso.Object):
     environment_type: str = ConfigProperty(str, default="local_spark")
     session: SessionConfig = ConfigProperty(SessionConfig, default={})
     services: Dict[str, ServiceConfig] = ConfigProperty(
-        jso.Dict(ServiceConfig), default={})
+        jsdom.Dict(ServiceConfig), default={})
     storage: StorageConfig = ConfigProperty(StorageConfig)
     compute: str = ConfigProperty(str)
 
@@ -93,7 +91,7 @@ class Config(jso.Object):
             self._secret_lookup_name
         )
 
-    _secret_lookup_name: str = jso.Property(str, name="secret_lookup")
+    _secret_lookup_name: str = jsdom.Property(str, name="secret_lookup")
 
     def reset_session(self):
         self.session.clear()

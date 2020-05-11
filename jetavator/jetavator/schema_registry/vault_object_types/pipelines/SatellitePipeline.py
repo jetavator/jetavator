@@ -2,9 +2,9 @@ from typing import Dict, List
 
 from abc import ABC, abstractmethod
 
-from jetavator import json_schema_objects as jso
+import jsdom
 
-from jetavator.mixins import RegistersSubclasses
+from jsdom.mixins import RegistersSubclasses
 
 from .PerformanceHints import PerformanceHints
 from .SatellitePipelineDependency import SatellitePipelineDependency
@@ -12,17 +12,17 @@ from .SatellitePipelineDependency import SatellitePipelineDependency
 from ... import VaultObject, Project
 
 
-class SatellitePipeline(jso.Object, RegistersSubclasses, ABC):
+class SatellitePipeline(jsdom.Object, RegistersSubclasses, ABC):
 
-    type: str = jso.Property(str)
-    performance_hints: PerformanceHints = jso.Property(
+    type: str = jsdom.Property(str)
+    performance_hints: PerformanceHints = jsdom.Property(
         PerformanceHints, default={})
-    _key_columns: Dict[str, str] = jso.Property(
-        jso.Dict(str), name="key_columns", default={})
+    _key_columns: Dict[str, str] = jsdom.Property(
+        jsdom.Dict(str), name="key_columns", default={})
 
     @property
     def satellite(self) -> VaultObject:
-        parent = jso.parent(self)
+        parent = jsdom.parent(self)
         if isinstance(parent, VaultObject):
             return parent
         else:
