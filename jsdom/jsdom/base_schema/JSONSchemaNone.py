@@ -1,6 +1,5 @@
-from typing import Any
+from typing import Any, Tuple
 
-from ..dom import JSONSchemaDOMInfo
 from .JSONSchemaType import JSONSchemaType
 
 
@@ -11,7 +10,7 @@ class JSONSchemaNone(JSONSchemaType):
     def __call__(
             self,
             value: None,
-            dom_info: JSONSchemaDOMInfo = None
+            dom_info: Tuple = None
     ) -> Any:
         if value is not None:
             raise ValueError('Value can only be None.')

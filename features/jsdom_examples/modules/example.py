@@ -29,7 +29,7 @@ class StorageExample(jsdom.Object):
     logs: str = jsdom.Property(str)
 
 
-class Example(jsdom.Object):
+class Example(jsdom.Object, jsdom.ReadsJSON):
 
     prefix: str = jsdom.Property(str, default="jetavator")
     drop_schema_if_exists: bool = jsdom.Property(bool, default=False)

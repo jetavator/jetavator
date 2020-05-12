@@ -20,7 +20,7 @@ class FileConfig(Config):
         else:
             new_object = cls({})
         if other_config:
-            new_object.update(other_config._value)
+            new_object.update(other_config.to_builtin())
         return new_object
 
     @classmethod
@@ -37,7 +37,8 @@ class FileConfig(Config):
             os.makedirs(cls.config_dir())
 
     def save(self):
-        config_dict = yaml.safe_load(self._to_json())
+        #  TODO: Find better way of doing this!
+        config_dict = yaml.safe_load(self.to_json())
         # Don't save session specific config info
         if 'session' in config_dict:
             del config_dict['session']
@@ -53,6 +54,6 @@ class FileConfig(Config):
     # TODO: Rename to reflect actual role
     @classmethod
     def command_line_options_to_keyring(cls, options, delete_previous=True):
-        keyring_config = cls(CommandLineConfig(options)._value)
+        keyring_config = cls(CommandLineConfig(options).to_builtin())
         keyring_config.save()
         return keyring_config

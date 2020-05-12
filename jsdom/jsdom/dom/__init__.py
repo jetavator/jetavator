@@ -1,5 +1,5 @@
-from .JSONSchemaDOMInfo import JSONSchemaDOMInfo
-from .JSONSchemaDOMElement import JSONSchemaDOMElement
+from .JSONSchemaDOMProperties import JSONSchemaDOMProperties
+from .JSONSchemaDOMElement import JSONSchemaDOMElement, JSONSchemaDOMInfo
 from .JSONSchemaDOMObject import JSONSchemaDOMObject
 from .JSONSchemaDOMDict import JSONSchemaDOMDict
 from .JSONSchemaDOMList import JSONSchemaDOMList

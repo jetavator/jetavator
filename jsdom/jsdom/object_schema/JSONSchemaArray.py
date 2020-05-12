@@ -1,9 +1,9 @@
 from typing import Any, Union, Type, Dict, Iterable
 
 from ..dom import JSONSchemaDOMInfo, JSONSchemaDOMList
-from ..JSONSchema import JSONSchema
+from ..base_schema import JSONSchema
 
-from .get_schema_from_type import get_schema_from_type
+from .resolve_arg_to_type import resolve_arg_to_schema
 
 
 class JSONSchemaArray(JSONSchema):
@@ -14,7 +14,7 @@ class JSONSchemaArray(JSONSchema):
             self,
             items: Union[Type, JSONSchema]
     ) -> None:
-        self.items = get_schema_from_type(items)
+        self.items = resolve_arg_to_schema(items)
 
     def __call__(
             self,
@@ -24,7 +24,6 @@ class JSONSchemaArray(JSONSchema):
         return JSONSchemaDOMList(
             value,
             dom_info,
-            _schema=self,
             _item_type=self.items
         )
 

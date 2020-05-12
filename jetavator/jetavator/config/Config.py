@@ -59,11 +59,7 @@ class SessionConfig(jsdom.Object):
 
 # TODO: add validation (or defaults) for required properties e.g. secret_lookup, services
 
-class Config(jsdom.Object):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._validate()
+class Config(jsdom.Object, jsdom.ReadsJSON):
 
     # TODO: Move this to testing framework - this isn't a feature
     #       required outside of self-testing
@@ -97,7 +93,8 @@ class Config(jsdom.Object):
         self.session.clear()
 
     def __str__(self):
+        # TODO: Find better way of doing this!
         return yaml.dump(
-            yaml.safe_load(self._to_json()),
+            yaml.safe_load(self.to_json()),
             default_flow_style=False
         )

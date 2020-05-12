@@ -1,7 +1,6 @@
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
-from ..dom import JSONSchemaDOMInfo
-from ..JSONSchema import JSONSchema
+from .JSONSchema import JSONSchema
 
 
 class JSONSchemaConst(JSONSchema):
@@ -17,7 +16,7 @@ class JSONSchemaConst(JSONSchema):
     def __call__(
             self,
             value: str,
-            dom_info: JSONSchemaDOMInfo = None
+            dom_info: Tuple = None
     ) -> Any:
         if value != self.value:
             raise ValueError(f"Value can only be '{self.value}'.")

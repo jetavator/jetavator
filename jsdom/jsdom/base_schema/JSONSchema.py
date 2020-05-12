@@ -1,9 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 from jsonschema.validators import validator_for
-
-from jsdom.dom import JSONSchemaDOMInfo
 
 
 class JSONSchema(ABC):
@@ -12,7 +10,7 @@ class JSONSchema(ABC):
     def __call__(
             self,
             value: Any,
-            dom_info: JSONSchemaDOMInfo = None
+            dom_info: Tuple = None
     ) -> Any:
         return value
 

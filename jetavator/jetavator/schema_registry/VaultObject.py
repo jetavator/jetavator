@@ -35,7 +35,6 @@ class VaultObject(jsdom.Object, ABC):
         self.project = project
         self._sqlalchemy_object = sqlalchemy_object
         super().__init__(self.definition)
-        self._validate()
 
     def __repr__(self) -> str:
         class_name = type(self).__name__

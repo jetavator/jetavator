@@ -477,14 +477,15 @@ class DatabricksRunner(Runner, register_as='remote_databricks'):
         secret_lookup = SecretLookup.registered_subclass_instance(
             self.engine.config.secret_lookup
         )
-        for config_object, key, value in self.engine.config._walk():
-            secret = secret_lookup.get_secret_name(value)
-            if secret:
-                self.secrets_api.put_secret(
-                    scope_name,
-                    secret,
-                    secret_lookup(value)
-                )
+        for element, _, _, _ in self.engine.config.walk_elements():
+            if isinstance(element, str):
+                secret = secret_lookup.get_secret_name(element)
+                if secret:
+                    self.secrets_api.put_secret(
+                        scope_name,
+                        secret,
+                        secret_lookup(element)
+                    )
 
     def load_wheel(self):
         self.logger.info(

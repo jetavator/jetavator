@@ -1,21 +1,20 @@
 from typing import Optional
 
-from ..JSONSchemaElement import JSONSchemaElement
+from .JSONSchemaDOMElement import JSONSchemaDOMElement
+from . import JSONSchemaDOMInfo
 
-from .JSONSchemaDOMInfo import JSONSchemaDOMInfo
 
-
-def dom(element: JSONSchemaElement) -> JSONSchemaDOMInfo:
+def dom(element: JSONSchemaDOMElement) -> JSONSchemaDOMInfo:
     return element.__json_dom_info__
 
 
-def document(element: JSONSchemaElement) -> Optional[JSONSchemaElement]:
+def document(element: JSONSchemaDOMElement) -> Optional[JSONSchemaDOMElement]:
     return dom(element).document
 
 
-def parent(element: JSONSchemaElement) -> Optional[JSONSchemaElement]:
+def parent(element: JSONSchemaDOMElement) -> Optional[JSONSchemaDOMElement]:
     return dom(element).parent
 
 
-def key(element: JSONSchemaElement) -> Optional[str]:
+def key(element: JSONSchemaDOMElement) -> Optional[str]:
     return dom(element).element_key

@@ -1,8 +1,8 @@
 from typing import Optional, Dict, Type, Any, Union
 
 from ..dom import JSONSchemaDOMInfo
-from .JSONSchemaType import JSONSchemaType
-from ..JSONSchema import JSONSchema
+from ..base_schema import JSONSchemaType
+from ..base_schema import JSONSchema
 
 
 class JSONSchemaObject(JSONSchemaType):
@@ -26,7 +26,12 @@ class JSONSchemaObject(JSONSchemaType):
             value: Any,
             dom_info: JSONSchemaDOMInfo = None
     ) -> Any:
-        return self.object_type(value, dom_info, _schema=self)
+        return self.object_type(value, dom_info)
+
+    # TODO: If a property type in a class refers to that class or
+    #       its parent class, it will create an infinite recursive
+    #       loop when building the schema. Avoid this by using:
+    #       https://json-schema.org/understanding-json-schema/structuring.html#recursion
 
     @property
     def schema(self) -> Dict[str, Any]:

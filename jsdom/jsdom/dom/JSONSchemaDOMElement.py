@@ -1,32 +1,52 @@
-from typing import Any
+from __future__ import annotations
+
+from typing import Any, Iterator, NamedTuple, Optional
 
 from abc import ABC, abstractmethod
 
-from ..JSONSchemaElement import JSONSchemaElement
-from ..JSONSchema import JSONSchema
-
-from .JSONSchemaDOMInfo import JSONSchemaDOMInfo
+from ..base_schema import JSONSchema, JSONSchemaAnything
 
 
-class JSONSchemaDOMElement(JSONSchemaElement, ABC):
+class JSONSchemaDOMInfo(NamedTuple):
+
+    element: Optional[JSONSchemaDOMElement] = None
+    document: Optional[JSONSchemaDOMElement] = None
+    parent: Optional[JSONSchemaDOMElement] = None
+    element_key: Optional[str] = None
+
+
+class JSONSchemaDOMElement(ABC):
 
     __json_dom_info__: JSONSchemaDOMInfo = None
-    __json_schema__: JSONSchema = None
 
     @abstractmethod
     def __init__(
             self,
             value: Any = None,
-            _dom_info: JSONSchemaDOMInfo = None,
-            _schema: JSONSchema = None,
+            json_dom_info: JSONSchemaDOMInfo = None,
             **kwargs: Any
     ) -> None:
-        # TODO: refactor so this doesn't require creating a new
-        #       JSONSchemaDOMInfo object
-        if _dom_info:
+        if json_dom_info:
             self.__json_dom_info__ = JSONSchemaDOMInfo(
-                self, _dom_info.document, _dom_info.parent, _dom_info.element_key
+                element=self,
+                document=(
+                    self if json_dom_info.document is None
+                    else json_dom_info.document
+                ),
+                parent=json_dom_info.parent,
+                element_key=json_dom_info.element_key
             )
         else:
-            self.__json_dom_info__ = JSONSchemaDOMInfo(self)
-        self.__json_schema__ = _schema
+            self.__json_dom_info__ = JSONSchemaDOMInfo(
+                element=self, document=self)
+
+    @classmethod
+    def __json_schema__(cls) -> JSONSchema:
+        return JSONSchemaAnything()
+
+    @abstractmethod
+    def to_builtin(self) -> Any:
+        pass
+
+    def walk_elements(self) -> Iterator[JSONSchemaDOMInfo]:
+        yield self.__json_dom_info__

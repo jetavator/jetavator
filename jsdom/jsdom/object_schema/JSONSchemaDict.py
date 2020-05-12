@@ -3,8 +3,8 @@ from typing import Any, Type, Union
 from ..dom import JSONSchemaDOMInfo, JSONSchemaDOMDict
 
 from .JSONSchemaObject import JSONSchemaObject
-from ..JSONSchema import JSONSchema
-from .get_schema_from_type import get_schema_from_type
+from ..base_schema import JSONSchema
+from .resolve_arg_to_type import resolve_arg_to_schema
 
 
 class JSONSchemaDict(JSONSchemaObject):
@@ -14,7 +14,7 @@ class JSONSchemaDict(JSONSchemaObject):
             items: Union[Type, JSONSchema]
     ) -> None:
         super().__init__(
-            additional_properties=get_schema_from_type(items)
+            additional_properties=resolve_arg_to_schema(items)
         )
 
     def __call__(
@@ -25,6 +25,5 @@ class JSONSchemaDict(JSONSchemaObject):
         return JSONSchemaDOMDict(
             value,
             dom_info,
-            _schema=self,
             _item_type=self.additional_properties
         )

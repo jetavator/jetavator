@@ -1,11 +1,9 @@
-from typing import Dict, Type, Optional, Any
+from typing import Dict, Type, Optional, Any, Tuple
 
-from ..dom import JSONSchemaDOMInfo
 from .JSONSchemaType import JSONSchemaType
 
 
 class JSONSchemaPrimitive(JSONSchemaType):
-
     JSON_TYPES: Dict[Type, str] = {
         str: 'string',
         bool: 'boolean',
@@ -24,7 +22,7 @@ class JSONSchemaPrimitive(JSONSchemaType):
     def __call__(
             self,
             value: Any,
-            dom_info: JSONSchemaDOMInfo = None
+            dom_info: Tuple = None
     ) -> Any:
         return self.python_type(value)
 

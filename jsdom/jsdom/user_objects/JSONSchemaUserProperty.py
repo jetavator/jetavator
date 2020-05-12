@@ -1,11 +1,38 @@
 from typing import Type, Any, Union, Optional, Callable
 
-from ..JSONSchema import JSONSchema
-from ..schema import get_schema_from_type
-from ..dom import JSONSchemaDOMElement
+from ..base_schema import JSONSchema
+from ..object_schema import resolve_arg_to_schema
+from ..dom import JSONSchemaDOMObject
 
 
 class JSONSchemaUserProperty(object):
+    """
+    A data descriptor for creating attributes in user-defined subclasses
+    of `JSONSchemaUserObject` which are mapped to keys in the underlying
+    data object and to the `properties` key in the object's JSON schema.
+
+    :param property_type:    The data type or schema for this property. Must
+                             be one of:
+                             A primitive Python type (str, int, bool, float)
+                             A subclass of `JSONSchemaUserObject`
+                             An instance of `JSONSchema`
+
+    :param name:             The name of this property in the underlying
+                             data object. If not provided, this defaults to
+                             the name of the attribute on the `JSONSchemaUserObject`
+                             instance that owns the property.
+
+    :param default:          A static value which provides a default value
+                             for this property. Cannot be set in conjunction
+                             with `default_function`.
+
+    :param default_function: A function which provides a default value
+                             for this property. The function must have a
+                             single positional argument, `self`, which is
+                             passed the `JSONSchemaUserObject` instance that
+                             owns the property. Cannot be set in conjunction
+                             with `default`.
+    """
 
     def __init__(
             self,
@@ -16,15 +43,15 @@ class JSONSchemaUserProperty(object):
     ) -> None:
         if default and default_function:
             raise ValueError("Cannot use both default and default_function.")
-        self.schema_type = get_schema_from_type(property_type)
+        self.schema_type = resolve_arg_to_schema(property_type)
         self.name = name
         self.default = default
         self.default_function = default_function
 
     def __get__(
             self,
-            instance: JSONSchemaDOMElement,
-            owner: Type[JSONSchemaDOMElement]
+            instance: JSONSchemaDOMObject,
+            owner: Type[JSONSchemaDOMObject]
     ) -> Any:
         if instance is None:
             raise AttributeError(
@@ -38,7 +65,7 @@ class JSONSchemaUserProperty(object):
 
     def __set__(
             self,
-            instance: JSONSchemaDOMElement,
+            instance: JSONSchemaDOMObject,
             value: Any
     ) -> None:
         instance[self.name] = value

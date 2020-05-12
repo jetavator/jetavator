@@ -2,11 +2,10 @@ from typing import Any, Dict, Tuple, Iterable
 
 from ..dom import JSONSchemaDOMInfo
 from ..exceptions import JSONSchemaValidationError
-from ..JSONSchema import JSONSchema
+from ..base_schema import JSONSchema
 
 
 class JSONSchemaAnyOf(JSONSchema):
-
     allowed_schemas: Tuple[JSONSchema] = None
 
     def __init__(

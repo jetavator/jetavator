@@ -49,7 +49,7 @@ Feature: Test JSON DOM objects
       """
       {"foo": "bar"}
       """
-    Then the following statement raises ValidationError
+    Then the following statement raises JSONSchemaValidationError
       """
       context.module.Example.from_json(context.example_json)
       """
