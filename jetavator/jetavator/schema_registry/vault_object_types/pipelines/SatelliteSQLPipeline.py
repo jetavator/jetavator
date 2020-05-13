@@ -2,7 +2,7 @@ from typing import Optional, Dict, List
 
 import jinja2
 
-import jsdom
+import wysdom
 
 from .SatellitePipeline import SatellitePipeline
 from .SatellitePipelineDependency import SatellitePipelineDependency
@@ -13,14 +13,14 @@ class SatelliteSQLPipeline(
     register_as="sql"
 ):
 
-    type: str = jsdom.Property(jsdom.Const('sql'))
-    _sql: str = jsdom.Property(str, name="sql")
+    type: str = wysdom.UserProperty(wysdom.SchemaConst('sql'))
+    _sql: str = wysdom.UserProperty(str, name="sql")
     # TODO: Allow to be None
-    load_dt: Optional[str] = jsdom.Property(str, default="")
+    load_dt: Optional[str] = wysdom.UserProperty(str, default="")
     # TODO: Allow to be None
-    deleted_ind: Optional[str] = jsdom.Property(str, default="")
-    dependencies: List[SatellitePipelineDependency] = jsdom.Property(
-        jsdom.List(SatellitePipelineDependency), default=[])
+    deleted_ind: Optional[str] = wysdom.UserProperty(str, default="")
+    dependencies: List[SatellitePipelineDependency] = wysdom.UserProperty(
+        wysdom.SchemaArray(SatellitePipelineDependency), default=[])
 
     @property
     def sql(self) -> str:

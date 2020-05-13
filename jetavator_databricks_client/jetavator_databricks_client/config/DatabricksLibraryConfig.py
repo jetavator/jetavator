@@ -1,5 +1,5 @@
-import jsdom
+import wysdom
 
 
-class DatabricksLibraryConfig(jsdom.Dict):
+class DatabricksLibraryConfig(wysdom.SchemaDict):
     pass

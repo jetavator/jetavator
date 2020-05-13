@@ -1,8 +1,8 @@
-import jsdom
+import wysdom
 
 
-class PerformanceHints(jsdom.Object):
+class PerformanceHints(wysdom.UserObject):
 
-    no_update_hubs: str = jsdom.Property(bool, default=False)
-    no_update_links: str = jsdom.Property(bool, default=False)
-    no_update_referenced_hubs: str = jsdom.Property(bool, default=False)
+    no_update_hubs: str = wysdom.UserProperty(bool, default=False)
+    no_update_links: str = wysdom.UserProperty(bool, default=False)
+    no_update_referenced_hubs: str = wysdom.UserProperty(bool, default=False)

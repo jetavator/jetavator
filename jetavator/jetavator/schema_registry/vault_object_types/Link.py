@@ -2,7 +2,7 @@ from typing import Dict
 
 from sqlalchemy import literal_column
 
-import jsdom
+import wysdom
 
 from .SatelliteOwner import SatelliteOwner
 from ..VaultObject import VaultObject, HubKeyColumn
@@ -13,8 +13,8 @@ class Link(SatelliteOwner, register_as="link"):
     star_prefix = "fact"
 
     # TODO: Rename link_hubs to hubs
-    _link_hubs: Dict[str, str] = jsdom.Property(
-        jsdom.Dict(str), name='link_hubs')
+    _link_hubs: Dict[str, str] = wysdom.UserProperty(
+        wysdom.SchemaDict(str), name='link_hubs')
 
     @property
     def hubs(self) -> Dict[str, VaultObject]:

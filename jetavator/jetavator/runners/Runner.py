@@ -7,7 +7,7 @@ from pandas import DataFrame
 
 from jetavator import Engine
 from jetavator.schema_registry import Project
-from jsdom.mixins import RegistersSubclasses
+from wysdom.mixins import RegistersSubclasses
 from jetavator.services import DBService
 
 

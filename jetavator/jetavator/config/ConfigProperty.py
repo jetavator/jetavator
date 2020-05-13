@@ -1,15 +1,15 @@
 from typing import Type, Any
 
-import jsdom
+import wysdom
 
 
-class ConfigProperty(jsdom.Property):
+class ConfigProperty(wysdom.UserProperty):
 
     def __get__(
             self,
-            instance: jsdom.Element,
-            owner: Type[jsdom.Element]
+            instance: wysdom.Element,
+            owner: Type[wysdom.Element]
     ) -> Any:
-        return jsdom.document(instance).secret_lookup(
+        return wysdom.document(instance).secret_lookup(
             super().__get__(instance, owner)
         )

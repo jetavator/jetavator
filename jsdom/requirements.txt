@@ -1,5 +1,0 @@
--e .
-
-wheel
-sphinx
-behave

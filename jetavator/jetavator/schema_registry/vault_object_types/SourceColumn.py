@@ -1,10 +1,10 @@
 from typing import Optional
 
-import jsdom
+import wysdom
 
 
-class SourceColumn(jsdom.Object):
+class SourceColumn(wysdom.UserObject):
 
-    type: str = jsdom.Property(str)
-    nullable: bool = jsdom.Property(bool)
-    pk: Optional[bool] = jsdom.Property(bool, default=False)
+    type: str = wysdom.UserProperty(str)
+    nullable: bool = wysdom.UserProperty(bool)
+    pk: Optional[bool] = wysdom.UserProperty(bool, default=False)

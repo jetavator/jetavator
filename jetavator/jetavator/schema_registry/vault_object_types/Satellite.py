@@ -7,7 +7,7 @@ from lazy_property import LazyProperty
 from sqlalchemy import Column
 from sqlalchemy.types import *
 
-import jsdom
+import wysdom
 
 from ..VaultObject import (
     VaultObject, VaultObjectKey, HubKeyColumn
@@ -18,10 +18,10 @@ from .SatelliteOwner import SatelliteOwner
 from .pipelines import SatellitePipeline
 
 
-class VaultObjectReference(jsdom.Object):
+class VaultObjectReference(wysdom.UserObject):
 
-    type: str = jsdom.Property(str)
-    name: str = jsdom.Property(str)
+    type: str = wysdom.UserProperty(str)
+    name: str = wysdom.UserProperty(str)
 
     @LazyProperty
     def key(self) -> VaultObjectKey:
@@ -30,13 +30,13 @@ class VaultObjectReference(jsdom.Object):
 
 class Satellite(VaultObject, register_as="satellite"):
 
-    _parent: VaultObjectReference = jsdom.Property(
+    _parent: VaultObjectReference = wysdom.UserProperty(
         VaultObjectReference, name="parent")
 
-    columns: Dict[str, SatelliteColumn] = jsdom.Property(
-        jsdom.Dict(SatelliteColumn))
-    pipeline: SatellitePipeline = jsdom.Property(SatellitePipeline)
-    exclude_from_star_schema: bool = jsdom.Property(bool, default=False)
+    columns: Dict[str, SatelliteColumn] = wysdom.UserProperty(
+        wysdom.SchemaDict(SatelliteColumn))
+    pipeline: SatellitePipeline = wysdom.UserProperty(SatellitePipeline)
+    exclude_from_star_schema: bool = wysdom.UserProperty(bool, default=False)
 
     @property
     def parent(self) -> SatelliteOwner:

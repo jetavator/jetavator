@@ -5,15 +5,15 @@ from abc import ABC, abstractmethod
 from sqlalchemy import Column
 from sqlalchemy.types import *
 
-import jsdom
+import wysdom
 
 from .SatelliteColumn import SatelliteColumn
 from ..VaultObject import VaultObject, HubKeyColumn
 
 
 class SatelliteOwner(VaultObject, ABC, register_as="satellite_owner"):
-    options: List[str] = jsdom.Property(jsdom.List(str), default=[])
-    exclude_from_star_schema: bool = jsdom.Property(bool, default=False)
+    options: List[str] = wysdom.UserProperty(wysdom.SchemaArray(str), default=[])
+    exclude_from_star_schema: bool = wysdom.UserProperty(bool, default=False)
 
     @property
     def satellites(self) -> Dict[str, VaultObject]:

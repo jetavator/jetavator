@@ -1,17 +1,17 @@
 from typing import Optional
 
-import jsdom
+import wysdom
 
 
 from ... import VaultObject, VaultObjectKey, Project
 
 
-class SatellitePipelineDependency(jsdom.Object):
+class SatellitePipelineDependency(wysdom.UserObject):
 
-    name: str = jsdom.Property(str)
-    type: str = jsdom.Property(str)
+    name: str = wysdom.UserProperty(str)
+    type: str = wysdom.UserProperty(str)
     # TODO: Allow to be None
-    view: Optional[str] = jsdom.Property(str, default="")
+    view: Optional[str] = wysdom.UserProperty(str, default="")
 
     @property
     def object_reference_key(self) -> VaultObjectKey:
@@ -19,7 +19,7 @@ class SatellitePipelineDependency(jsdom.Object):
 
     @property
     def project(self) -> Project:
-        return jsdom.document(self).project
+        return wysdom.document(self).project
 
     @property
     def object_reference(self) -> VaultObject:

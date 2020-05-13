@@ -2,7 +2,7 @@ from typing import Optional, Dict
 
 from sqlalchemy import func
 
-import jsdom
+import wysdom
 
 from .SatelliteOwner import SatelliteOwner
 from .Satellite import Satellite
@@ -13,11 +13,11 @@ from ..VaultObject import VaultObject, HubKeyColumn
 class Hub(SatelliteOwner, register_as="hub"):
     star_prefix = "dim"
 
-    key_length: int = jsdom.Property(int)
+    key_length: int = wysdom.UserProperty(int)
     # TODO: Allow key_type to be None
-    key_type: Optional[str] = jsdom.Property(str, default="")
-    static_columns: Dict[str, SatelliteColumn] = jsdom.Property(
-        jsdom.Dict(SatelliteColumn), default={})
+    key_type: Optional[str] = wysdom.UserProperty(str, default="")
+    static_columns: Dict[str, SatelliteColumn] = wysdom.UserProperty(
+        wysdom.SchemaDict(SatelliteColumn), default={})
 
     @property
     def satellites_containing_keys(self) -> Dict[str, VaultObject]:

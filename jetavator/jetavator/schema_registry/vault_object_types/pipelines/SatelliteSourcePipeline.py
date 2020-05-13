@@ -1,6 +1,6 @@
 from typing import Dict, List
 
-import jsdom
+import wysdom
 
 from .. import Source
 
@@ -13,8 +13,8 @@ class SatelliteSourcePipeline(
     register_as="source"
 ):
 
-    type: str = jsdom.Property(jsdom.Const('source'))
-    _source: str = jsdom.Property(str, name="source")
+    type: str = wysdom.UserProperty(wysdom.SchemaConst('source'))
+    _source: str = wysdom.UserProperty(str, name="source")
 
     # TODO: Refactor this property to make it more readable (if it's still needed)
     @property
@@ -48,7 +48,7 @@ class SatelliteSourcePipeline(
         return [
             SatellitePipelineDependency(
                 {'name': self._source, 'type': 'source'},
-                json_dom_info=jsdom.DOMInfo(
-                    document=jsdom.document(self), parent=self)
+                json_dom_info=wysdom.DOMInfo(
+                    document=wysdom.document(self), parent=self)
             )
         ]

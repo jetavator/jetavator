@@ -1,18 +1,18 @@
 from typing import List
 
 from jetavator.config import DBServiceConfig
-import jsdom
+import wysdom
 
 from .DatabricksLibraryConfig import DatabricksLibraryConfig
 
 
 class DatabricksConfig(DBServiceConfig, register_as='remote_databricks'):
 
-    type: str = jsdom.Property(jsdom.Const('remote_databricks'))
-    name: str = jsdom.Property(str)
-    schema: str = jsdom.Property(str)
-    host: str = jsdom.Property(str)
-    cluster_id: str = jsdom.Property(str)
-    org_id: str = jsdom.Property(str)
-    token: str = jsdom.Property(str)
-    libraries: List[DatabricksLibraryConfig] = jsdom.Property(jsdom.List(DatabricksLibraryConfig))
+    type: str = wysdom.UserProperty(wysdom.SchemaConst('remote_databricks'))
+    name: str = wysdom.UserProperty(str)
+    schema: str = wysdom.UserProperty(str)
+    host: str = wysdom.UserProperty(str)
+    cluster_id: str = wysdom.UserProperty(str)
+    org_id: str = wysdom.UserProperty(str)
+    token: str = wysdom.UserProperty(str)
+    libraries: List[DatabricksLibraryConfig] = wysdom.UserProperty(wysdom.SchemaArray(DatabricksLibraryConfig))

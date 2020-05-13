@@ -6,7 +6,7 @@ from sqlalchemy import Table, MetaData, Column
 from sqlalchemy.schema import CreateTable, DropTable, CreateIndex, DDLElement
 from sqlalchemy_views import CreateView, DropView
 
-from jsdom.mixins import RegistersSubclasses
+from wysdom.mixins import RegistersSubclasses
 
 from ..VaultAction import VaultAction
 

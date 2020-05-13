@@ -1,5 +1,5 @@
 REQUIRED = [
-    'jsdom>=0.1,<1',
+    'wysdom>=0.1,<1',
     'pandas>=0.23,<1',
     'SQLAlchemy>=1.3,<1.4',
     'sqlalchemy-views>=0.2.3,<1',

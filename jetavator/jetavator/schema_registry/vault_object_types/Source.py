@@ -6,14 +6,14 @@ from sqlalchemy import MetaData, Column, Table
 from sqlalchemy.schema import CreateTable
 from sqlalchemy.types import *
 
-import jsdom
+import wysdom
 
 from .SourceColumn import SourceColumn
 from ..VaultObject import VaultObject
 
 
 class Source(VaultObject, register_as="source"):
-    columns: Dict[str, SourceColumn] = jsdom.Property(jsdom.Dict(SourceColumn))
+    columns: Dict[str, SourceColumn] = wysdom.UserProperty(wysdom.SchemaDict(SourceColumn))
 
     @property
     def primary_key_columns(self) -> Dict[str, SourceColumn]:

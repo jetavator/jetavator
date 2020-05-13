@@ -1,9 +1,9 @@
 from jetavator.config import DBServiceConfig
-import jsdom
+import wysdom
 
 
 class LocalDatabricksConfig(DBServiceConfig, register_as='local_databricks'):
 
-    type: str = jsdom.Property(jsdom.Const('local_databricks'))
-    name: str = jsdom.Property(str)
-    schema: str = jsdom.Property(str)
+    type: str = wysdom.UserProperty(wysdom.SchemaConst('local_databricks'))
+    name: str = wysdom.UserProperty(str)
+    schema: str = wysdom.UserProperty(str)

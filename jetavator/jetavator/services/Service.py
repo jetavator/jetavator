@@ -1,4 +1,4 @@
-from jsdom.mixins import RegistersSubclasses
+from wysdom.mixins import RegistersSubclasses
 
 
 class Service(RegistersSubclasses):

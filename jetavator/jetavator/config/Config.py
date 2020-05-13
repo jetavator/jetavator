@@ -4,7 +4,7 @@ import os
 import random
 import uuid
 import yaml
-import jsdom
+import wysdom
 
 from lazy_property import LazyProperty
 
@@ -20,19 +20,19 @@ PROPERTIES_TO_PRINT = [
 ]
 
 
-class ServiceConfig(jsdom.Object):
+class ServiceConfig(wysdom.UserObject):
 
     type: str = ConfigProperty(str)
 
     def name(self) -> str:
-        return jsdom.key(self)
+        return wysdom.key(self)
 
 
 class DBServiceConfig(ServiceConfig):
 
     def _get_default_schema(self):
-        if not jsdom.document(self) is self:
-            return jsdom.document(self).schema
+        if not wysdom.document(self) is self:
+            return wysdom.document(self).schema
 
     type: str = ConfigProperty(str)
     # TODO: Update jso behaviour so default and default_function
@@ -42,10 +42,10 @@ class DBServiceConfig(ServiceConfig):
 
 class LocalSparkConfig(DBServiceConfig, register_as='local_spark'):
 
-    type: str = ConfigProperty(jsdom.Const('local_spark'))
+    type: str = ConfigProperty(wysdom.SchemaConst('local_spark'))
 
 
-class StorageConfig(jsdom.Object):
+class StorageConfig(wysdom.UserObject):
 
     source: str = ConfigProperty(str)
     vault: str = ConfigProperty(str)
@@ -53,13 +53,13 @@ class StorageConfig(jsdom.Object):
     logs: str = ConfigProperty(str)
 
 
-class SessionConfig(jsdom.Object):
+class SessionConfig(wysdom.UserObject):
     run_uuid = ConfigProperty(str, default_function=lambda self: str(uuid.uuid4()))
 
 
 # TODO: add validation (or defaults) for required properties e.g. secret_lookup, services
 
-class Config(jsdom.Object, jsdom.ReadsJSON):
+class Config(wysdom.UserObject, wysdom.ReadsJSON):
 
     # TODO: Move this to testing framework - this isn't a feature
     #       required outside of self-testing
@@ -77,7 +77,7 @@ class Config(jsdom.Object, jsdom.ReadsJSON):
     environment_type: str = ConfigProperty(str, default="local_spark")
     session: SessionConfig = ConfigProperty(SessionConfig, default={})
     services: Dict[str, ServiceConfig] = ConfigProperty(
-        jsdom.Dict(ServiceConfig), default={})
+        wysdom.SchemaDict(ServiceConfig), default={})
     storage: StorageConfig = ConfigProperty(StorageConfig)
     compute: str = ConfigProperty(str)
 
@@ -87,7 +87,7 @@ class Config(jsdom.Object, jsdom.ReadsJSON):
             self._secret_lookup_name
         )
 
-    _secret_lookup_name: str = jsdom.Property(str, name="secret_lookup")
+    _secret_lookup_name: str = wysdom.UserProperty(str, name="secret_lookup")
 
     def reset_session(self):
         self.session.clear()

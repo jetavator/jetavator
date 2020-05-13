@@ -1,6 +1,6 @@
 import re
 
-from jsdom.mixins import RegistersSubclasses
+from wysdom.mixins import RegistersSubclasses
 
 
 class SecretLookup(RegistersSubclasses):

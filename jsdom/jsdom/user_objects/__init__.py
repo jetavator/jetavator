@@ -1,2 +1,0 @@
-from .JSONSchemaUserObject import JSONSchemaUserObject
-from .JSONSchemaUserProperty import JSONSchemaUserProperty
