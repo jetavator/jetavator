@@ -20,7 +20,7 @@ PROPERTIES_TO_PRINT = [
 ]
 
 
-class ServiceConfig(wysdom.UserObject):
+class ServiceConfig(wysdom.UserObject, wysdom.RegistersSubclasses):
 
     type: str = ConfigProperty(str)
 

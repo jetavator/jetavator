@@ -20,7 +20,7 @@ VaultObjectKey = namedtuple('VaultObjectKey', ['type', 'name'])
 HubKeyColumn = namedtuple('HubKeyColumn', ['name', 'source'])
 
 
-class VaultObject(wysdom.UserObject, ABC):
+class VaultObject(wysdom.UserObject, wysdom.RegistersSubclasses, ABC):
 
     name: str = wysdom.UserProperty(str)
     type: str = wysdom.UserProperty(str)
