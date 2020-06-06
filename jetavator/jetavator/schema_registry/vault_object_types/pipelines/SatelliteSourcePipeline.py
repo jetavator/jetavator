@@ -48,7 +48,7 @@ class SatelliteSourcePipeline(
         return [
             SatellitePipelineDependency(
                 {'name': self._source, 'type': 'source'},
-                json_dom_info=wysdom.DOMInfo(
+                json_dom_info=wysdom.dom.DOMInfo(
                     document=wysdom.document(self), parent=self)
             )
         ]
