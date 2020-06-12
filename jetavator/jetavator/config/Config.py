@@ -95,9 +95,8 @@ class Config(wysdom.UserObject, wysdom.ReadsJSON, wysdom.ReadsYAML):
         self.session.clear()
 
     def __str__(self):
-        # TODO: Find better way of doing this!
         return yaml.dump(
-            yaml.safe_load(self.to_json()),
+            self.to_builtin(),
             default_flow_style=False
         )
 
@@ -115,8 +114,7 @@ class Config(wysdom.UserObject, wysdom.ReadsJSON, wysdom.ReadsYAML):
             os.makedirs(cls.config_dir())
 
     def save(self):
-        #  TODO: Find better way of doing this!
-        config_dict = yaml.safe_load(self.to_json())
+        config_dict = self.to_builtin()
         # Don't save session specific config info
         if 'session' in config_dict:
             del config_dict['session']
