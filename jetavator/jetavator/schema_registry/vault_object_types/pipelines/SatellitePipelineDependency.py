@@ -10,8 +10,7 @@ class SatellitePipelineDependency(wysdom.UserObject):
 
     name: str = wysdom.UserProperty(str)
     type: str = wysdom.UserProperty(str)
-    # TODO: Allow to be None
-    view: Optional[str] = wysdom.UserProperty(str, default="")
+    view: Optional[str] = wysdom.UserProperty(str, optional=True)
 
     @property
     def object_reference_key(self) -> VaultObjectKey:

@@ -15,10 +15,8 @@ class SatelliteSQLPipeline(
 
     type: str = wysdom.UserProperty(wysdom.SchemaConst('sql'))
     _sql: str = wysdom.UserProperty(str, name="sql")
-    # TODO: Allow to be None
-    load_dt: Optional[str] = wysdom.UserProperty(str, default="")
-    # TODO: Allow to be None
-    deleted_ind: Optional[str] = wysdom.UserProperty(str, default="")
+    load_dt: Optional[str] = wysdom.UserProperty(str, optional=True)
+    deleted_ind: Optional[str] = wysdom.UserProperty(str, optional=True)
     dependencies: List[SatellitePipelineDependency] = wysdom.UserProperty(
         wysdom.SchemaArray(SatellitePipelineDependency), default=[])
 

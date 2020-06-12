@@ -2,6 +2,7 @@ services:
   spark:
     type: local_spark
 storage:
+  source: spark
   vault: spark
   star: spark
   logs: spark

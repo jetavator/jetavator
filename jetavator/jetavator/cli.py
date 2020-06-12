@@ -47,7 +47,7 @@ from textwrap import indent
 from . import __version__ as VERSION
 from .default_logger import default_logger
 from .Engine import Engine
-from .config import FileConfig, CommandLineConfig
+from .config import Config
 
 
 def main(argv=None, exit_callback=None):
@@ -59,6 +59,8 @@ def main(argv=None, exit_callback=None):
         # Simulating CLI entry point call from Python
         docopt_kwargs['argv'] = argv
 
+    options = {}
+
     try:
         options = docopt(__doc__, **docopt_kwargs)
     except SystemExit as e:
@@ -69,12 +71,22 @@ def main(argv=None, exit_callback=None):
         else:
             exit(1)
 
-    try:
-        config = FileConfig.load(
-            CommandLineConfig(options)
-        )
-    except jsonschema.exceptions.ValidationError:
-        config = CommandLineConfig(options)
+    cli_config_values = dict(
+        tuple(option_string.split("=", 1))
+        for option_string in options["<option>=<value>"]
+    )
+
+    # TODO: replace with simpler --file?
+    if options.get("--config-file"):
+        config = Config.from_yaml_file(options["--config-file"])
+        config.update(cli_config_values)
+    else:
+        try:
+            Config.make_config_dir()
+            config = Config.from_yaml_file(Config.config_file())
+            config.update(cli_config_values)
+        except jsonschema.exceptions.ValidationError:
+            config = Config(cli_config_values)
 
     config.reset_session()
     engine = Engine(config)
@@ -110,23 +122,22 @@ def main(argv=None, exit_callback=None):
 
     try:
 
-        # TODO: allow an corrupt or invalid config to be overwritten
-        #       using this command
         if options['config']:
-            FileConfig.command_line_options_to_keyring(options)
-            test_config = FileConfig.load()
             if options['--test']:
-                test_engine = Engine(config=test_config)
+                test_engine = Engine(config=config)
                 if test_engine.connection.test(master=True):
                     default_logger.info(
                         'Successfully logged in and connected to '
                         f'[{engine.config.environment_type}]'
                     )
+                    config.save()
                 else:
                     default_logger.error(
                         'Unable to log in or connect to '
                         f'[{engine.config.environment_type}]'
                     )
+            else:
+                config.save()
 
         elif options['build']:
             engine.build_wheel()

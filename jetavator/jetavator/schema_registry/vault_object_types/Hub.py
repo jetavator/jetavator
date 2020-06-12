@@ -14,8 +14,7 @@ class Hub(SatelliteOwner, register_as="hub"):
     star_prefix = "dim"
 
     key_length: int = wysdom.UserProperty(int)
-    # TODO: Allow key_type to be None
-    key_type: Optional[str] = wysdom.UserProperty(str, default="")
+    key_type: Optional[str] = wysdom.UserProperty(str, optional=True)
     static_columns: Dict[str, SatelliteColumn] = wysdom.UserProperty(
         wysdom.SchemaDict(SatelliteColumn), default={})
 

@@ -2,12 +2,6 @@ from behave.fixture import use_fixture_by_tag
 
 from fixtures import fixture_registry, run_fixture_hooks
 
-from client import BehaveConfig
-
-
-def before_all(context):
-    context.jetavator_config = BehaveConfig(context)
-
 
 def before_tag(context, tag):
     if tag.startswith("fixture."):

@@ -8,6 +8,8 @@ import wysdom
 
 from lazy_property import LazyProperty
 
+from pathlib import Path
+
 from .secret_lookup import SecretLookup
 from .ConfigProperty import ConfigProperty
 
@@ -59,7 +61,7 @@ class SessionConfig(wysdom.UserObject):
 
 # TODO: add validation (or defaults) for required properties e.g. secret_lookup, services
 
-class Config(wysdom.UserObject, wysdom.ReadsJSON):
+class Config(wysdom.UserObject, wysdom.ReadsJSON, wysdom.ReadsYAML):
 
     # TODO: Move this to testing framework - this isn't a feature
     #       required outside of self-testing
@@ -98,3 +100,31 @@ class Config(wysdom.UserObject, wysdom.ReadsJSON):
             yaml.safe_load(self.to_json()),
             default_flow_style=False
         )
+
+    @classmethod
+    def config_dir(cls):
+        return os.path.join(str(Path.home()), '.jetavator')
+
+    @classmethod
+    def config_file(cls):
+        return os.path.join(cls.config_dir(), 'config.yml')
+
+    @classmethod
+    def make_config_dir(cls):
+        if not os.path.exists(cls.config_dir()):
+            os.makedirs(cls.config_dir())
+
+    def save(self):
+        #  TODO: Find better way of doing this!
+        config_dict = yaml.safe_load(self.to_json())
+        # Don't save session specific config info
+        if 'session' in config_dict:
+            del config_dict['session']
+        self.make_config_dir()
+        with open(self.config_file(), 'w') as f:
+            f.write(
+                yaml.dump(
+                    config_dict,
+                    default_flow_style=False
+                )
+            )

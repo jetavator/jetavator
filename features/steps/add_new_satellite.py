@@ -1,7 +1,5 @@
 from behave import given, when, then
 
-from client import from_behave_context
-
 
 @when(u"we write a new {type} definition to disk")
 def step_impl(context, type):
@@ -28,16 +26,6 @@ def step_impl(context, type, load_full_history):
         context.feature.new_object_yaml,
         load_full_history=bool(load_full_history)
     )
-
-
-@when(u"we create a new Client instance with no model")
-def step_impl(context):
-    context.jetavator_config.model_path = None
-    context.jetavator = from_behave_context(
-        context,
-        config=context.jetavator_config
-    )
-
 
 @when(
     u"we reload the model in Client with "

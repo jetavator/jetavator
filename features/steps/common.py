@@ -1,4 +1,5 @@
 import os
+import random
 import shutil
 import pandas
 import behave
@@ -13,18 +14,16 @@ from sqlalchemy.sql import and_, select
 
 from behave_pandas import table_to_dataframe
 
-from client import from_behave_context
-
 from ast import literal_eval
 
 from jetavator.default_logger import default_logger
 from jetavator.cli import main as cli_main
+from jetavator import Engine, Config
 
 SCHEMA_METADATA_TABLE = {
     "table": "INFORMATION_SCHEMA.TABLES",
     "view": "INFORMATION_SCHEMA.VIEWS"
 }
-
 
 use_step_matcher("parse")
 
@@ -43,6 +42,9 @@ def run_cli(
         retry_limit=1,
         break_on_error=True
 ):
+
+    print(f"Running CLI command: {command}", flush=True)
+
     log_listener = ListenFilter()
 
     default_logger.addFilter(log_listener)
@@ -92,35 +94,34 @@ def run_cli(
     return log_listener.command_output, 0
 
 
-def context_client(context):
-    if "jetavator" not in context:
-        context.jetavator = from_behave_context(context)
-    return context.jetavator
+def jetavator_engine():
+    return Engine(Config.from_yaml_file(Config.config_file()))
 
 
-def context_datastore(context, datastore):
-    client = context_client(context)
-    return client.services[client.config.storage[datastore]]
+def engine_datastore(datastore):
+    engine = jetavator_engine()
+    return engine.services[engine.config.storage[datastore]]
 
 
-def context_metadata(context, datastore):
+def engine_metadata(datastore):
     meta = MetaData()
-    if hasattr(context_datastore(context, datastore), 'sqlalchemy_connection'):
+    if hasattr(engine_datastore(datastore), 'sqlalchemy_connection'):
         meta.reflect(
-            bind=context_datastore(context, datastore).sqlalchemy_connection
+            bind=engine_datastore(datastore).sqlalchemy_connection
         )
     return meta
 
+
 @given(u"the table {table} on the {datastore} datastore is empty")
 def given_table_is_empty(context, table, datastore):
-    context_datastore(context, datastore).execute(
+    engine_datastore(datastore).execute(
         f"DELETE FROM {table}"
     )
 
 
 @when(u"we execute the following SQL on the {datastore} datastore")
 def step_impl(context, datastore):
-    context_datastore(context, datastore).execute(context.text)
+    engine_datastore(datastore).execute(context.text)
 
 
 @then(
@@ -134,7 +135,7 @@ def step_impl(context, datastore):
     u"contains {row_count} rows"
 )
 def step_impl(context, sql_object, table, row_count, datastore):
-    store = context_datastore(context, datastore)
+    store = engine_datastore(datastore)
     actual_row_count = store.sql_query_single_value(
         f"""
         SELECT COUNT(*) AS row_count
@@ -148,20 +149,20 @@ def step_impl(context, sql_object, table, row_count, datastore):
 
 @then(u"the {sql_object:w} {table:w} exists on the {datastore} datastore")
 def step_impl(context, sql_object, table, datastore):
-    assert context_datastore(context, datastore).table_exists(table), (
+    assert engine_datastore(datastore).table_exists(table), (
         f"The {sql_object} {table} does not exist")
 
 
 @then(u"the {sql_object:w} {table:w} does not exist on the {datastore} datastore")
 def step_impl(context, sql_object, table, datastore):
-    assert not context_datastore(context, datastore).table_exists(table), (
+    assert not engine_datastore(datastore).table_exists(table), (
         f"The {sql_object} {table} exists")
 
 
 @then(u"the following SQL on the {datastore} datastore returns {row_count:d} row")
 @then(u"the following SQL on the {datastore} datastore returns {row_count:d} rows")
 def step_impl(context, row_count, datastore):
-    actual_row_count = context_datastore(context, datastore).sql_query_single_value(
+    actual_row_count = engine_datastore(datastore).sql_query_single_value(
         f"""
         SELECT COUNT(*) AS [row_count]
         FROM (
@@ -176,7 +177,7 @@ def step_impl(context, row_count, datastore):
 
 @then(u"the following SQL on the {datastore} datastore returns the value {expected_value}")
 def step_impl(context, expected_value, datastore):
-    actual_value = context_datastore(context, datastore).sql_query_single_value(
+    actual_value = engine_datastore(datastore).sql_query_single_value(
         context.text
     )
     assert str(actual_value) == str(expected_value), (
@@ -200,10 +201,10 @@ def load_to_base_table(context, table):
         context.table,
         data_types={
             k: v.lower()
-            for k, v in context_client(context).table_dtypes(table).items()
+            for k, v in jetavator_engine().table_dtypes(table).items()
         }
     )
-    context_client(context).test_data_loader(
+    jetavator_engine().test_data_loader(
         dataframe=context.dataframe
     ).generate_sql(
         table_name=table,
@@ -239,7 +240,7 @@ def step_impl(context, table):
     u"on the {datastore} datastore"
 )
 def step_impl(context, column, table, datastore):
-    assert context_datastore(context, datastore).column_exists(
+    assert engine_datastore(datastore).column_exists(
         table, column
     ), (
         f"Could not find expected column {column} in table {table}."
@@ -252,7 +253,7 @@ def step_impl(context, column, table, datastore):
     u"on the {datastore} datastore"
 )
 def step_impl(context, column, table, datastore):
-    assert not context_datastore(context, datastore).column_exists(
+    assert not engine_datastore(datastore).column_exists(
         table, column
     ), (
         f"Unexpectedly found column {column} in table {table}."
@@ -265,7 +266,7 @@ def step_impl(context, column, table, datastore):
     u"on the {datastore} datastore"
 )
 def step_impl(context, index, table, column, datastore):
-    indexes = context_metadata(context, datastore).tables.get(table).indexes
+    indexes = engine_metadata(datastore).tables.get(table).indexes
     assert any(
         test_index.name == index and test_column.name == column
         for test_index in indexes
@@ -279,8 +280,7 @@ def step_impl(context, index, table, column, datastore):
     u"contains these columns with this data"
 )
 def step_impl(context, table_name, datastore):
-
-    connection = context_datastore(context, datastore)
+    connection = engine_datastore(datastore)
 
     meta = MetaData()
     table = Table(
@@ -329,7 +329,7 @@ def step_impl(context, table_name, datastore):
 @given(u"the file {file} is loaded to table {table:w}")
 @when(u"the file {file} is loaded to table {table:w}")
 def load_file_to_table(context, file, table):
-    context_client(context).load_csv(
+    jetavator_engine().load_csv(
         csv_file=os.path.join(
             context.config.paths[0], "data", file
         ),
@@ -339,8 +339,8 @@ def load_file_to_table(context, file, table):
 
 def substitutions(context):
     userdata = dict(context.config.userdata)
-    if 'jetavator_config' in context:
-        userdata['schema'] = context.jetavator_config.schema
+    # if 'jetavator_config' in context:
+    #     userdata['schema'] = context.jetavator_config.schema
     if 'tempfolder' in context:
         userdata['model_path'] = context.tempfolder
     return userdata
@@ -391,8 +391,8 @@ def assert_returns_value(context, actual, expected):
 
 def assert_returns_table(context, actual_dataframe, expected_table):
     with pandas.option_context(
-        'display.max_rows', None,
-        'display.max_columns', None
+            'display.max_rows', None,
+            'display.max_columns', None
     ):
         assert isinstance(actual_dataframe, pandas.DataFrame), (
             "actual_dataframe must be type pandas.DataFrame, "
@@ -566,8 +566,8 @@ def step_impl(context):
         file_path = os.path.join(
             context.tempfolder,
             (
-                yaml_file["parsed"]["type"] + "_" +
-                yaml_file["parsed"]["name"] + ".yaml"
+                    yaml_file["parsed"]["type"] + "_" +
+                    yaml_file["parsed"]["name"] + ".yaml"
             )
         )
         with open(file_path, "w") as f:
@@ -645,3 +645,17 @@ def step_impl(context, expression, value):
         context,
         eval(format_arg_string(context, expression)),
         literal_eval(value))
+
+
+@given(u'a random string in the environment variable ${env_var_name}')
+def step_impl(context, env_var_name):
+    os.environ[env_var_name] = "jetavator_" + "_".join([
+        "%04x" % random.randrange(16 ** 4)
+        for i in range(0, 3)
+    ])
+
+
+@given(u'a file saved as {filename}')
+def step_impl(context, filename):
+    with open(os.path.join(context.tempfolder, filename), "w") as f:
+        f.write(context.text)
