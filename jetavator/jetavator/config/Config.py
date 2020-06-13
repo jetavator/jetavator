@@ -1,7 +1,6 @@
 from typing import Dict
 
 import os
-import random
 import uuid
 import yaml
 import wysdom
@@ -54,10 +53,14 @@ class StorageConfig(wysdom.UserObject):
 
 
 class SessionConfig(wysdom.UserObject):
-    run_uuid = ConfigProperty(str, default_function=lambda self: str(uuid.uuid4()))
 
+    run_uuid = ConfigProperty(
+        str,
+        name="run_uuid",
+        default_function=lambda self: str(uuid.uuid4()),
+        persist_defaults=True
+    )
 
-# TODO: add validation (or defaults) for required properties e.g. secret_lookup, services
 
 class Config(wysdom.UserObject, wysdom.ReadsJSON, wysdom.ReadsYAML):
 
@@ -66,9 +69,9 @@ class Config(wysdom.UserObject, wysdom.ReadsJSON, wysdom.ReadsYAML):
     drop_schema_if_exists: bool = ConfigProperty(bool, default=False)
     skip_deploy: bool = ConfigProperty(bool, default=False)
     environment_type: str = ConfigProperty(str, default="local_spark")
-    session: SessionConfig = ConfigProperty(SessionConfig, default={})
+    session: SessionConfig = ConfigProperty(SessionConfig, default={}, persist_defaults=True)
     services: Dict[str, ServiceConfig] = ConfigProperty(
-        wysdom.SchemaDict(ServiceConfig), default={})
+        wysdom.SchemaDict(ServiceConfig), default={}, persist_defaults=True)
     storage: StorageConfig = ConfigProperty(StorageConfig)
     compute: str = ConfigProperty(str)
 

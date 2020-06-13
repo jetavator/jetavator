@@ -16,7 +16,7 @@ class Hub(SatelliteOwner, register_as="hub"):
     key_length: int = wysdom.UserProperty(int)
     key_type: Optional[str] = wysdom.UserProperty(str, optional=True)
     static_columns: Dict[str, SatelliteColumn] = wysdom.UserProperty(
-        wysdom.SchemaDict(SatelliteColumn), default={})
+        wysdom.SchemaDict(SatelliteColumn), persist_defaults=True, default={})
 
     @property
     def satellites_containing_keys(self) -> Dict[str, VaultObject]:

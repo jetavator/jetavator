@@ -16,9 +16,9 @@ class SatellitePipeline(wysdom.UserObject, RegistersSubclasses, ABC):
 
     type: str = wysdom.UserProperty(str)
     performance_hints: PerformanceHints = wysdom.UserProperty(
-        PerformanceHints, default={})
+        PerformanceHints, persist_defaults=True, default={})
     _key_columns: Dict[str, str] = wysdom.UserProperty(
-        wysdom.SchemaDict(str), name="key_columns", default={})
+        wysdom.SchemaDict(str), name="key_columns", persist_defaults=True, default={})
 
     @property
     def satellite(self) -> VaultObject:
