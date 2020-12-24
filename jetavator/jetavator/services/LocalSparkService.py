@@ -31,6 +31,8 @@ class LocalSparkService(SparkService, register_as="local_spark"):
             .builder
             .appName(SPARK_APP_NAME)
             .enableHiveSupport()
+            .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+            .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
             .getOrCreate()
         )
         spark_session.sparkContext.setLogLevel('ERROR')

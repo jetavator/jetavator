@@ -6,7 +6,7 @@ import wysdom
 from .DatabricksLibraryConfig import DatabricksLibraryConfig
 
 
-class DatabricksConfig(DBServiceConfig, register_as='remote_databricks'):
+class DatabricksConfig(DBServiceConfig):
 
     type: str = wysdom.UserProperty(wysdom.SchemaConst('remote_databricks'))
     name: str = wysdom.UserProperty(str)

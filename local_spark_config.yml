@@ -1,10 +1,15 @@
 services:
   spark:
     type: local_spark
-storage:
-  source: spark
-  vault: spark
-  star: spark
-  logs: spark
+  file_registry:
+    service_type: registry
+    type: simple_file_registry
+    storage_path: ~/.jetavator/registry
+  storage:
+    source: spark
+    vault: spark
+    star: spark
+    logs: spark
 compute: spark
 secret_lookup: environment
+registry: file_registry

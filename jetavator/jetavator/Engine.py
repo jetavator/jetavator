@@ -19,51 +19,20 @@
 #           Backfill satellite to date (by calculating)
 #           Backfill satellite to date (by copying from previous version)
 
-import os
 from enum import Enum
 from functools import wraps
 from logging import Logger
-from typing import Union, List, Dict, Callable
+from typing import Union, Dict, Callable
 
-import pandas
 import yaml
 from lazy_property import LazyProperty
 
 from .runners import Runner
 from .config import Config
-from .schema_registry import Project
-from .schema_registry import SchemaRegistry
+from .schema_registry import Project, RegistryService
 from .VaultAction import VaultAction
 from .services import Service, DBService
 from .sql_model import ProjectModel
-
-PANDAS_DTYPE_MAPPINGS = {
-    "bigint": "Int64",
-    "bit": "Int64",
-    "decimal": "Int64",
-    "int": "Int64",
-    "money": "float",
-    "numeric": "float",
-    "smallint": "Int64",
-    "smallmoney": "float",
-    "tinyint": "Int64",
-    "float": "float",
-    "real": "float",
-    "date": "datetime64[ns]",
-    "datetime": "datetime64[ns]",
-    "datetime2": "datetime64[ns]",
-    "smalldatetime": "datetime64[ns]",
-    "time": "timedelta64[ns]",
-    "char": "object",
-    "text": "object",
-    "varchar": "object",
-    "nchar": "object",
-    "ntext": "object",
-    "nvarchar": "object",
-    "binary": "object",
-    "varbinary": "object",
-    "image": "object"
-}
 
 PANDAS_TO_SQL_MAPPINGS = {
     "int": "bigint",
@@ -76,11 +45,6 @@ PANDAS_TO_SQL_MAPPINGS = {
     "datetime64[ns]": "datetime",
     "str": "nvarchar(255)",
     "object": "nvarchar(255)"
-}
-
-BASE_DTYPES = {
-    "jetavator_load_dt": "datetime64[ns]",
-    "jetavator_deleted_ind": "int"
 }
 
 
@@ -117,6 +81,15 @@ class Engine(object):
         """Default constructor
         """
         self.config = config
+
+    @LazyProperty
+    def loaded_project(self) -> Project:
+        """The current project as specified by the YAML files in self.config.model_path
+        """
+        return Project.from_directory(
+            self.config,
+            self.compute_service,
+            self.config.model_path)
 
     @property
     def compute_service(self) -> DBService:
@@ -189,9 +162,10 @@ class Engine(object):
 
     # TODO: The role of SchemaRegistry is unclear. Can we refactor its
     #       responsibilities into Engine and Project?
+    # TODO: Rename schema_registry to something more appropriate?
     @LazyProperty
-    def schema_registry(self) -> SchemaRegistry:
-        return SchemaRegistry(self.config, self.compute_service)
+    def schema_registry(self) -> RegistryService:
+        return self.services[self.config.registry]
 
     # TODO: See above - unclear how this relates to SchemaRegistry
     @LazyProperty
@@ -199,7 +173,7 @@ class Engine(object):
         return ProjectModel(
             self.config,
             self.compute_service,
-            self.schema_registry.loaded,
+            self.loaded_project,
             self.schema_registry.deployed
         )
 
@@ -208,12 +182,6 @@ class Engine(object):
     @property
     def project(self) -> Project:
         return self.schema_registry.deployed
-
-    # TODO: project_history is redundant - can this or schema_registry
-    #       be deprecated?
-    @property
-    def project_history(self) -> SchemaRegistry:
-        return self.schema_registry
 
     @logged
     def deploy(self) -> None:
@@ -298,8 +266,8 @@ class Engine(object):
         else:
             raise Exception("Jetavator.add: new_object must be str or dict.")
 
-        self.schema_registry.loaded.increment_version(version)
-        new_vault_object = self.schema_registry.loaded.add(new_object_dict)
+        self.loaded_project.increment_version(version)
+        new_vault_object = self.loaded_project.add(new_object_dict)
         self._update_database_model()
 
         if new_vault_object.type == "satellite":
@@ -326,8 +294,8 @@ class Engine(object):
                                   not supplied)
         """
         self.schema_registry.load_from_database()
-        self.schema_registry.loaded.increment_version(version)
-        self.schema_registry.loaded.delete(object_type, object_name)
+        self.loaded_project.increment_version(version)
+        self.loaded_project.delete(object_type, object_name)
         self._update_database_model()
 
     # TODO: Refactor so the Engine doesn't need physical disk paths for
@@ -351,16 +319,16 @@ class Engine(object):
             self.config.model_path = model_path
         self.schema_registry.load_from_disk()
         assert (
-                self.schema_registry.loaded.checksum
+                self.loaded_project.checksum
                 != self.schema_registry.deployed.checksum
         ), (
             f"""
             Cannot upgrade a project if the definitions have not changed.
-            Checksum: {self.schema_registry.loaded.checksum.hex()}
+            Checksum: {self.loaded_project.checksum.hex()}
             """
         )
         assert (
-                self.schema_registry.loaded.version
+                self.loaded_project.version
                 > self.schema_registry.deployed.version
         ), (
             "Cannot upgrade - version number must be incremented "
@@ -369,201 +337,6 @@ class Engine(object):
         self._update_database_model(
             load_full_history=load_full_history
         )
-
-    # TODO: Review if Engine.table_dtypes is still needed. Refactor it to
-    #       somewhere more appropriate (Source?) if it is, deprecate it if not
-    def table_dtypes(
-            self,
-            table_name: str,
-            registry: Project = None  # rename this to project?
-    ) -> Dict[str, str]:
-        """Generates a set of pandas dtypes for a given named Source
-
-        :param table_name: Name of the Source object to generate dtypes for
-        """
-        registry = registry or self.schema_registry.loaded
-        try:
-            user_defined_dtypes = {
-                k: PANDAS_DTYPE_MAPPINGS[v["type"].split("(")[0].lower()]
-                for k, v in registry[
-                    "source", table_name
-                ].definition[
-                    "columns"
-                ].items()
-            }
-        except KeyError:
-            raise Exception(f"Table source.{table_name} does not exist.")
-        return {
-            **BASE_DTYPES,
-            **user_defined_dtypes
-        }
-
-    # TODO: Refactor file loading responsibilities out of Engine
-    # TODO: DRY in the try/except block of Engine.csv_to_dataframe
-    def csv_to_dataframe(
-            self,
-            csv_file: str,
-            table_name: str,
-            registry: Project = None  # rename this to project?
-    ) -> pandas.DataFrame:
-        """Loads a CSV file from disk and into a compatible pandas `DataFrame`
-        """
-        registry = registry or self.schema_registry.loaded
-        try:
-            return pandas.read_csv(
-                csv_file,
-                parse_dates=[
-                    k
-                    for k, v in self.table_dtypes(table_name, registry).items()
-                    if v in ["datetime64[ns]", "timedelta64[ns]"]
-                ],
-                dtype={
-                    k: v
-                    for k, v in self.table_dtypes(table_name, registry).items()
-                    if v not in ["datetime64[ns]", "timedelta64[ns]"]
-                }
-            )
-        except ValueError:
-            return pandas.read_csv(
-                csv_file,
-                parse_dates=[
-                    k
-                    for k, v in self.table_dtypes(table_name, registry).items()
-                    if v in ["datetime64[ns]", "timedelta64[ns]"]
-                       and k != "jetavator_load_dt"
-                ],
-                dtype={
-                    k: v
-                    for k, v in self.table_dtypes(table_name, registry).items()
-                    if v not in ["datetime64[ns]", "timedelta64[ns]"]
-                }
-            )
-
-    # TODO: Refactor Engine.source_def_from_dataframe
-    #       as a constructor for the Source object
-    # TODO: Nothing should ever return a type signature this complex!
-    #       It should be an object instead
-    def source_def_from_dataframe(
-            self,
-            df: pandas.DataFrame,
-            table_name: str,
-            use_as_pk: str
-    ) -> Dict[str, Union[str, Dict[str, Dict[str, Union[str, bool]]]]]:
-        """Constructs a valid Source definition from a pandas dataframe
-
-        :param df:         Dataframe to construct Source definition for
-        :param table_name: Name of the new Source object to construct
-        :param use_as_pk:  Column name to use as the primary key
-        """
-
-        pd_dtypes_dict = df.dtypes.apply(lambda x: x.name).to_dict()
-        col_dict_list = [
-            {
-                k: {
-                    "type": PANDAS_TO_SQL_MAPPINGS[v],
-                    "nullable": False  # in Python e.g. int is not nullable
-                }
-            }
-            for k, v in pd_dtypes_dict.items()
-        ]
-        col_dict = {k: v for d in col_dict_list for k, v in d.items()}
-
-        col_dict[use_as_pk]["pk"] = True
-
-        source_def = {
-            "name": table_name,
-            "type": "source",
-            "schema": "source",
-            "columns": col_dict
-        }
-        return source_def
-
-    # TODO: Deprecate after Engine.source_def_from_dataframe has been added
-    #       as a constructor for the Source object
-    def add_dataframe_as_source(
-            self,
-            df: pandas.DataFrame,
-            table_name: str,
-            use_as_pk: str
-    ) -> None:
-        """Adds a pandas dataframe as a Source for this project
-
-        :param df:         Dataframe to add as a Source
-        :param table_name: Name of the new Source object to construct
-        :param use_as_pk:  Column name to use as the primary key
-        """
-        raise NotImplementedError
-
-    # TODO: Refactor responsibility for loading CSV files away from
-    #       Engine. Tie this directly to the Source object so we don't force a
-    #       particular lookup method here.
-    # TODO: Re-implement assume_schema_integrity for loading CSVs
-    #       (perhaps with a header line safety check!)
-    def load_csvs(
-            self,
-            table_name: str,
-            csv_files: List[str]
-            # , assume_schema_integrity=False
-    ) -> None:
-        """Loads a list of CSV files into a single named Source
-
-        :param table_name: Name of the new Source object to load
-        :param csv_files:  List of paths on disk of the CSV files
-        """
-        # if assume_schema_integrity:
-        #     source = self.schema_registry.loaded["source", table_name]
-        #     self.spark_runner.load_csv(csv_file, source)
-        # else:
-        self.compute_service.load_dataframe(
-            pandas.concat([
-                self.csv_to_dataframe(
-                    csv_file,
-                    table_name,
-                    self.schema_registry.loaded
-                )
-                for csv_file in csv_files
-            ]),
-            self.schema_registry.loaded["source", table_name]
-        )
-
-    # TODO: Refactor responsibility for loading CSV files away from
-    #       Engine. For Engine.load_csv_folder, these should be two methods
-    #       of an extendable loader class (or possibly subclasses?)
-    def load_csv_folder(
-            self,
-            folder_path: str
-    ) -> None:
-        """Loads a folder of CSV files into a set of Sources. The CSV files
-        must each be named <source>.csv where <source> is a valid Source name
-
-        :param folder_path:  Folder path on disk containing the CSV files
-        """
-        assert os.path.isdir(folder_path), (
-            f"{folder_path} is not a valid directory."
-        )
-        for dir_entry in os.scandir(folder_path):
-            filename, file_extension = os.path.splitext(dir_entry.name)
-            if file_extension == ".csv" and dir_entry.is_file():
-                self.load_csvs(filename, [dir_entry.path])
-
-    # TODO: Deprecate Engine.call_stored_procedure as it's specific to MSSQL
-    def call_stored_procedure(
-            self,
-            procedure_name: str
-    ):
-        raise NotImplementedError
-
-    # TODO: Deprecate Engine.sql_query_single_value
-    def sql_query_single_value(
-            self,
-            sql: str
-    ):
-        raise NotImplementedError
-
-    # TODO: Investigate if Engine.get_performance_data is still needed
-    #       and deprecate it if not
-    def get_performance_data(self):
-        raise NotImplementedError
 
     def _update_database_model(
             self,
@@ -587,7 +360,7 @@ class Engine(object):
         return Runner.from_compute_service(
             self,
             self.compute_service,
-            self.schema_registry.loaded
+            self.loaded_project
         )
 
     # TODO: Do we need both clear_database and drop_schemas?
@@ -597,14 +370,13 @@ class Engine(object):
             self.compute_service.write_empty_table(table, overwrite_schema=False)
         self.logger.info('Finished: clear_database')
 
-    # TODO: Make action an enum?
     def _deploy_template(
             self,
             action: VaultAction
     ) -> None:
 
-        if not self.schema_registry.loaded.valid:
-            raise Exception(self.schema_registry.loaded.validation_error)
+        if not self.loaded_project.valid:
+            raise Exception(self.loaded_project.validation_error)
 
         # self.connection.reset_metadata()
 

@@ -252,11 +252,17 @@ class SparkJob(RegistersSubclasses, ABC):
 
     def _set_state(self, state: SparkJobState) -> None:
         if state is SparkJobState.RUNNING:
-            self.logger.info(f'Starting: {self.name}')
+            self._log_start()
         elif state is SparkJobState.FINISHED:
-            self.logger.info(f'Finished: {self.name}')
+            self._log_end()
         self._state = state
         self.state_timestamps[state] = datetime.datetime.now()
+
+    def _log_start(self) -> None:
+        self.logger.info(f'Starting: {self.name}')
+
+    def _log_end(self) -> None:
+        self.logger.info(f'Finished: {self.name}')
 
 
 class SparkSQLJob(SparkJob, ABC):
@@ -287,6 +293,7 @@ class SparkSQLJob(SparkJob, ABC):
         Execute the Spark SQL statement and return the resulting `DataFrame`.
         """
         try:
+            self.logger.info(self.query)
             return self.spark.sql(self.query).coalesce(COALESCE_PARTITIONS)
         except Exception as e:
             raise Exception(f'''

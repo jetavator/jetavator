@@ -16,6 +16,11 @@ class SatelliteOwner(VaultObject, ABC, register_as="satellite_owner"):
     exclude_from_star_schema: bool = wysdom.UserProperty(bool, default=False)
 
     @property
+    @abstractmethod
+    def hubs(self) -> Dict[str, VaultObject]:
+        pass
+
+    @property
     def satellites(self) -> Dict[str, VaultObject]:
         return {
             satellite.name: satellite

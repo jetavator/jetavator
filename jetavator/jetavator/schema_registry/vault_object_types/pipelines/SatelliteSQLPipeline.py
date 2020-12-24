@@ -63,22 +63,12 @@ class SatelliteSQLPipeline(
         }
         return jinja2.Template(self._sql).render(table_aliases)
 
-    # TODO: Refactor to make this more readable (if it's still needed)
     @property
     def key_columns(self) -> Dict[str, str]:
         if self._key_columns:
             return self._key_columns
-        elif self.satellite.parent.type == "hub":
-            return {
-                self.satellite.parent.name: self.satellite.parent.name
-            }
-        elif self.satellite.parent.type == "link":
+        else:
             return {
                 hub_alias: hub_alias
                 for hub_alias in self.satellite.parent.hubs.keys()
             }
-        else:
-            raise Exception(
-                "Unexpected value for satellite.parent.type: "
-                f"{satellite.parent.type}"
-            )

@@ -19,6 +19,12 @@ class Hub(SatelliteOwner, register_as="hub"):
         wysdom.SchemaDict(SatelliteColumn), persist_defaults=True, default={})
 
     @property
+    def hubs(self) -> Dict[str, VaultObject]:
+        return {
+            self.name: self
+        }
+
+    @property
     def satellites_containing_keys(self) -> Dict[str, VaultObject]:
         return {
             key: sat

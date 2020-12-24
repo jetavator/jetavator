@@ -1,6 +1,4 @@
 import datetime
-import logging
-import logging.config
 import os
 import tempfile
 
@@ -8,15 +6,14 @@ import numpy as np
 import pyspark
 import sqlalchemy
 import sqlparse
-from jetavator.sqlalchemy_delta import DeltaDialect
-from lazy_property import LazyProperty
 
-from jetavator import DEFAULT_LOGGER_CONFIG
+from jetavator.sqlalchemy_delta import HiveWithDDLDialect, DeltaDialect
+from lazy_property import LazyProperty
 
 from .DBService import DBService
 
 SPARK_APP_NAME = 'jetavator'
-DELTA_VERSION = 'delta-core_2.11:0.5.0'
+DELTA_VERSION = 'delta-core_2.12:0.7.0'
 
 PYSPARK_COLUMN_TYPE_MAPPINGS = [
     (sqlalchemy.types.String, pyspark.sql.types.StringType),
@@ -35,15 +32,6 @@ def pyspark_column_type(sqlalchemy_column):
 
 class SparkService(DBService):
 
-    @property
-    def logger_config(self):
-        return DEFAULT_LOGGER_CONFIG
-
-    @LazyProperty
-    def logger(self):
-        logging.config.dictConfig(self.logger_config)
-        return logging.getLogger('jetavator')
-
     # In future, refactor elsewhere to separate sqlalchemy and spark concerns
     @LazyProperty
     def metadata(self):
@@ -54,7 +42,9 @@ class SparkService(DBService):
         raise NotImplementedError
 
     # TODO: Require to avoid need for try/except block
-    def compile_sqlalchemy(self, sqlalchemy_executable):
+    # TODO: Don't hardcode DeltaDialect - make the storage configurable and separate from the compute
+    # TODO: Refactor compile_delta_lake and compile_hive back into one sensible framework
+    def compile_delta_lake(self, sqlalchemy_executable):
         try:
             formatted = sqlparse.format(
                 str(sqlalchemy_executable.compile(
@@ -68,6 +58,26 @@ class SparkService(DBService):
             formatted = sqlparse.format(
                 str(sqlalchemy_executable.compile(
                     dialect=DeltaDialect()
+                )),
+                reindent=True,
+                keyword_case='upper'
+            )
+        return formatted
+
+    def compile_hive(self, sqlalchemy_executable):
+        try:
+            formatted = sqlparse.format(
+                str(sqlalchemy_executable.compile(
+                    dialect=HiveWithDDLDialect(),
+                    compile_kwargs={"literal_binds": True}
+                )),
+                reindent=True,
+                keyword_case='upper'
+            )
+        except Exception:
+            formatted = sqlparse.format(
+                str(sqlalchemy_executable.compile(
+                    dialect=HiveWithDDLDialect()
                 )),
                 reindent=True,
                 keyword_case='upper'
@@ -115,45 +125,8 @@ class SparkService(DBService):
             f'/{sqlalchemy_table.name}'
         )
 
-    def write_empty_table(self, sqlalchemy_table, overwrite_schema=True):
-        (
-            self.spark
-            .createDataFrame(
-                [],
-                pyspark.sql.types.StructType([
-                    pyspark.sql.types.StructField(
-                        column.name,
-                        pyspark_column_type(column),
-                        True
-                    )
-                    for column in sqlalchemy_table.columns
-                ])
-            )
-            .write
-            .format('delta')
-            .mode('overwrite')
-            .option(
-                'overwriteSchema',
-                ('true' if overwrite_schema else 'false')
-            )
-            .save(self.table_delta_path(sqlalchemy_table))
-        )
-
     def create_table(self, sqlalchemy_table):
-        self.spark.sql(
-            f'''
-            DROP TABLE IF EXISTS
-            `{self.config.schema}`.`{sqlalchemy_table.element.name}`
-            '''
-        )
-        self.write_empty_table(sqlalchemy_table.element)
-        self.spark.sql(
-            f'''
-            {self.compile_sqlalchemy(sqlalchemy_table)}
-            USING DELTA
-            LOCATION "{self.table_delta_path(sqlalchemy_table.element)}"
-            '''
-        )
+        self.spark.sql(self.compile_delta_lake(sqlalchemy_table))
 
     def create_tables(self, sqlalchemy_tables):
         for table in sqlalchemy_tables:
@@ -163,20 +136,6 @@ class SparkService(DBService):
         self.engine.deploy()
 
     def execute(self, sql):
-        try:
-            return self.spark.sql(sql).collect()
-        except Exception as e:
-            raise Exception(
-                f"""
-                Config dump:
-                {self.config}
-
-                Error while trying to run script:
-                {sql}
-                """ + str(e)
-            )
-
-    def execute_to_pandas(self, sql):
         try:
             return self.spark.sql(sql).toPandas()
         except Exception as e:
@@ -212,34 +171,34 @@ class SparkService(DBService):
     @property
     def schema_exists(self):
         return any([
-            row['databaseName'] == self.config.schema
-            for row in self.execute('SHOW DATABASES')
+            database == self.config.schema
+            for database in self.execute('SHOW DATABASES')['namespace']
         ])
 
     def table_exists(self, table_name):
         return any([
-            row['tableName'] == table_name
-            for row in self.execute(
-                f'SHOW TABLES IN `{self.config.schema}`')
+            table == table_name
+            for table in self.execute(
+                f'SHOW TABLES IN `{self.config.schema}`')['tableName']
         ])
 
     def column_exists(self, table_name, column_name):
         return any([
-            row['col_name'] == column_name
-            for row in self.execute(
-                f'DESCRIBE FORMATTED `{self.config.schema}`.`{table_name}`')
+            column == column_name
+            for column in self.execute(
+                f'DESCRIBE FORMATTED `{self.config.schema}`.`{table_name}`')['col_name']
         ])
 
     def sql_query_single_value(self, sql):
-        return self.execute(sql)[0][0]
+        return self.execute(sql).iloc[0, 0]
 
     def test(self):
-        assert self.execute("SELECT 1")[0][0] == 1
+        assert self.sql_query_single_value("SELECT 1") == 1
         return True
 
     def execute_sql_element(self, sql_element, async_cursor=False):
         return self.execute(
-            self.compile_sqlalchemy(sql_element)
+            self.compile_delta_lake(sql_element)
         )
 
     def execute_sql_elements_async(self, sql_elements):

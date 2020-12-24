@@ -16,28 +16,18 @@ class SatelliteSourcePipeline(
     type: str = wysdom.UserProperty(wysdom.SchemaConst('source'))
     _source: str = wysdom.UserProperty(str, name="source")
 
-    # TODO: Refactor this property to make it more readable (if it's still needed)
     @property
     def key_columns(self) -> Dict[str, str]:
         if self._key_columns:
             return self._key_columns
-        elif self.satellite.parent.type == "hub":
-            return {
-                self.satellite.parent.name: list(self.source.columns.keys())[0]
-            }
-        elif self.satellite.parent.type == "link":
-            return {
-                x[0]: x[1]
-                for x in zip(
-                    list(self.satellite.parent.hubs.keys()),
-                    list(self.source.columns.keys())[
-                        :len(self.satellite.parent.hubs)])
-                }
         else:
-            raise Exception(
-                "Unexpected value for satellite.parent.type: "
-                f"{satellite.parent.type}"
-            )
+            return {
+                key_column: source_column
+                for key_column, source_column in zip(
+                    self.satellite.parent.hubs.keys(),
+                    self.source.columns.keys()
+                )
+            }
 
     @property
     def source(self) -> Source:

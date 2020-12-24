@@ -191,7 +191,7 @@ class DatabricksService(SparkService, register_as='remote_databricks'):
         try:
             cursor = self.sqlalchemy_connection.raw_connection().cursor()
             cursor.execute(
-                self.compile_sqlalchemy(sql_element),
+                self.compile_delta_lake(sql_element),
                 async_=async_cursor
             )
             return cursor.fetchall()

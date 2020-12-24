@@ -8,10 +8,6 @@ import binascii
 from datetime import datetime
 from hashlib import sha1
 
-# TODO: For safety, use json instead of literal_eval to
-#       serialise/deserialise definitions
-from ast import literal_eval
-
 from sqlalchemy import Column, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import *
@@ -43,7 +39,7 @@ class ObjectDefinition(Base):
             _type=definition_dict["type"],
             _name=definition_dict["name"],
             _version=deployment.version,
-            _definition=str(definition_dict),
+            _definition=json.dumps(definition_dict),
             _checksum=cls.dict_checksum(definition_dict)
         )
 
@@ -108,10 +104,10 @@ class ObjectDefinition(Base):
     @property
     def definition(self) -> Dict[str, Any]:
         if not self._definition_dict:
-            self._definition_dict = literal_eval(self._definition)
+            self._definition_dict = json.loads(self._definition)
             if not isinstance(self._definition_dict, dict):
                 raise TypeError(
-                    "definition does not evaluate to a dict: "
+                    "definition does not evaluate to valid JSON: "
                     f"{self._definition}"
                 )
         return self._definition_dict

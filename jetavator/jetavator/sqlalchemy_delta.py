@@ -1,4 +1,5 @@
 from sqlalchemy.sql import compiler
+from sqlalchemy import Table, MetaData
 
 from pyhive.sqlalchemy_hive import HiveDialect, HiveCompiler, HiveTypeCompiler
 
@@ -16,13 +17,7 @@ class DeltaCompiler(HiveCompiler):
         return result
 
 
-class DeltaDDLCompiler(compiler.DDLCompiler):
-
-    def visit_create_table(self, *args, **kwargs):
-        result = super().visit_create_table(*args, **kwargs)
-        # TODO: Some tables need to be USING CSV and/or include LOCATION
-        # result += '\nUSING DELTA'
-        return result
+class HiveDDLCompiler(compiler.DDLCompiler):
 
     def visit_create_column(self, *args, **kwargs):
         result = super().visit_create_column(*args, **kwargs)
@@ -42,10 +37,26 @@ class DeltaDDLCompiler(compiler.DDLCompiler):
         return result
 
 
+class DeltaDDLCompiler(HiveDDLCompiler):
+
+    def visit_create_table(self, *args, **kwargs):
+        result = super().visit_create_table(*args, **kwargs)
+        # TODO: Some tables need to be USING CSV and/or include LOCATION
+        result += '\nUSING DELTA'
+        return result
+
+
 class DeltaTypeCompiler(HiveTypeCompiler):
 
     def visit_FLOAT(self, type_, **kwargs):
         return 'DOUBLE'
+
+
+class HiveWithDDLDialect(HiveDialect):
+    name = b'hive_with_ddl'
+    statement_compiler = HiveCompiler
+    ddl_compiler = HiveDDLCompiler
+    type_compiler = HiveTypeCompiler
 
 
 class DeltaDialect(HiveDialect):

@@ -37,6 +37,11 @@ class SatellitePipeline(wysdom.UserObject, RegistersSubclasses, ABC):
     def dependencies(self) -> List[SatellitePipelineDependency]:
         raise NotImplementedError
 
+    @property
+    @abstractmethod
+    def key_columns(self) -> Dict[str, str]:
+        pass
+
     def validate(self) -> None:
         for dep in self.dependencies:
             dep.validate()

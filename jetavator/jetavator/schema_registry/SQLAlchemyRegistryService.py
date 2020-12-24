@@ -1,25 +1,19 @@
-from typing import Union, Tuple, Iterator
+from typing import Union, Tuple, Iterator, Any
 
 from collections.abc import Mapping
 
-from jetavator.config import Config
-from jetavator.services import DBService
+from jetavator.schema_registry.Project import Project
+from jetavator.schema_registry.sqlalchemy_tables import Deployment
 
-from .Project import Project
-from .sqlalchemy_tables import Deployment
+from jetavator.schema_registry.RegistryService import RegistryService
 
 
-class SchemaRegistry(Mapping):
+class SQLAlchemyRegistryService(RegistryService, Mapping, register_as="sqlalchemy_registry"):
 
     loaded: Project = None
 
-    def __init__(
-            self,
-            config: Config,
-            compute_service: DBService
-    ) -> None:
-        self.config = config
-        self.compute_service = compute_service
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(self, *args, **kwargs)
         if self.config.model_path:
             self.load_from_disk()
         else:

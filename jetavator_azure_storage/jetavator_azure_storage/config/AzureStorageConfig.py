@@ -2,7 +2,7 @@ from jetavator.config import ServiceConfig
 import wysdom
 
 
-class AzureStorageConfig(ServiceConfig, register_as='azure_storage'):
+class AzureStorageConfig(ServiceConfig):
 
     type = wysdom.UserProperty(wysdom.SchemaConst('azure_storage'))
     name = wysdom.UserProperty(str)

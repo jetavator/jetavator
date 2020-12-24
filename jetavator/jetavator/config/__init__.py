@@ -4,5 +4,8 @@ from .Config import (
     Config,
     ServiceConfig,
     DBServiceConfig,
-    StorageConfig
+    StorageConfig,
+    RegistryServiceConfig,
+    SimpleFileRegistryServiceConfig,
+    SQLAlchemyRegistryServiceConfig
 )

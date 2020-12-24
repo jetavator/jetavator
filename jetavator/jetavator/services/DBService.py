@@ -1,8 +1,9 @@
+from typing import Any
+
 from abc import ABC, abstractmethod
 
-from logging import Logger
-
-from sqlalchemy.schema import DDLElement
+import pandas
+import sqlalchemy
 
 from .Service import Service
 
@@ -10,41 +11,41 @@ from .Service import Service
 class DBService(Service, ABC):
 
     @abstractmethod
-    def metadata(self):
+    def metadata(self) -> sqlalchemy.MetaData:
         pass
 
     @abstractmethod
-    def execute(self, sql):
+    def execute(self, sql) -> pandas.DataFrame:
         pass
 
     @abstractmethod
-    def drop_schema(self):
+    def drop_schema(self) -> None:
         pass
 
     @abstractmethod
-    def create_schema(self):
-        pass
-
-    @property
-    @abstractmethod
-    def schema_empty(self):
+    def create_schema(self) -> None:
         pass
 
     @property
     @abstractmethod
-    def schema_exists(self):
+    def schema_empty(self) -> bool:
+        pass
+
+    @property
+    @abstractmethod
+    def schema_exists(self) -> bool:
         pass
 
     @abstractmethod
-    def table_exists(self, table_name):
+    def table_exists(self, table_name: str) -> bool:
         pass
 
     @abstractmethod
-    def column_exists(self, table_name, column_name):
+    def column_exists(self, table_name: str, column_name: str) -> bool:
         pass
 
     @abstractmethod
-    def sql_query_single_value(self, sql):
+    def sql_query_single_value(self, sql: str) -> Any:
         pass
 
     @abstractmethod
@@ -52,16 +53,7 @@ class DBService(Service, ABC):
         pass
 
     @abstractmethod
-    def test(self):
-        pass
-
-    @abstractmethod
-    def session(self):
-        pass
-
-    @property
-    @abstractmethod
-    def logger(self) -> Logger:
+    def test(self) -> None:
         pass
 
     @abstractmethod
@@ -69,19 +61,15 @@ class DBService(Service, ABC):
         pass
 
     @abstractmethod
-    def write_empty_table(self, sqlalchemy_table, overwrite_schema=True):
-        pass
-
-    @abstractmethod
     def create_tables(self, sqlalchemy_tables):
         pass
 
     @abstractmethod
-    def execute_sql_elements_async(self, sql_elements):
+    def execute_sql_elements_async(self, sql_elements) -> None:
         pass
 
     @staticmethod
-    def sql_script_filename(ddl_element: DDLElement) -> str:
+    def sql_script_filename(ddl_element: sqlalchemy.schema.DDLElement) -> str:
         """
         sqlalchemy_ddl_element: sqlalchemy.sql.ddl.DDLElement
         """

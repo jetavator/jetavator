@@ -20,9 +20,11 @@ PROPERTIES_TO_PRINT = [
     "environment_type"
 ]
 
+# TODO: Co-locate config classes with their related service classes
+# TODO: Split services into service types in config file structure
+
 
 class ServiceConfig(wysdom.UserObject, wysdom.RegistersSubclasses):
-
     type: str = ConfigProperty(str)
 
     def name(self) -> str:
@@ -39,21 +41,32 @@ class DBServiceConfig(ServiceConfig):
     schema: str = ConfigProperty(str, default_function=_get_default_schema)
 
 
-class LocalSparkConfig(DBServiceConfig, register_as='local_spark'):
-
+class LocalSparkConfig(DBServiceConfig):
     type: str = ConfigProperty(wysdom.SchemaConst('local_spark'))
 
 
 class StorageConfig(wysdom.UserObject):
-
     source: str = ConfigProperty(str)
     vault: str = ConfigProperty(str)
     star: str = ConfigProperty(str)
     logs: str = ConfigProperty(str)
 
 
-class SessionConfig(wysdom.UserObject):
+class RegistryServiceConfig(ServiceConfig):
+    service_type: str = ConfigProperty(wysdom.SchemaConst('registry'))
 
+
+class SQLAlchemyRegistryServiceConfig(RegistryServiceConfig):
+    type: str = ConfigProperty(wysdom.SchemaConst('sqlalchemy_registry'))
+    sqlalchemy_uri: str = ConfigProperty(str)
+
+
+class SimpleFileRegistryServiceConfig(RegistryServiceConfig):
+    type: str = ConfigProperty(wysdom.SchemaConst('simple_file_registry'))
+    storage_path: str = ConfigProperty(str)
+
+
+class SessionConfig(wysdom.UserObject):
     run_uuid = ConfigProperty(
         str,
         name="run_uuid",
@@ -63,7 +76,6 @@ class SessionConfig(wysdom.UserObject):
 
 
 class Config(wysdom.UserObject, wysdom.ReadsJSON, wysdom.ReadsYAML):
-
     model_path: str = ConfigProperty(str, default_function=lambda self: os.getcwd())
     schema: str = ConfigProperty(str)
     drop_schema_if_exists: bool = ConfigProperty(bool, default=False)
@@ -74,6 +86,7 @@ class Config(wysdom.UserObject, wysdom.ReadsJSON, wysdom.ReadsYAML):
         wysdom.SchemaDict(ServiceConfig), default={}, persist_defaults=True)
     storage: StorageConfig = ConfigProperty(StorageConfig)
     compute: str = ConfigProperty(str)
+    registry: str = ConfigProperty(str)
 
     @LazyProperty
     def secret_lookup(self) -> SecretLookup:

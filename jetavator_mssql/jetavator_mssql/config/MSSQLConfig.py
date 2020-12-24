@@ -2,7 +2,7 @@ import wysdom
 from jetavator.config import DBServiceConfig
 
 
-class MSSQLConfig(DBServiceConfig, register_as='mssql'):
+class MSSQLConfig(DBServiceConfig):
 
     type: str = wysdom.UserProperty(wysdom.SchemaConst('mssql'))
     database: str = wysdom.UserProperty(str)

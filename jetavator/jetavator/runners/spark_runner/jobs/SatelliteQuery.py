@@ -40,7 +40,7 @@ class SatelliteQuery(SparkSQLView, register_as='satellite_query'):
 
     @property
     def sql(self) -> str:
-        return self.runner.compute_service.compile_sqlalchemy(
+        return self.runner.compute_service.compile_delta_lake(
             self.pipeline_query())
 
     @property

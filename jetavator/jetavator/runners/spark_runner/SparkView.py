@@ -4,6 +4,8 @@ from pyspark.sql import DataFrame
 
 from . import SparkJob, SparkSQLJob
 
+LOG_ROW_COUNTS = True
+
 
 class SparkView(SparkJob, ABC):
     """
@@ -41,6 +43,10 @@ class SparkView(SparkJob, ABC):
 
         if self.checkpoint:
             df = df.localCheckpoint()
+
+        # TODO: Make this flag configurable
+        if LOG_ROW_COUNTS:
+            self.logger.info(f'Row count: {self.name} ({df.count()} rows)')
 
         if self.global_view:
             df = df.createOrReplaceGlobalTempView(self.name)

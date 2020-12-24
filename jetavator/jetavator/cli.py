@@ -122,6 +122,8 @@ def main(argv=None, exit_callback=None):
 
     try:
 
+        # TODO: refactor this if block into separate functions
+
         if options['config']:
             if options['--test']:
                 test_engine = Engine(config=config)
@@ -152,7 +154,7 @@ def main(argv=None, exit_callback=None):
             engine.drop('satellite', options['<name>'])
 
         elif options['run']:
-            load_type=('full' if options['full'] else 'delta')
+            load_type = ('full' if options['full'] else 'delta')
             default_logger.info(f'Engine: Performing {load_type} load.')
             if options['<target_table>=<source_csv>']:
                 table_csvs = {}
@@ -164,9 +166,12 @@ def main(argv=None, exit_callback=None):
                         f'Loading {len(csv_files)} CSVs '
                         f'into table: {table_name}'
                     )
-                    engine.load_csvs(table_name, csv_files)
-            if options['--folder']:
-                engine.load_csv_folder(folder_path=options['--folder'])
+                    engine.loaded_project.sources[table_name].load_csvs(csv_files)
+            elif options['--folder']:
+                for dir_entry in os.scandir(options['--folder']):
+                    filename, file_extension = os.path.splitext(dir_entry.name)
+                    if file_extension == ".csv" and dir_entry.is_file():
+                        engine.loaded_project.sources[filename].load_csvs([dir_entry.path])
             engine.run(load_type='full')
 
         elif options['performance']:
@@ -206,7 +211,7 @@ def main(argv=None, exit_callback=None):
                             version.is_latest_version
                         )
                         for version
-                        in engine.project_history.values()
+                        in engine.schema_registry.values()
                     ]
                     default_logger.info(
                         tabulate(
