@@ -1,19 +1,29 @@
-from .Base import Base
+from __future__ import annotations
 
-from jetavator.utils import dict_checksum
+from typing import Dict, Any
+
+import json
+import binascii
+
+from datetime import datetime
+from hashlib import sha1
 
 from sqlalchemy import Column, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import *
-# from sqlalchemy.dialects.mssql import BIT
 
-from ast import literal_eval
+from .Base import Base
+from .Deployment import Deployment
 
 
 class ObjectDefinition(Base):
 
     @classmethod
-    def from_dict(cls, deployment, definition_dict):
+    def from_dict(
+            cls,
+            deployment: Deployment,
+            definition_dict: Dict[str, Any]
+    ) -> ObjectDefinition:
 
         if not isinstance(definition_dict, dict):
             raise TypeError("definition_dict must be of type dict")
@@ -29,11 +39,17 @@ class ObjectDefinition(Base):
             _type=definition_dict["type"],
             _name=definition_dict["name"],
             _version=deployment.version,
-            _definition=str(definition_dict),
-            _checksum=dict_checksum(definition_dict)
+            _definition=json.dumps(definition_dict),
+            _checksum=cls.dict_checksum(definition_dict)
         )
 
-    def __init__(self, deployment, definition_dict, *args, **kwargs):
+    def __init__(
+            self,
+            deployment: Deployment,
+            definition_dict: Dict[str, Any],
+            *args: Any,
+            **kwargs: Any
+    ) -> None:
 
         self._deployment = deployment
         self._definition_dict = definition_dict
@@ -43,7 +59,7 @@ class ObjectDefinition(Base):
         self._verify_checksum()
 
     def _verify_checksum(self):
-        generated_checksum = dict_checksum(self.definition)
+        generated_checksum = self.dict_checksum(self.definition)
         if self._checksum != generated_checksum:
             raise RuntimeError(
                 f"""
@@ -59,48 +75,48 @@ class ObjectDefinition(Base):
 
     _definition_dict = None
 
-    _type = Column("type", VARCHAR(124), primary_key=True)
-    _name = Column("name", VARCHAR(124), primary_key=True)
-    _version = Column(
+    _type: str = Column("type", VARCHAR(124), primary_key=True)
+    _name: str = Column("name", VARCHAR(124), primary_key=True)
+    _version: str = Column(
         "version",
         VARCHAR(124),
         ForeignKey('jetavator_deployments.version'),
         primary_key=True)
 
-    _definition = Column("definition", VARCHAR(50))
-    _checksum = Column("checksum", CHAR(40))
+    _definition: str = Column("definition", VARCHAR(50))
+    _checksum: str = Column("checksum", CHAR(40))
 
-    deploy_dt = Column(TIMESTAMP)
-    deleted_ind = Column(VARCHAR(1), default=0)
+    deploy_dt: datetime = Column(TIMESTAMP)
+    deleted_ind: str = Column(VARCHAR(1), default=0)
 
     @property
-    def type(self):
+    def type(self) -> str:
         return self._type
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
 
     @property
-    def version(self):
+    def version(self) -> str:
         return self._version
 
     @property
-    def definition(self):
+    def definition(self) -> Dict[str, Any]:
         if not self._definition_dict:
-            self._definition_dict = literal_eval(self._definition)
+            self._definition_dict = json.loads(self._definition)
             if not isinstance(self._definition_dict, dict):
                 raise TypeError(
-                    "definition does not evaluate to a dict: "
+                    "definition does not evaluate to valid JSON: "
                     f"{self._definition}"
                 )
         return self._definition_dict
 
     @property
-    def checksum(self):
+    def checksum(self) -> str:
         return self._checksum
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             "<ObjectDefinition("
             f"type='{self._type}', "
@@ -113,5 +129,13 @@ class ObjectDefinition(Base):
             ")>"
         )
 
-    deployment = relationship(
+    deployment: relationship = relationship(
         "Deployment", back_populates="object_definitions")
+
+    @staticmethod
+    def dict_checksum(object_to_checksum):
+        return binascii.hexlify(
+            sha1(
+                json.dumps(object_to_checksum, sort_keys=True).encode()
+            ).digest()
+        ).decode("ascii")

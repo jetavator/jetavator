@@ -1,9 +1,7 @@
 import subprocess
 import os
 
-from behave import given, when, then
-
-from jetavator_cli.utils import run_bash
+from behave import given, when
 
 from behave_pandas import table_to_dataframe
 
@@ -28,22 +26,6 @@ def step_impl(context):
     implementation_file = open(implementation_file_path, "w")
     implementation_file.write(context.text)
     implementation_file.close()
-
-
-@then(u"the helm release {release} exists")
-def step_impl(context, release):
-    deploys, _ = run_bash(f"helm ls | grep {release} | wc -l")
-    assert int(deploys) != 0, (
-        f"Response = [{deploys}]. Release [{release}] does not exist."
-    )
-
-
-@then(u"the helm release {release} does not exist")
-def step_impl(context, release):
-    deploys, _ = run_bash(f"helm ls | grep {release} | wc -l")
-    assert int(deploys) == 0, (
-        f"Response = [{deploys}]. Release [{release}] exists."
-    )
 
 
 @given(u"a CSV file {csv_filename} saved in a temporary folder")

@@ -1,85 +1,37 @@
-import pandas
-import os
-import lazy_property
-import tempfile
-import numpy as np
-import sqlalchemy
-import yaml
-import datetime
+# TODO: Support all possible operations for upgrading from one version of a project to another.
+#       Operations to support:
+#           Add source
+#           Delete source - requires all satellites referencing it to be deleted
+#           Modify source
+#           Rename source - requires all satellites referencing it to be modified
+#           Add hub
+#           Delete hub - requires all links and satellites referencing it to be deleted
+#           Modify hub - requires all links and satellites referencing it to be modified
+#           Rename hub - requires all links and satellites referencing it to be modified
+#           Add link
+#           Delete link - requires all satellites referencing it to be deleted
+#           Modify link - requires all satellites referencing it to be modified
+#           Rename link - requires all satellites referencing it to be modified
+#           Add satellite
+#           Delete satellite - requires all satellites referencing it as a dependency to be deleted
+#           Modify satellite - requires all satellites referencing it as a dependency to be modified
+#           Rename satellite - requires all satellites referencing it as a dependency to be modified
+#           Backfill satellite to date (by calculating)
+#           Backfill satellite to date (by copying from previous version)
 
-from re import match
+from enum import Enum
 from functools import wraps
+from logging import Logger
+from typing import Union, Dict, Callable
 
-from . import utils
+import yaml
+from lazy_property import LazyProperty
 
-from .schema_registry import SchemaRegistry
-
+from .runners import Runner
 from .config import Config
-
-from .SparkRunner import SparkRunner
+from .schema_registry import Project, RegistryService
 from .services import Service, DBService
-
-DEFAULT_NUMERIC = 0
-DEFAULT_STRING = ''
-DEFAULT_DATE = '1970-01-01'
-DEFAULT_TIME = '0000'
-DEFAULT_BINARY = bin(0)
-
-TYPE_DEFAULTS = {
-    "bigint": DEFAULT_NUMERIC,
-    "bit": DEFAULT_NUMERIC,
-    "decimal": DEFAULT_NUMERIC,
-    "int": DEFAULT_NUMERIC,
-    "money": DEFAULT_NUMERIC,
-    "numeric": DEFAULT_NUMERIC,
-    "smallint": DEFAULT_NUMERIC,
-    "smallmoney": DEFAULT_NUMERIC,
-    "tinyint": DEFAULT_NUMERIC,
-    "float": DEFAULT_NUMERIC,
-    "real": DEFAULT_NUMERIC,
-    "date": DEFAULT_DATE,
-    "datetime": DEFAULT_DATE,
-    "datetime2": DEFAULT_DATE,
-    "smalldatetime": DEFAULT_DATE,
-    "time": DEFAULT_TIME,
-    "char": DEFAULT_STRING,
-    "text": DEFAULT_STRING,
-    "varchar": DEFAULT_STRING,
-    "nchar": DEFAULT_STRING,
-    "ntext": DEFAULT_STRING,
-    "nvarchar": DEFAULT_STRING,
-    "binary": DEFAULT_BINARY,
-    "varbinary": DEFAULT_BINARY,
-    "image": DEFAULT_BINARY
-}
-
-PANDAS_DTYPE_MAPPINGS = {
-    "bigint": "Int64",
-    "bit": "Int64",
-    "decimal": "Int64",
-    "int": "Int64",
-    "money": "float",
-    "numeric": "float",
-    "smallint": "Int64",
-    "smallmoney": "float",
-    "tinyint": "Int64",
-    "float": "float",
-    "real": "float",
-    "date": "datetime64[ns]",
-    "datetime": "datetime64[ns]",
-    "datetime2": "datetime64[ns]",
-    "smalldatetime": "datetime64[ns]",
-    "time": "timedelta64[ns]",
-    "char": "object",
-    "text": "object",
-    "varchar": "object",
-    "nchar": "object",
-    "ntext": "object",
-    "nvarchar": "object",
-    "binary": "object",
-    "varbinary": "object",
-    "image": "object"
-}
+from .sql_model import ProjectModel
 
 PANDAS_TO_SQL_MAPPINGS = {
     "int": "bigint",
@@ -94,13 +46,13 @@ PANDAS_TO_SQL_MAPPINGS = {
     "object": "nvarchar(255)"
 }
 
-BASE_DTYPES = {
-    "jetavator_load_dt": "datetime64[ns]",
-    "jetavator_deleted_ind": "int"
-}
+
+class LoadType(Enum):
+    DELTA = 'delta'
+    FULL = 'full'
 
 
-def logged(function_to_decorate):
+def logged(function_to_decorate: Callable) -> Callable:
     @wraps(function_to_decorate)
     def decorated_function(self, *args, **kwargs):
         try:
@@ -108,302 +60,142 @@ def logged(function_to_decorate):
         except Exception as e:
             self.logger.exception(str(e))
             raise
+
     return decorated_function
 
 
 class Engine(object):
+    """The core Jetavator engine. Pass this object a valid engine
+    configuration, and use it to perform operations like deploying a project
+    or loading new data.
+
+    :param config: A `jetavator.Config` object containing the desired
+                   configuration for the Engine
+    """
 
     def __init__(
-        self,
-        config=None,
-        **kwargs
-    ):
-        self.config = config or Config(**kwargs)
+            self,
+            config: Config
+    ) -> None:
+        """Default constructor
+        """
+        self.config = config
+
+    @LazyProperty
+    def loaded_project(self) -> Project:
+        """The current project as specified by the YAML files in self.config.model_path
+        """
+        return Project.from_directory(
+            self.config,
+            self.compute_service,
+            self.config.model_path)
 
     @property
-    def connection(self):
+    def compute_service(self) -> DBService:
+        """The storage service used for computation
+        """
         return self.services[self.config.compute]
 
     @property
-    def source_storage_service(self):
+    def source_storage_service(self) -> DBService:
+        """The storage service used for the source layer
+        """
         return self.services[self.config.storage.source]
 
     @property
-    def vault_storage_service(self):
+    def vault_storage_service(self) -> DBService:
+        """The storage service used for the data vault layer
+        """
         return self.services[self.config.storage.vault]
 
     @property
-    def star_storage_service(self):
+    def star_storage_service(self) -> DBService:
+        """The storage service used for the star schema layer
+        """
         return self.services[self.config.storage.star]
 
     @property
-    def logs_storage_service(self):
+    def logs_storage_service(self) -> DBService:
+        """The storage service used for logs
+        """
         return self.services[self.config.storage.logs]
 
     @property
-    def db_services(self):
+    def db_services(self) -> Dict[str, DBService]:
+        """All the registered database services in the engine config
+
+        :return: A dictionary of class:`jetavator.services.DBService` by name
+        """
         return {
             k: v
             for k, v in self.services.items()
             if isinstance(v, DBService)
         }
 
-    def drop_schemas(self):
+    # TODO: Engine.drop_schemas be moved to Project if the schema to drop
+    #       is specific to a Project?
+    def drop_schemas(self) -> None:
+        """Drop this project's schema on all storage services
+        """
         for service in self.db_services.values():
             if service.schema_exists:
                 service.drop_schema()
 
+    # TODO: Should <object>.logger be part of the public API?
     @property
-    def logger(self):
-        return self.connection.logger
+    def logger(self) -> Logger:
+        """Python logging service to receive log messages
+        """
+        return self.compute_service.logger
 
-    @lazy_property.LazyProperty
-    def services(self):
+    @LazyProperty
+    def services(self) -> Dict[str, Service]:
+        """All the registered services as defined in the engine config
+
+        :return: A dictionary of class:`jetavator.services.Service` by name
+        """
         return {
-            service_config.name: Service.from_config(self, service_config)
-            for service_config in self.config.services
+            name: Service.from_config(self, config)
+            for name, config in self.config.services.items()
         }
 
-    @lazy_property.LazyProperty
-    def schema_registry(self):
-        return SchemaRegistry(self.config, self.connection)
+    # TODO: The role of SchemaRegistry is unclear. Can we refactor its
+    #       responsibilities into Engine and Project?
+    # TODO: Rename schema_registry to something more appropriate?
+    @LazyProperty
+    def schema_registry(self) -> RegistryService:
+        return self.services[self.config.registry]
 
-    @property
-    def sql_model(self):
-        return self.schema_registry.changeset.sql_model
+    # TODO: See above - unclear how this relates to SchemaRegistry
+    @LazyProperty
+    def sql_model(self) -> ProjectModel:
+        return ProjectModel(
+            self.config,
+            self.compute_service,
+            self.loaded_project,
+            self.schema_registry.deployed
+        )
 
+    # TODO: Is there any reason for an Engine only to have one project?
+    #       Should this be Engine.projects?
     @property
-    def project(self):
+    def project(self) -> Project:
         return self.schema_registry.deployed
 
-    @property
-    def project_history(self):
-        return self.schema_registry
-
     @logged
-    def deploy(self):
-        self.generate_database()
-
-    @logged
-    def run(self, load_type="delta"):
-        if load_type not in ("delta", "full"):
-            raise ValueError("load_type must be either 'delta' or 'full'")
-
-        # Fix this later?
-        if load_type == "full":
-            raise NotImplementedError("Not implemented in Databricks version.")
-
-        # TODO: Make this platform-independent - currently HIVE specific
-        self.connection.execute(
-            f'USE `{self.config.schema}`'
-        )
-
-        # self.connection.test()
-        self.spark_runner.run()
-
-        self.spark_runner.performance_data().to_csv(
-            'performance.csv',
-            index=False
-        )
-
-        # if return_val != 0:
-        #     raise RuntimeError(
-        #         f"Call to Jetavator.run failed with return code {return_val}. "
-        #         "Changes rolled back. "
-        #         "Source tables emptied and dumped to source_error schema.")
-
-    def add(self, new_object, load_full_history=False, version=None):
-
-        if isinstance(new_object, str):
-            new_object_dict = yaml.load(new_object)
-        elif isinstance(new_object, dict):
-            new_object_dict = new_object
-        else:
-            raise Exception("Jetavator.add: new_object must be str or dict.")
-
-        self.schema_registry.loaded.increment_version(version)
-        new_vault_object = self.schema_registry.loaded.add(new_object_dict)
-        self.update_database_model()
-
-        if new_vault_object.type == "satellite":
-            self.connection.execute_sql_element(
-                new_vault_object.sql_model.sp_load("full").execute())
-
-    def drop(self, object_type, object_name, version=None):
-        self.schema_registry.load_from_database()
-        self.schema_registry.loaded.increment_version(version)
-        self.schema_registry.loaded.delete(object_type, object_name)
-        self.update_database_model()
-
-    def update(self, model_dir=None, load_full_history=False):
-        if model_dir:
-            self.config.model_path = model_dir
-        self.schema_registry.load_from_disk()
-        assert (
-                self.schema_registry.loaded.checksum
-                != self.schema_registry.deployed.checksum
-        ), (
-            f"""
-            Cannot upgrade a project if the definitions have not changed.
-            Checksum: {self.schema_registry.loaded.checksum.hex()}
-            """
-        )
-        assert (
-                self.schema_registry.loaded.version
-                > self.schema_registry.deployed.version
-        ), (
-            "Cannot upgrade - version number must be incremented "
-            f"from {self.schema_registry.deployed.version}"
-        )
-        self.update_database_model(
-            load_full_history=load_full_history
-        )
-
-    def table_dtypes(self, table_name, registry=None):
-        registry = registry or self.schema_registry.loaded
-        try:
-            user_defined_dtypes = {
-                k: PANDAS_DTYPE_MAPPINGS[utils.sql_basic_type(v["type"])]
-                for k, v in registry[
-                    "source", table_name
-                ].definition[
-                    "columns"
-                ].items()
-            }
-        except KeyError:
-            raise Exception(f"Table source.{table_name} does not exist.")
-        return {
-            **BASE_DTYPES,
-            **user_defined_dtypes
-        }
-
-    def csv_to_dataframe(
-            self,
-            csv_file,
-            table_name,
-            registry=None
-    ):
-        registry = registry or self.schema_registry.loaded
-        try:
-            return pandas.read_csv(
-                csv_file,
-                parse_dates=[
-                    k
-                    for k, v in self.table_dtypes(table_name, registry).items()
-                    if v in ["datetime64[ns]", "timedelta64[ns]"]
-                ],
-                dtype={
-                    k: v
-                    for k, v in self.table_dtypes(table_name, registry).items()
-                    if v not in ["datetime64[ns]", "timedelta64[ns]"]
-                }
-            )
-        except ValueError:
-            return pandas.read_csv(
-                csv_file,
-                parse_dates=[
-                    k
-                    for k, v in self.table_dtypes(table_name, registry).items()
-                    if v in ["datetime64[ns]", "timedelta64[ns]"]
-                       and k != "jetavator_load_dt"
-                ],
-                dtype={
-                    k: v
-                    for k, v in self.table_dtypes(table_name, registry).items()
-                    if v not in ["datetime64[ns]", "timedelta64[ns]"]
-                }
-            )
-
-    def source_def_from_dataframe(self, df, table_name, use_as_pk):
-
-        pd_dtypes_dict = df.dtypes.apply(lambda x: x.name).to_dict()
-        col_dict_list = [
-            {
-                k: {
-                    "type": PANDAS_TO_SQL_MAPPINGS[v],
-                    "nullable": False  # in Python e.g. int is not nullable
-                }
-            }
-            for k, v in pd_dtypes_dict.items()
-        ]
-        col_dict = {k: v for d in col_dict_list for k, v in d.items()}
-
-        col_dict[use_as_pk]["pk"] = True
-
-        source_def = {
-            "name": table_name,
-            "type": "source",
-            "schema": "source",
-            "columns": col_dict
-        }
-        return source_def
-
-    def add_dataframe_as_source(self, df, table_name, use_as_pk):
-        source_def = self.source_def_from_dataframe(
-            df=df,
-            table_name=table_name,
-            use_as_pk=use_as_pk
-        )
-        self.add(
-            # This is supposed to fail if table_name already exist in the
-            # source schema of the database.
-            source_def
-        )
-        self.insert_to_sql_from_pandas(
-            df=df,
-            schema="source",
-            table_name=table_name,
-        )
-
-    def load_csvs(
-        self, table_name, csv_files
-        # , assume_schema_integrity=False
-    ):
-        # if assume_schema_integrity:
-        #     source = self.schema_registry.loaded["source", table_name]
-        #     self.spark_runner.load_csv(csv_file, source)
-        # else:
-        self.connection.load_dataframe(
-            pandas.concat([
-                self.csv_to_dataframe(
-                    csv_file,
-                    table_name,
-                    self.schema_registry.loaded
-                )
-                for csv_file in csv_files
-            ]),
-            self.schema_registry.loaded["source", table_name]
-        )
-
-    def load_csv_folder(self, folder_path):
-        assert os.path.isdir(folder_path), (
-            f"{folder_path} is not a valid directory."
-        )
-        for dir_entry in os.scandir(folder_path):
-            filename, file_extension = os.path.splitext(dir_entry.name)
-            if file_extension == ".csv" and dir_entry.is_file():
-                self.load_csvs(filename, [dir_entry.path])
-
-    def call_stored_procedure(self, procedure_name):
-        return self.connection.call_stored_procedure(procedure_name)
-
-    def sql_query_single_value(self, sql):
-        return self.connection.sql_query_single_value(sql)
-
-    def get_performance_data(self):
-        raise NotImplementedError
-
-    def generate_database(self):
+    def deploy(self) -> None:
+        """Deploy the current project to the configured storage services
+        """
         self.logger.info('Testing database connection')
-        self.connection.test(master=True)
-        if self.connection.schema_exists:
+        self.compute_service.test()
+        if self.compute_service.schema_exists:
             if self.config.drop_schema_if_exists:
                 self.logger.info('Dropping and recreating database')
-                self.connection.drop_schema()
-                self.connection.create_schema()
+                self.compute_service.drop_schema()
+                self.compute_service.create_schema()
             elif (
-                not self.connection.schema_empty
-                and not self.config.skip_deploy
+                    not self.compute_service.schema_empty
+                    and not self.config.skip_deploy
             ):
                 raise Exception(
                     f"Database {self.config.schema} already exists, "
@@ -412,57 +204,198 @@ class Engine(object):
                 )
         else:
             self.logger.info(f'Creating database {self.config.schema}')
-            self.connection.create_schema()
-        self._deploy_template(action="create")
+            self.compute_service.create_schema()
+        self._deploy_template()
 
-    def update_database_model(self, load_full_history=False):
-        self._deploy_template(action="alter")
+    @logged
+    def run(
+            self,
+            load_type: LoadType = LoadType.DELTA
+    ) -> None:
+        """Run the data pipelines for the current project
+
+        :param load_type: A `LoadType` that tells the pipelines how to behave
+                          with respect to historic data
+        """
+
+        # TODO: Fix full load capability for Spark/Hive
+        if load_type == LoadType.FULL:
+            raise NotImplementedError("Not implemented in Spark/Hive version.")
+
+        # TODO: Make this platform-independent - currently HIVE specific
+        self.compute_service.execute(
+            f'USE `{self.config.schema}`'
+        )
+
+        # TODO: Test DB connection before execution
+        # self.connection.test()
+        self.runner.run()
+
+        self.runner.performance_data().to_csv(
+            'performance.csv',
+            index=False
+        )
+
+    # TODO: Reintroduce tests for Engine.add
+    # TODO: Refactor new_object so it takes a VaultObject which can then
+    #       be extended with more constructors
+    # TODO: Move load_full_history functionality to a new VaultObject method
+    # TODO: Enforce semver compatibility for user-supplied version strings?
+    def add(
+            self,
+            new_object: Union[str, dict],
+            load_full_history: bool = False,
+            version: str = None
+    ) -> None:
+        """Add a new object to the current project
+
+        :param new_object:        The definition of the new object as a
+                                  dictionary or valid YAML string
+        :param load_full_history: True if the new object should be loaded
+                                  with full historic data
+        :param version:           New version string for the amended project
+                                  (optional - will be auto-incremented if
+                                  not supplied)
+        """
+
         if load_full_history:
-            self.connection.execute_sql_element(
-                self.sql_model.sp_jetavator_load_full.execute()
-            )
+            # TODO: Re-implement or refactor load_full_history
+            raise NotImplementedError()
 
-    def update_model_from_dir(self, new_model_path=None):
+        if isinstance(new_object, str):
+            new_object_dict = yaml.safe_load(new_object)
+        elif isinstance(new_object, dict):
+            new_object_dict = new_object
+        else:
+            raise Exception("Jetavator.add: new_object must be str or dict.")
+
+        self.loaded_project.increment_version(version)
+        new_vault_object = self.loaded_project.add(new_object_dict)
+        self._update_database_model()
+
+        if new_vault_object.type == "satellite":
+            self.compute_service.execute_sql_element(
+                new_vault_object.sql_model.sp_load("full").execute())
+
+    # TODO: Move Engine.drop to VaultObject.drop in order to allow
+    #       multiple lookup methods, e.g. by type+name, composite key,
+    #       iteration through a list of VaultObjects? Possibly decouple
+    #       from the version increment to give users more control?
+    def drop(
+            self,
+            object_type: str,
+            object_name: str,
+            version: str = None
+    ) -> None:
+        """Drop an object from the current project
+
+        :param object_type:       Type of the object to drop e.g. 'source'
+        :param object_name:       Name of the object to drop
+                                  with full historic data
+        :param version:           New version string for the amended project
+                                  (optional - will be auto-incremented if
+                                  not supplied)
+        """
+        self.schema_registry.load_from_database()
+        self.loaded_project.increment_version(version)
+        self.loaded_project.delete(object_type, object_name)
+        self._update_database_model()
+
+    # TODO: Refactor so the Engine doesn't need physical disk paths for
+    #       the YAML folder - move this functionality into an extendable
+    #       loader object elsewhere. Instead pass in a whole project object.
+    def update(
+            self,
+            model_path: str = None,
+            load_full_history: bool = False
+    ) -> None:
+        """Updates the current project with a new set of object definitions
+        from disk
+
+        :param model_path:        Path on disk to load the new project
+                                  definition (optional, will use the existing
+                                  configured path if not supplied)
+        :param load_full_history: True if the new object(s) should be loaded
+                                  with full historic data
+        """
+        if model_path:
+            self.config.model_path = model_path
+        self.schema_registry.load_from_disk()
+        assert (
+                self.loaded_project.checksum
+                != self.schema_registry.deployed.checksum
+        ), (
+            f"""
+            Cannot upgrade a project if the definitions have not changed.
+            Checksum: {self.loaded_project.checksum.hex()}
+            """
+        )
+        assert (
+                self.loaded_project.version
+                > self.schema_registry.deployed.version
+        ), (
+            "Cannot upgrade - version number must be incremented "
+            f"from {self.schema_registry.deployed.version}"
+        )
+        self._update_database_model(
+            load_full_history=load_full_history
+        )
+
+    def _update_database_model(
+            self,
+            load_full_history: bool = False
+    ) -> None:
+        self._deploy_template()
+        if load_full_history:
+            raise NotImplementedError
+
+    # TODO: Refactor responsibility for loading YAML files away from Engine.
+    def update_model_from_dir(
+            self,
+            new_model_path: str = None
+    ) -> None:
         if new_model_path:
             self.config.model_path = new_model_path
         self.schema_registry.load_from_disk()
 
-    @lazy_property.LazyProperty
-    def spark_runner(self):
-        return SparkRunner(
+    @LazyProperty
+    def runner(self) -> Runner:
+        return Runner.from_compute_service(
             self,
-            self.sql_model.definition
+            self.compute_service,
+            self.loaded_project
         )
 
-    def clear_database(self):
+    # TODO: Do we need both clear_database and drop_schemas?
+    def clear_database(self) -> None:
         self.logger.info('Starting: clear_database')
         for table in self.sql_model.tables:
-            self.connection.write_empty_table(table, overwrite_schema=False)
+            self.compute_service.write_empty_table(table, overwrite_schema=False)
         self.logger.info('Finished: clear_database')
 
-    def _deploy_template(self, action):
+    def _deploy_template(self) -> None:
 
-        if not self.schema_registry.loaded.valid:
-            raise Exception(self.schema_registry.loaded.validation_error)
+        if not self.loaded_project.valid:
+            raise Exception(self.loaded_project.validation_error)
 
         # self.connection.reset_metadata()
 
         self.logger.info(f'Creating tables...')
 
         self.vault_storage_service.create_tables(
-            self.sql_model.create_tables_ddl(action)
+            self.sql_model.create_tables_ddl()
         )
 
         self.logger.info(f'Creating history views...')
 
         self.vault_storage_service.execute_sql_elements_async(
-            self.sql_model.create_history_views(action)
+            self.sql_model.create_history_views()
         )
 
         self.logger.info(f'Creating current views...')
 
         self.vault_storage_service.execute_sql_elements_async(
-            self.sql_model.create_current_views(action)
+            self.sql_model.create_current_views()
         )
 
         # self.logger.info(f'Updating schema registry...')

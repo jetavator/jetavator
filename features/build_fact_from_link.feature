@@ -5,7 +5,29 @@ Feature: Build fact from link
   @setup
   Scenario: Build fact from link - Setup
 
-    Given a definition for a project:
+    Given a random string in the environment variable $RANDOM_TEST_SCHEMA
+
+    And a file saved as config.yml:
+      """
+      services:
+        spark:
+          type: local_spark
+        file_registry:
+          service_type: registry
+          type: simple_file_registry
+          storage_path: ~/.jetavator/registry
+      storage:
+        source: spark
+        vault: spark
+        star: spark
+        logs: azure_queue
+      compute: spark
+      registry: file_registry
+      secret_lookup: environment
+      schema: $RANDOM_TEST_SCHEMA
+      """
+
+    And a definition for a project:
       """
       name: example
       type: project
@@ -137,14 +159,13 @@ Feature: Build fact from link
 
     And we run the CLI command:
       """
-      jetavator config {config_args}
+      jetavator config --config-file={tempfolder}/config.yml --set model_path={tempfolder}/definitions
       """
 
-  @fixture.jetavator
   Scenario: Initial load
 
     When all the definitions are saved to disk
-    And we run the CLI command "jetavator deploy"
+    And we run the CLI command "jetavator deploy -d"
     And we run the CLI command:
       """
       jetavator run delta \
@@ -163,11 +184,10 @@ Feature: Build fact from link
        | ORD                 | LHR                 | 1           | 0             | 1                 |
        | ORD                 | AMS                 | 2           | 0             | 1                 |
 
-  @fixture.jetavator
   Scenario: Delta load - Update
 
     When all the definitions are saved to disk
-    And we run the CLI command "jetavator deploy"
+    And we run the CLI command "jetavator deploy -d"
     And we run the CLI command:
       """
       jetavator run delta \
@@ -194,11 +214,10 @@ Feature: Build fact from link
        | ORD                 | LHR                 | 1           | 0             | 0                 |
        | ORD                 | AMS                 | 2           | 0             | 0                 |
 
-   @fixture.jetavator
    Scenario: Delta load - Insert
 
       When all the definitions are saved to disk
-      And we run the CLI command "jetavator deploy"
+      And we run the CLI command "jetavator deploy -d"
       And we run the CLI command:
         """
         jetavator run delta \
@@ -228,11 +247,10 @@ Feature: Build fact from link
         | ATL                 | CDG                 | 0           | 1             | 1                 |
         | ORD                 | CDG                 | 1           | 0             | 1                 |
 
-  @fixture.jetavator
   Scenario: Delta load - Delete
 
      When all the definitions are saved to disk
-     And we run the CLI command "jetavator deploy"
+     And we run the CLI command "jetavator deploy -d"
      And we run the CLI command:
        """
        jetavator run delta \
@@ -258,7 +276,6 @@ Feature: Build fact from link
        | ORD                 | PVG                 | 1           | 0             | 0                 |
        | ORD                 | LHR                 | 1           | 0             | 0                 |
 
-   @fixture.jetavator
    Scenario: Allow users to exclude links from the star schema
 
      Given a definition for a link:
@@ -272,11 +289,10 @@ Feature: Build fact from link
        """
 
      When all the definitions are saved to disk
-      And we run the CLI command "jetavator deploy"
+      And we run the CLI command "jetavator deploy -d"
 
      Then the table star_fact_airport_pair does not exist on the star datastore
 
-   @fixture.jetavator
    Scenario: Allow users to exclude link satellites from the star schema
 
      Given a definition for a satellite:
@@ -304,6 +320,6 @@ Feature: Build fact from link
        """
 
      When all the definitions are saved to disk
-      And we run the CLI command "jetavator deploy"
+      And we run the CLI command "jetavator deploy -d"
 
      Then the column num_changes does not exist in the table star_fact_airport_pair on the star datastore

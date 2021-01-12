@@ -1,101 +1,51 @@
+from __future__ import annotations
+
+from typing import Tuple, Optional
+
 import semver
 
 from datetime import datetime
 from itertools import groupby
-from ast import literal_eval
 
-from ..utils import dict_checksum, load_yamls_in_dir
+from .VaultObject import VaultObject, VaultObjectKey
+from .VaultObjectCollection import VaultObjectMapping
+from .YamlProjectLoader import YamlProjectLoader
 
-from ..sql_model.ProjectModel import ProjectModel
-
-from .VaultObject import VaultObject
 from .sqlalchemy_tables import Deployment, ObjectDefinition
 
-from jetavator import __version__ as VERSION
+from jetavator import __version__
 
 
-class ProjectOrChangeSet(object):
+class Project(VaultObjectMapping):
+    _vault_objects: Dict[Tuple[str, str], VaultObject] = None
+    _sqlalchemy_object = None
 
-    def __getitem__(self, key):
-        if isinstance(key, str):
-            return self._get_items_by_type([key])
-        if isinstance(key, tuple) and len(key) == 2:
-            found_object = self.get(key)
-            if found_object:
-                return found_object
-            else:
-                raise KeyError(f'Could not find referenced object: {key}')
-        else:
-            raise Exception(
-                "Item key must be in the form ['type'] or ['type', 'name']")
-
-    def __iter__(self):
-        return iter(self.keys())
-
-    def get(self, key, default=None):
-        return self.object_definitions.get(key, default)
-
-    def keys(self):
-        return self.object_definitions.keys()
-
-    def items(self):
-        return (
-            (key, self.get(key))
-            for key in self.keys()
-        )
-
-    def values(self):
-        return (
-            self.get(key)
-            for key in self.keys()
-        )
-
-    def _get_items_by_type(self, keys):
-        return {
-            name: self[type, name]
-            for type, name in self.keys()
-            if type in keys
-        }
-
-    @property
-    def hubs(self):
-        return self._get_items_by_type(["hub"])
-
-    @property
-    def links(self):
-        return self._get_items_by_type(["link"])
-
-    @property
-    def satellite_owners(self):
-        return self._get_items_by_type(["hub", "link"])
-
-    @property
-    def satellites(self):
-        return self._get_items_by_type(["satellite"])
-
-    @property
-    def sources(self):
-        return self._get_items_by_type(["source"])
-
-    @property
-    def sql_model(self):
-        return ProjectModel(self)
-
-
-class Project(ProjectOrChangeSet):
-
-    def __init__(self, registry, object_definitions, sqlalchemy_object):
-        self.registry = registry
-        self.object_definitions = {
-            (x.type, x.name): VaultObject.subclass_instance(self, x)
+    def __init__(
+            self,
+            config: Config,
+            compute_service: DBService,
+            object_definitions: List[ObjectDefinition],
+            sqlalchemy_object: Deployment
+    ) -> None:
+        super().__init__(
+            VaultObject.subclass_instance(self, x)
             for x in object_definitions
-        }
-        self.sqlalchemy_object = sqlalchemy_object
+        )
+        self.config = config
+        self.compute_service = compute_service
+        self._sqlalchemy_object = sqlalchemy_object
+        for vault_object in self.values():
+            vault_object.validate()
 
     @classmethod
-    def from_directory(cls, registry, directory_path):
+    def from_directory(
+            cls,
+            config: Config,
+            compute_service: DBService,
+            directory_path: str
+    ) -> Project:
 
-        file_dicts = load_yamls_in_dir(directory_path)
+        file_dicts = YamlProjectLoader(directory_path).load_files()
 
         projects = [x for x in file_dicts if x["type"] == "project"]
         non_projects = [x for x in file_dicts if x["type"] != "project"]
@@ -111,7 +61,8 @@ class Project(ProjectOrChangeSet):
             version=projects[0]["version"])
 
         return cls(
-            registry,
+            config,
+            compute_service,
             object_definitions=[
                 ObjectDefinition.from_dict(sqlalchemy_object, definition_dict)
                 for definition_dict in non_projects
@@ -119,39 +70,45 @@ class Project(ProjectOrChangeSet):
             sqlalchemy_object=sqlalchemy_object)
 
     @classmethod
-    def from_sqlalchemy_object(cls, registry, sqlalchemy_object):
+    def from_sqlalchemy_object(
+            cls,
+            config: Config,
+            compute_service: DBService,
+            sqlalchemy_object: Deployment
+    ) -> Project:
         return cls(
-            registry,
+            config,
+            compute_service,
             object_definitions=sqlalchemy_object.object_definitions,
             sqlalchemy_object=sqlalchemy_object)
 
-    @property
-    def indexed_objects(self):
-        return {
-            (x.type, x.name): x
-            for x in self.object_definitions.values()
-        }
-
-    def add(self, definition_dict):
+    def add(
+            self,
+            definition_dict: Dict[str, Any]
+    ) -> VaultObject:
         key = (definition_dict["type"], definition_dict["name"])
 
-        if key in self.object_definitions:
+        if key in self._vault_objects:
             raise Exception(f"Table definition {key} already exists.")
 
-        self.object_definitions[key] = self.vault_object_from_dict(
+        self._vault_objects[key] = self._vault_object_from_dict(
             definition_dict)
 
-        return self.object_definitions[key]
+        return self._vault_objects[key]
 
-    def delete(self, type, name):
-        key = (type, name)
-        if key not in self.object_definitions:
+    def delete(
+            self,
+            object_type: str,
+            object_name: str
+    ) -> None:
+        key = VaultObjectKey(object_type, object_name)
+        if key not in self._vault_objects:
             raise Exception(
                 f"""
                 Cannot delete the table {key} as it does not exist.
                 """
             )
-        table = self.object_definitions[key]
+        table = self._vault_objects[key]
         if table.dependent_satellites:
             raise Exception(
                 f"""
@@ -160,102 +117,68 @@ class Project(ProjectOrChangeSet):
                 {[satellite.name for satellite in table.dependent_satellites]}
                 """
             )
-        del self.object_definitions[key]
+        del self._vault_objects[key]
 
-    def export_sqlalchemy_object(self):
-        self.sqlalchemy_object.jetavator_version = VERSION
-        self.sqlalchemy_object.checksum = self.checksum
-        self.sqlalchemy_object.deploy_dt = str(datetime.now())
-        return self.sqlalchemy_object
+    def export_sqlalchemy_object(self) -> Deployment:
+        self._sqlalchemy_object.jetavator_version = __version__
+        self._sqlalchemy_object.checksum = self.checksum
+        self._sqlalchemy_object.deploy_dt = str(datetime.now())
+        return self._sqlalchemy_object
 
     @property
-    def checksum(self):
-        return dict_checksum({
+    def checksum(self) -> str:
+        return ObjectDefinition.dict_checksum({
             f"{x.type}.{x.name}": x.definition
-            for x in self.object_definitions.values()
+            for x in self._vault_objects.values()
             if x.type != "project"
         })
 
     @property
-    def version(self):
-        return semver.VersionInfo.parse(self.sqlalchemy_object.version)
+    def version(self) -> semver.VersionInfo:
+        return semver.VersionInfo.parse(self._sqlalchemy_object.version)
 
     @property
-    def name(self):
-        return self.sqlalchemy_object.name
+    def name(self) -> str:
+        return self._sqlalchemy_object.name
 
     @property
-    def deployed_time(self):
-        return self.sqlalchemy_object.deploy_dt
+    def deployed_time(self) -> datetime:
+        return self._sqlalchemy_object.deploy_dt
 
     @property
-    def latest_version(self):
-        if self.sqlalchemy_object:
-            return self.sqlalchemy_object.is_latest
+    def is_latest_version(self) -> bool:
+        if self._sqlalchemy_object:
+            return self._sqlalchemy_object.is_latest
         else:
-            return None
+            raise RuntimeError(
+                'Cannot check latest_version as underlying database '
+                'object is not present.'
+            )
 
-    def vault_object_from_dict(self, deployment, definition_dict):
+    def increment_version(self, new_version: Optional[str] = None) -> None:
+        self._sqlalchemy_object = Deployment(
+            name=self._sqlalchemy_object.name,
+            version=(new_version or semver.bump_patch(self._sqlalchemy_object.version)))
+        self._vault_objects = {
+            k: self._vault_object_from_dict(v.definition)
+            for k, v in self._vault_objects.items()
+        }
+
+    @property
+    def valid(self) -> bool:
+        return not self._duplicate_satellite_columns
+
+    def _vault_object_from_dict(
+            self,
+            definition_dict: Dict[str, Any]
+    ) -> VaultObject:
         return VaultObject.subclass_instance(
             self,
-            ObjectDefinition.from_dict(self.sqlalchemy_object, definition_dict)
+            ObjectDefinition.from_dict(self._sqlalchemy_object, definition_dict)
         )
 
-    def increment_version(self, new_version=None):
-        self.sqlalchemy_object = Deployment(
-            name=self.sqlalchemy_object.name,
-            version=(
-                new_version or semver.bump_patch(
-                    self.sqlalchemy_object.version)))
-        self.object_definitions = {
-            k: self.vault_object_from_dict(v.definition)
-            for k, v in self.object_definitions.items()
-        }
-
-    # Unused method?
-    #
-    # @property
-    # def project(self):
-    #     if self["project"]:
-    #         return list(self["project"].values())[0]
-    #     else:
-    #         return None
-
     @property
-    def connection(self):
-        return self.registry.connection
-
-    @property
-    def definitions(self):
-        return [
-            row.definition
-            for row in self.object_definitions.values()
-        ]
-
-    @property
-    def hub_aliases(self):
-        return {
-            alias: hub
-            for link in self["link"].values()
-            for alias, hub in link.hubs.items()
-        }
-
-    @property
-    def validation_error(self):
-        if self._duplicate_satellite_columns:
-            return (
-                "Duplicate columns: "
-                f"{self._duplicate_satellite_columns}."
-            )
-        else:
-            return None
-
-    @property
-    def valid(self):
-        return (self.validation_error is None)
-
-    @property
-    def _duplicate_satellite_columns(self):
+    def _duplicate_satellite_columns(self) -> Dict[str, List[str]]:
         column_groups = {
             name: [x[0] for x in group]
             for name, group in groupby(self._satellite_columns, lambda x: x[1])
@@ -266,41 +189,9 @@ class Project(ProjectOrChangeSet):
         }
 
     @property
-    def _satellite_columns(self):
+    def _satellite_columns(self) -> Dict[Tuple[str, str], Dict[str, Any]]:
         return {
             (satellite.definition["name"], column_name): column
-            for satellite in self._get_items_by_type(["satellite"]).values()
+            for satellite in self.items_by_type(["satellite"]).values()
             for column_name, column in satellite.definition["columns"].items()
-        }
-
-
-class ProjectChangeSet(ProjectOrChangeSet):
-
-    def __init__(self, new_definition, old_definition):
-        self.new_definition = new_definition
-        self.old_definition = old_definition
-        keys = (
-            set(self.new_definition.keys()) |
-            set(self.old_definition.keys())
-        )
-        self.object_definitions = {
-            key: VaultObject.subclass_instance(
-                self,
-                self.new_definition.object_definitions.get(key),
-                self.old_definition.object_definitions.get(key)
-            )
-            for key in keys
-        }
-
-    def __getattr__(self, key):
-        if self.new_definition:
-            return getattr(self.new_definition, key)
-        else:
-            return getattr(self.old_definition, key)
-
-    def by_action(self, action):
-        return {
-            (type, name): self[type, name]
-            for type, name in self.keys()
-            if self[type, name].action == action
         }

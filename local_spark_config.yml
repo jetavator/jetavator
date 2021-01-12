@@ -1,10 +1,15 @@
 services:
-  - name: spark
+  spark:
     type: local_spark
-storage:
-  vault: spark
-  star: spark
-  logs: azure_queue
+  file_registry:
+    service_type: registry
+    type: simple_file_registry
+    storage_path: ~/.jetavator/registry
+  storage:
+    source: spark
+    vault: spark
+    star: spark
+    logs: spark
 compute: spark
-environment_type: local_spark
 secret_lookup: environment
+registry: file_registry

@@ -1,50 +1,47 @@
-from jetavator.mixins import RegistersSubclasses, HasYamlProperties
-from jetavator.sql_model import HasSQLModel
+from typing import Dict, List
+
+from abc import ABC, abstractmethod
+
+import wysdom
+
+from wysdom.mixins import RegistersSubclasses
+
+from .PerformanceHints import PerformanceHints
+from .SatellitePipelineDependency import SatellitePipelineDependency
+
+from ... import VaultObject, Project
 
 
-class PerformanceHints(object):
+class SatellitePipeline(wysdom.UserObject, RegistersSubclasses, ABC):
 
-    def __init__(self, definition):
-        self.definition = definition
-
-    def __getattr__(self, key):
-        return self.definition.get(key)
-
-
-class SatellitePipelineDependency(HasYamlProperties):
-    required_yaml_properties = ["name", "type"]
-    optional_yaml_properties = ["view"]
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # validate that the object reference exists
-        self.object_reference
-
-    @property
-    def object_reference(self):
-        return self.project[self.type, self.name]
-
-
-class SatellitePipeline(RegistersSubclasses, HasSQLModel, HasYamlProperties):
-    required_yaml_properties = ["type"]
-    optional_yaml_properties = ["key_columns", "performance_hints"]
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.satellite = self.parent
-        # validate the dependencies
-        self.dependencies
+    type: str = wysdom.UserProperty(str)
+    performance_hints: PerformanceHints = wysdom.UserProperty(
+        PerformanceHints, persist_defaults=True, default={})
+    _key_columns: Dict[str, str] = wysdom.UserProperty(
+        wysdom.SchemaDict(str), name="key_columns", persist_defaults=True, default={})
 
     @property
-    def key_columns(self):
+    def satellite(self) -> VaultObject:
+        parent = wysdom.parent(self)
+        if isinstance(parent, VaultObject):
+            return parent
+        else:
+            raise TypeError('Parent is not a subclass of VaultObject')
+
+    @property
+    def project(self) -> Project:
+        return self.satellite.project
+
+    @property
+    @abstractmethod
+    def dependencies(self) -> List[SatellitePipelineDependency]:
         raise NotImplementedError
 
     @property
-    def performance_hints(self):
-        return PerformanceHints(
-            self.definition.get("performance_hints", {})
-        )
+    @abstractmethod
+    def key_columns(self) -> Dict[str, str]:
+        pass
 
-    @property
-    def dependencies(self):
-        raise NotImplementedError
+    def validate(self) -> None:
+        for dep in self.dependencies:
+            dep.validate()

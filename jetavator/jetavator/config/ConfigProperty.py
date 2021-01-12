@@ -1,15 +1,15 @@
-class ConfigProperty(object):
+from typing import Type, Any
 
-    def __init__(self, name, default):
-        self.name = name
-        self.default = default
+import wysdom
 
-    def __get__(self, obj, objtype):
-        if callable(self.default) and self.name not in obj:
-            obj[self.name] = self.default(obj)
-            return obj[self.name]
-        else:
-            return obj.get(self.name, self.default)
 
-    def __set__(self, obj, value):
-        obj[self.name] = value
+class ConfigProperty(wysdom.UserProperty):
+
+    def __get__(
+            self,
+            instance: wysdom.dom.DOMObject,
+            owner: Type[wysdom.dom.DOMObject]
+    ) -> Any:
+        return wysdom.document(instance).secret_lookup(
+            super().__get__(instance, owner)
+        )

@@ -5,8 +5,6 @@ import os
 
 from behave import fixture
 
-from jetavator_cli.testing.behave import from_behave_context
-
 fixture_registry = {}
 fixture_hook_registry = {}
 
@@ -50,8 +48,8 @@ def use_fixture_by_tag(tag, context, fixture_registry):
 @registered_fixture("fixture.tempfolder")
 def fixture_tempfolder(context, prefix="jetavator_behave_"):
     context.tempfolder = tempfile.mkdtemp(prefix=prefix)
-    context.jetavator_config.model_path = context.tempfolder
-    context.jetavator_config.schema_name = jetavator_schema_name(context)
+    # context.jetavator_config.model_path = context.tempfolder
+    # context.jetavator_config.schema_name = jetavator_schema_name(context)
     yield context.tempfolder
     if not context.config.userdata.get("keep_tempfolder"):
         shutil.rmtree(
@@ -73,15 +71,21 @@ def fixture_tempfolder(context, prefix="jetavator_behave_"):
 def fixture_yaml(context):
 
     def save_yaml_to_tempfolder(context, name=None):
+        definitions_path = os.path.join(
+            context.tempfolder,
+            "definitions"
+        )
+        if not os.path.exists(definitions_path):
+            os.makedirs(definitions_path)
         try:
             context.yaml_file_path = os.path.join(
-                context.tempfolder,
+                definitions_path,
                 f'{context.yaml["type"]}_{name or context.yaml["name"]}.yaml'
             )
         except (KeyError, TypeError):
             _, context.yaml_file_path = tempfile.mkstemp(
                 suffix=".yaml",
-                dir=context.tempfolder
+                dir=definitions_path
             )
 
         yaml_file = open(context.yaml_file_path, "w")
@@ -111,18 +115,3 @@ def jetavator_schema_name(context):
         return context.config.userdata["db"]
     except KeyError:
         return os.path.split(context.tempfolder)[1]
-
-
-@registered_fixture("fixture.jetavator")
-def fixture_jetavator(context):
-    context.jetavator = from_behave_context(
-        context,
-        config=context.jetavator_config
-    )
-    # context.jetavator.connection.test(master=True)
-    yield context.jetavator
-    if not (
-        bool(context.config.userdata.get("keepdb"))
-        or "setup" in context.tags
-    ):
-        context.jetavator.engine.drop_schemas()

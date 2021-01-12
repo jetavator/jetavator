@@ -1,8 +1,4 @@
-import tempfile
-import os
 import datetime
-
-from jetavator_cli import Client
 
 from behave import given, when, then
 from behave_pandas import table_to_dataframe

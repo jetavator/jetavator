@@ -5,7 +5,29 @@ Feature: Multiload CSV
   @setup
   Scenario: Multiload CSV - Setup
 
-    Given a definition for a project:
+    Given a random string in the environment variable $RANDOM_TEST_SCHEMA
+
+    And a file saved as config.yml:
+      """
+      services:
+        spark:
+          type: local_spark
+        file_registry:
+          service_type: registry
+          type: simple_file_registry
+          storage_path: ~/.jetavator/registry
+      storage:
+        source: spark
+        vault: spark
+        star: spark
+        logs: azure_queue
+      compute: spark
+      registry: file_registry
+      secret_lookup: environment
+      schema: $RANDOM_TEST_SCHEMA
+      """
+
+    And a definition for a project:
       """
       name: example
       type: project
@@ -71,7 +93,7 @@ Feature: Multiload CSV
 
     And we run the CLI command:
       """
-      jetavator config {config_args}
+      jetavator config --config-file={tempfolder}/config.yml --set model_path={tempfolder}/definitions
       """
 
     And a CSV file airport_details_original.csv saved in a temporary folder:
@@ -86,11 +108,10 @@ Feature: Multiload CSV
       | hub_airport_key | current_name                                     |
       | ATL             | Hartsfield-Jackson Atlanta International Airport |
 
-  @fixture.jetavator
   Scenario: Multiload CSV
 
     When all the definitions are saved to disk
-    And we run the CLI command "jetavator deploy"
+    And we run the CLI command "jetavator deploy -d"
 
     And we run the CLI command:
       """

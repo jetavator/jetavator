@@ -1,50 +1,45 @@
-from ....sql_model import SatelliteSourcePipelineModel
+from typing import Dict, List
 
-from .SatellitePipeline import SatellitePipeline, SatellitePipelineDependency
+import wysdom
+
+from ... import VaultObject
+
+from .SatellitePipeline import SatellitePipeline
+from .SatellitePipelineDependency import SatellitePipelineDependency
 
 
 class SatelliteSourcePipeline(
     SatellitePipeline,
-    register_as="source",
-    sql_model_class="satellite_source_pipeline"
+    register_as="source"
 ):
 
-    required_yaml_properties = ["source"]
-
-    optional_yaml_properties = []
+    type: str = wysdom.UserProperty(wysdom.SchemaConst('source'))
+    _source: str = wysdom.UserProperty(str, name="source")
 
     @property
-    def key_columns(self):
-        if "key_columns" in self.definition:
-            return self.definition["key_columns"]
-        elif self.satellite.parent.type == "hub":
-            return {
-                self.satellite.parent.name: list(self.source.columns.keys())[0]
-            }
-        elif self.satellite.parent.type == "link":
-            return {
-                x[0]: x[1]
-                for x in zip(
-                    list(self.satellite.parent.link_hubs.keys()),
-                    list(self.source.columns.keys())[
-                        :len(self.satellite.parent.link_hubs)])
-                }
+    def key_columns(self) -> Dict[str, str]:
+        if self._key_columns:
+            return self._key_columns
         else:
-            raise Exception(
-                "Unexpected value for satellite.parent.type: "
-                f"{satellite.parent.type}"
-            )
+            return {
+                key_column: source_column
+                for key_column, source_column in zip(
+                    self.satellite.parent.hubs.keys(),
+                    self.source.columns.keys()
+                )
+            }
 
     @property
-    def source(self):
-        return self.project["source", self.definition["source"]]
+    def source(self) -> VaultObject:
+        # TODO: Refactor so this definitely returns Source, not VaultObject
+        return self.project["source", self._source]
 
     @property
-    def dependencies(self):
+    def dependencies(self) -> List[SatellitePipelineDependency]:
         return [
             SatellitePipelineDependency(
-                self.project,
-                self,
-                {'name': self.definition["source"], 'type': 'source'}
+                {'name': self._source, 'type': 'source'},
+                json_dom_info=wysdom.dom.DOMInfo(
+                    document=wysdom.document(self), parent=self)
             )
         ]

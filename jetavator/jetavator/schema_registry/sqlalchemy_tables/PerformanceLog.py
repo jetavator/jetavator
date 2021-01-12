@@ -1,20 +1,21 @@
 from .Base import Base
 
+from datetime import datetime
+
 from sqlalchemy import Column, Table
 from sqlalchemy.types import *
-# from sqlalchemy.dialects.mssql import BIT
 
 
 class PerformanceLog(Base):
 
     __tablename__ = "jetavator_performance_log"
 
-    type = Column("type", VARCHAR(124), nullable=True)
-    name = Column("name", VARCHAR(124), nullable=True)
-    stage = Column("stage", VARCHAR(124), nullable=True)
-    start_timestamp = Column("start_timestamp", TIMESTAMP, nullable=True)
-    end_timestamp = Column("end_timestamp", TIMESTAMP, nullable=True)
-    rows = Column("rows", BIGINT, nullable=True)
+    type: str = Column("type", VARCHAR(124), nullable=True)
+    name: str = Column("name", VARCHAR(124), nullable=True)
+    stage: str = Column("stage", VARCHAR(124), nullable=True)
+    start_timestamp: datetime = Column("start_timestamp", TIMESTAMP, nullable=True)
+    end_timestamp: datetime = Column("end_timestamp", TIMESTAMP, nullable=True)
+    rows: int = Column("rows", BIGINT, nullable=True)
 
     __table__ = Table(
         __tablename__,

@@ -1,44 +1,44 @@
-from .BaseModel import BaseModel
+from typing import List
 
-from .functions import hash_record
-
-from sqlalchemy import Column, Index, PrimaryKeyConstraint
-from sqlalchemy import select, case, and_, text, subquery
+from sqlalchemy import Table, Column, Index
+from sqlalchemy import select, case, and_
+from sqlalchemy.schema import DDLElement
 
 from sqlalchemy.types import *
-# from sqlalchemy.dialects.mssql import BIT
-from sqlalchemy.sql.expression import func, literal_column, cast, alias
-from sqlalchemy.sql.functions import coalesce, max
+from sqlalchemy.sql.expression import Select, ColumnElement, func, literal_column
+from sqlalchemy.sql.functions import Function, coalesce, max
+
+from ..VaultAction import VaultAction
+from .BaseModel import BaseModel
 
 
 class SatelliteModel(BaseModel, register_as="satellite"):
 
     @property
-    def files(self):
+    def files(self) -> List[DDLElement]:
 
         files = []
 
-        if self.definition.action in ["create", "drop"]:
+        if self.action in (VaultAction.CREATE, VaultAction.DROP):
 
             # tables must be created first
-            if self.definition.action == "create":
+            if self.action == VaultAction.CREATE:
                 files += self.create_tables(self.tables)
 
             # tables must be dropped last
-            if self.definition.action == "drop":
+            if self.action == VaultAction.DROP:
                 files += self.drop_tables(self.tables)
 
         return files
 
     @property
-    def tables(self):
+    def tables(self) -> List[Table]:
         return [
-            self.table,
-            # self.updates_table
+            self.table
         ]
 
     @property
-    def history_views(self):
+    def history_views(self) -> List[DDLElement]:
         return [
             self.create_or_drop_view(
                 self.history_view,
@@ -46,7 +46,7 @@ class SatelliteModel(BaseModel, register_as="satellite"):
         ]
 
     @property
-    def current_views(self):
+    def current_views(self) -> List[DDLElement]:
         return [
             self.create_or_drop_view(
                 self.current_view,
@@ -54,78 +54,52 @@ class SatelliteModel(BaseModel, register_as="satellite"):
         ]
 
     @property
-    def parent(self):
-        return self.definition.parent
+    def parent(self) -> BaseModel:
+        return self.project[self.definition.parent.key]
 
     @property
-    def date_columns(self):
+    def date_columns(self) -> List[Column]:
         return [
             Column("sat_load_dt", DATETIME, nullable=True),
             Column("sat_deleted_ind", CHAR(1), nullable=True, default=0)
         ]
 
     @property
-    def record_source_columns(self):
+    def record_source_columns(self) -> List[Column]:
         return [
             Column("sat_record_source", VARCHAR(256), nullable=True),
             Column("sat_record_hash", CHAR(32), nullable=True)
         ]
 
     @property
-    def expiry_date_column(self):
+    def expiry_date_column(self) -> Column:
         return Column("sat_expiry_dt", DATETIME, nullable=True)
 
     @property
-    def latest_version_ind_column(self):
+    def latest_version_ind_column(self) -> Column:
         return Column("sat_latest_version_ind", CHAR(1), nullable=True)
 
     @property
-    def satellite_columns(self):
-        return [
-            Column(
-                column_name,
-                eval(column.type.upper().replace("MAX", "None")),
-                nullable=True
-            )
-            for column_name, column in self.definition.columns.items()
-        ]
+    def satellite_columns(self) -> List[Column]:
+        return self.definition.satellite_columns
 
     @property
-    def link_key_columns(self):
-        if self.parent.type == "link":
-            return [
-                hub.sql_model.alias_key_column(alias)
-                for alias, hub in self.parent.link_hubs.items()
-            ]
-        else:
-            return []
-
-    def index_or_key(self, name):
-        if self.parent.option("no_primary_key"):
-            return self.parent.sql_model.index(name)
-        else:
-            return PrimaryKeyConstraint(
-                self.parent.sql_model.primary_key_name,
-                "sat_load_dt",
-                name=f"pk_{name}",
-                mssql_clustered=self.parent.option("mssql_clustered")
-            )
+    def link_key_columns(self) -> List[Column]:
+        return self.parent.definition.link_key_columns
 
     @property
-    def table(self):
+    def table(self) -> Table:
         return self.define_table(
-            f"vault_sat_{self.definition.name}",
-            *self.parent.sql_model.key_columns,
+            self.definition.table_name,
+            *self.parent.key_columns,
             *self.link_key_columns,
             *self.date_columns,
             *self.record_source_columns,
             *self.satellite_columns,
-            # self.index_or_key(f"sat_{self.definition.name}"),
-            # *self.custom_indexes(f"sat_{self.definition.name}"),
             schema=self.schema
         )
 
-    def custom_indexes(self, table_name):
+    def custom_indexes(self, table_name: str) -> List[Index]:
         return [
             Index(
                 f"ix_{table_name}_ix_{column_name}",
@@ -137,9 +111,9 @@ class SatelliteModel(BaseModel, register_as="satellite"):
         ]
 
     @property
-    def view_columns(self):
+    def view_columns(self) -> List[Column]:
         return [
-            *self.parent.sql_model.key_columns,
+            *self.parent.key_columns,
             *self.link_key_columns,
             *self.date_columns,
             self.expiry_date_column,
@@ -149,46 +123,11 @@ class SatelliteModel(BaseModel, register_as="satellite"):
         ]
 
     @property
-    def updates_view(self):
-        return self.define_table(
-            f'vault_updates_{self.definition.name}',
-            *self.view_columns,
-            schema=self.schema
-        )
-
-    @property
-    def updates_view_query(self):
-        return select([
-            *self.columns_in_table(
-                self.updates_table, self.parent.sql_model.key_columns),
-            *self.columns_in_table(
-                self.updates_table, self.link_key_columns),
-            *self.columns_in_table(
-                self.updates_table, self.date_columns),
-            literal_column("NULL").label("sat_expiry_dt"),
-            *self.columns_in_table(
-                self.updates_table, self.record_source_columns),
-            literal_column("1").label("sat_latest_version_ind"),
-            *self.columns_in_table(
-                self.updates_table, self.satellite_columns),
-        ])
-
-    @property
-    def parent_join_clauses(self):
-        return [
-            (
-                self.table.c[column.name] ==
-                self.parent.sql_model.table.c[column.name]
-            )
-            for column in self.parent.sql_model.key_columns
-        ]
-
-    @property
-    def expiry_date_expression(self):
+    def expiry_date_expression(self) -> Function:
         return coalesce(
             max(self.table.c.sat_load_dt).over(
                 partition_by=self.columns_in_table(
-                    self.table, self.parent.sql_model.key_columns),
+                    self.table, self.parent.key_columns),
                 order_by=self.table.c.sat_load_dt,
                 rows=(1, 1)
             ),
@@ -196,19 +135,19 @@ class SatelliteModel(BaseModel, register_as="satellite"):
         )
 
     @property
-    def latest_version_ind_expression(self):
+    def latest_version_ind_expression(self) -> ColumnElement:
         return case(
             {1: 1},
             value=func.row_number().over(
                 partition_by=self.columns_in_table(
-                    self.table, self.parent.sql_model.key_columns),
+                    self.table, self.parent.key_columns),
                 order_by=self.table.c.sat_load_dt.desc()
             ),
             else_=0
         )
 
     @property
-    def history_view(self):
+    def history_view(self) -> Table:
         return self.define_table(
             f'vault_history_{self.definition.name}',
             *self.view_columns,
@@ -216,10 +155,10 @@ class SatelliteModel(BaseModel, register_as="satellite"):
         )
 
     @property
-    def history_view_query(self):
+    def history_view_query(self) -> Select:
         return select([
             *self.columns_in_table(
-                self.table, self.parent.sql_model.key_columns),
+                self.table, self.parent.key_columns),
             *self.columns_in_table(
                 self.table, self.link_key_columns),
             *self.columns_in_table(
@@ -235,7 +174,7 @@ class SatelliteModel(BaseModel, register_as="satellite"):
         )
 
     @property
-    def current_view(self):
+    def current_view(self) -> Table:
         return self.define_table(
             f'vault_now_{self.definition.name}',
             *self.view_columns,
@@ -243,10 +182,10 @@ class SatelliteModel(BaseModel, register_as="satellite"):
         )
 
     @property
-    def current_view_query(self):
+    def current_view_query(self) -> Select:
         return select([
             *self.columns_in_table(
-                self.history_view, self.parent.sql_model.key_columns),
+                self.history_view, self.parent.key_columns),
             *self.columns_in_table(
                 self.history_view, self.link_key_columns),
             *self.columns_in_table(
@@ -263,177 +202,3 @@ class SatelliteModel(BaseModel, register_as="satellite"):
                 self.history_view.c.sat_deleted_ind == 0
             )
         )
-
-    def run_pipeline_query(self, caller):
-
-        new_satellite_rows = alias(
-            select([
-                self.parent.sql_model.generate_key(
-                    caller
-                    ).label(self.parent.sql_model.key_name),
-                *self.columns_in_table(
-                    caller, self.link_key_columns),
-                func.coalesce(
-                    caller.c.sat_load_dt,
-                    func.current_timestamp()
-                    ).label("sat_load_dt"),
-                func.coalesce(
-                    caller.c.sat_deleted_ind,
-                    literal_column("0")
-                    ).label("sat_deleted_ind"),
-                literal_column(f"'{self.definition.name}'").label("sat_record_source"),
-                hash_record(
-                    caller,
-                    "sat_deleted_ind",
-                    self.definition.columns
-                    ).label("sat_record_hash"),
-                *[
-                    caller.c[column_name]
-                    for column_name in self.definition.columns
-                ]
-            ]),
-            "new_satellite_rows"
-        )
-
-        select_query = select([
-            *self.parent.sql_model.generate_table_keys(
-                new_satellite_rows),
-            *self.columns_in_table(
-                new_satellite_rows, self.link_key_columns),
-            new_satellite_rows.c.sat_load_dt,
-            new_satellite_rows.c.sat_deleted_ind,
-            new_satellite_rows.c.sat_record_source,
-            new_satellite_rows.c.sat_record_hash,
-            *[
-                new_satellite_rows.c[column_name]
-                for column_name in self.definition.columns
-            ]
-        ])
-
-        return select_query
-
-    @property
-    def compress_versions_in_query(self):
-
-        prev_record_hash_query = select([
-            *self.columns_in_table(
-                self.updates_table,
-                self.parent.sql_model.key_columns),
-            self.table.c.sat_load_dt,
-            self.updates_table.c.sat_record_hash,
-            max(self.updates_table.c.sat_record_hash).over(
-                partition_by=self.columns_in_table(
-                    self.updates_table,
-                    self.parent.sql_model.key_columns),
-                order_by=self.table.c.sat_load_dt,
-                rows=(1, 1)
-            ).label("prev_record_hash")
-        ]).alias("prev_record_hash_query")
-
-        rows_to_delete_query = prev_record_hash_query.select().where(
-            prev_record_hash_query.c.sat_record_hash ==
-            prev_record_hash_query.c.prev_record_hash
-        ).alias("rows_to_delete_query")
-
-        return self.updates_table.delete().where(
-            and_(
-                *[
-                    (
-                        rows_to_delete_query.c[column.name] ==
-                        self.updates_table.c[column.name]
-                    )
-                    for column in self.parent.sql_model.key_columns
-                ],
-                rows_to_delete_query.c.sat_load_dt
-                == self.updates_table.c.sat_load_dt
-            )
-        )
-
-    @property
-    def compress_versions_in_history(self):
-        return self.updates_table.delete().where(
-            and_(
-                *[
-                    (
-                        self.current_view.c[column.name] ==
-                        self.updates_table.c[column.name]
-                    )
-                    for column in self.parent.sql_model.key_columns
-                ],
-                self.current_view.c.sat_record_hash
-                == self.updates_table.c.sat_record_hash
-            )
-        )
-
-    @property
-    def load_satellite(self):
-        return self.table.insert().from_select(
-            self.table.c,
-            select(self.columns_in_table(self.updates_table, self.table.c))
-        )
-
-    @property
-    def insert_to_inserts_pit_table(self):
-        if self.parent.type == "hub":
-            role_specific_columns = self.columns_in_table(
-                self.updates_table,
-                self.parent.sql_model.role_specific_columns)
-        elif self.parent.type == "link":
-            role_specific_columns = [
-                column
-                for hub_alias, hub in self.parent.link_hubs.items()
-                for column in hub.sql_model.generate_table_keys(
-                    self.updates_table, hub_alias)
-            ]
-        return self.parent.sql_model.inserts_pit_table.insert().from_select(
-            self.parent.sql_model.inserts_pit_table.c,
-            select([
-                *self.columns_in_table(
-                    self.updates_table, self.parent.sql_model.key_columns),
-                self.updates_table.c.sat_load_dt,
-                literal_column(f"'{self.definition.name}'").label("sat_name"),
-                *role_specific_columns
-            ])
-        )
-
-    def generate_update_flag(self, pit_table_name):
-        return (
-            text(
-                f"""
-                DECLARE @updated_{self.definition.name} char(1);
-                SET @updated_{self.definition.name} = (
-                    CASE WHEN EXISTS (
-                        SELECT *
-                        FROM [vault].[{pit_table_name}]
-                        WHERE [sat_name] = '{self.definition.name}'
-                    )
-                    THEN 1 ELSE 0 END
-                )
-                """
-            )
-        )
-
-    @property
-    def vault_rollback(self):
-        return [
-            self.table.delete().where(
-                and_(
-                    *[
-                        (
-                            self.table.c[column.name] ==
-                            self.updates_table.c[column.name]
-                        )
-                        for column in self.parent.sql_model.key_columns
-                    ],
-                    self.table.c.sat_load_dt
-                    == self.updates_table.c.sat_load_dt
-                )
-            ),
-            self.updates_table.delete()
-        ]
-
-    @property
-    def vault_delete_all(self):
-        return [
-            self.table.delete()
-        ]

@@ -1,3 +1,5 @@
+# TODO: Create a comprehensive test project and have it run for every runner/storage combination we want to test
+
 @fixture.tempfolder
 @fixture.yaml
 Feature: Build dimension from hub
@@ -5,7 +7,29 @@ Feature: Build dimension from hub
   @setup
   Scenario: Build dimension from hub - Setup
 
-    Given a definition for a project:
+    Given a random string in the environment variable $RANDOM_TEST_SCHEMA
+
+    And a file saved as config.yml:
+      """
+      services:
+        spark:
+          type: local_spark
+        file_registry:
+          service_type: registry
+          type: simple_file_registry
+          storage_path: ~/.jetavator/registry
+      storage:
+        source: spark
+        vault: spark
+        star: spark
+        logs: azure_queue
+      compute: spark
+      registry: file_registry
+      secret_lookup: environment
+      schema: $RANDOM_TEST_SCHEMA
+      """
+
+    And a definition for a project:
       """
       name: example
       type: project
@@ -123,14 +147,13 @@ Feature: Build dimension from hub
 
     And we run the CLI command:
       """
-      jetavator config {config_args}
+      jetavator config --config-file={tempfolder}/config.yml --set model_path={tempfolder}/definitions
       """
 
-  @fixture.jetavator
   Scenario: Initial load
 
     When all the definitions are saved to disk
-     And we run the CLI command "jetavator deploy"
+     And we run the CLI command "jetavator deploy -d"
      And we run the CLI command:
        """
        jetavator run delta \
@@ -152,11 +175,11 @@ Feature: Build dimension from hub
       | PVG             | Shanghai Pudong International Airport            | SHANGHAI PUDONG INTERNATIONAL AIRPORT            | 1                    |
       | CDG             | Paris-Charles de Gaulle Airport                  | PARIS-CHARLES DE GAULLE AIRPORT                  | 1                    |
 
-  @fixture.jetavator
+
   Scenario: Delta load - Update
 
     When all the definitions are saved to disk
-     And we run the CLI command "jetavator deploy"
+     And we run the CLI command "jetavator deploy -d"
      And we run the CLI command:
        """
        jetavator run delta \
@@ -186,11 +209,10 @@ Feature: Build dimension from hub
        | PVG             | Shanghai Pudong International Airport            | SHANGHAI PUDONG INTERNATIONAL AIRPORT            | 0                    |
        | CDG             | Paris-Charles de Gaulle Airport                  | PARIS-CHARLES DE GAULLE AIRPORT                  | 0                    |
 
-  @fixture.jetavator
   Scenario: Delta load - Insert
 
     When all the definitions are saved to disk
-     And we run the CLI command "jetavator deploy"
+     And we run the CLI command "jetavator deploy -d"
      And we run the CLI command:
        """
        jetavator run delta \
@@ -221,11 +243,10 @@ Feature: Build dimension from hub
        | CDG             | Paris-Charles de Gaulle Airport                  | PARIS-CHARLES DE GAULLE AIRPORT                  | 0                    |
        | AMS             | Amsterdam Airport Schiphol                       | AMSTERDAM AIRPORT SCHIPHOL                       | 1                    |
 
-   @fixture.jetavator
    Scenario: Delta load - Delete
 
    When all the definitions are saved to disk
-    And we run the CLI command "jetavator deploy"
+    And we run the CLI command "jetavator deploy -d"
     And we run the CLI command:
       """
       jetavator run delta \
@@ -254,7 +275,6 @@ Feature: Build dimension from hub
         | PVG             | Shanghai Pudong International Airport            | SHANGHAI PUDONG INTERNATIONAL AIRPORT            | 0                    |
         | CDG             | Paris-Charles de Gaulle Airport                  | PARIS-CHARLES DE GAULLE AIRPORT                  | 0                    |
 
-    @fixture.jetavator
     Scenario: Allow users to exclude hubs from the star schema
 
       Given a definition for a hub:
@@ -266,11 +286,10 @@ Feature: Build dimension from hub
         """
 
       When all the definitions are saved to disk
-       And we run the CLI command "jetavator deploy"
+       And we run the CLI command "jetavator deploy -d"
 
       Then the table star_dim_airport does not exist on the star datastore
 
-    @fixture.jetavator
     Scenario: Allow users to exclude hub satellites from the star schema
 
       Given a definition for a satellite:
@@ -298,6 +317,6 @@ Feature: Build dimension from hub
         """
 
       When all the definitions are saved to disk
-       And we run the CLI command "jetavator deploy"
+       And we run the CLI command "jetavator deploy -d"
 
       Then the column name does not exist in the table star_dim_airport on the star datastore
