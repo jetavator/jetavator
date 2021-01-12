@@ -2,7 +2,7 @@ from typing import Dict, List
 
 import wysdom
 
-from .. import Source
+from ... import VaultObject
 
 from .SatellitePipeline import SatellitePipeline
 from .SatellitePipelineDependency import SatellitePipelineDependency
@@ -30,7 +30,8 @@ class SatelliteSourcePipeline(
             }
 
     @property
-    def source(self) -> Source:
+    def source(self) -> VaultObject:
+        # TODO: Refactor so this definitely returns Source, not VaultObject
         return self.project["source", self._source]
 
     @property

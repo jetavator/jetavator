@@ -5,7 +5,32 @@ from typing import Dict
 from lazy_property import LazyProperty
 
 from sqlalchemy import Column
-from sqlalchemy.types import *
+from sqlalchemy.types import (
+    ARRAY,
+    BIGINT,
+    BINARY,
+    BLOB,
+    BOOLEAN,
+    CHAR,
+    CLOB,
+    DATE,
+    DATETIME,
+    DECIMAL,
+    FLOAT,
+    INT,
+    INTEGER,
+    JSON,
+    NCHAR,
+    NUMERIC,
+    NVARCHAR,
+    REAL,
+    SMALLINT,
+    TEXT,
+    TIME,
+    TIMESTAMP,
+    VARBINARY,
+    VARCHAR
+)
 
 import wysdom
 
@@ -16,6 +41,33 @@ from ..VaultObjectCollection import VaultObjectSet
 from .SatelliteColumn import SatelliteColumn
 from .SatelliteOwner import SatelliteOwner
 from .pipelines import SatellitePipeline
+
+SQLALCHEMY_TYPES = {
+    "ARRAY": ARRAY,
+    "BIGINT": BIGINT,
+    "BINARY": BINARY,
+    "BLOB": BLOB,
+    "BOOLEAN": BOOLEAN,
+    "CHAR": CHAR,
+    "CLOB": CLOB,
+    "DATE": DATE,
+    "DATETIME": DATETIME,
+    "DECIMAL": DECIMAL,
+    "FLOAT": FLOAT,
+    "INT": INT,
+    "INTEGER": INTEGER,
+    "JSON": JSON,
+    "NCHAR": NCHAR,
+    "NUMERIC": NUMERIC,
+    "NVARCHAR": NVARCHAR,
+    "REAL": REAL,
+    "SMALLINT": SMALLINT,
+    "TEXT": TEXT,
+    "TIME": TIME,
+    "TIMESTAMP": TIMESTAMP,
+    "VARBINARY": VARBINARY,
+    "VARCHAR": VARCHAR
+}
 
 
 class VaultObjectReference(wysdom.UserObject):
@@ -65,7 +117,7 @@ class Satellite(VaultObject, register_as="satellite"):
         return f'sat_{self.name}'
 
     @property
-    def hub_key_columns(self) -> Dict[str, HubKeyColumn]:
+    def hub_key_columns(self) -> Dict[str, List[HubKeyColumn]]:
         # check if this can be safely refactored to
         # a function hub_key_columns(self, hub_name)
         columns = self.parent.hub_key_columns(self)
@@ -127,6 +179,8 @@ class Satellite(VaultObject, register_as="satellite"):
         return [
             Column(
                 column_name,
+                # TODO: Update API to specify SQL types using a JSON schema,
+                #       not using the unsafe eval method
                 eval(column.type.upper().replace("MAX", "None")),
                 nullable=True
             )

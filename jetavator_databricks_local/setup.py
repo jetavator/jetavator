@@ -24,6 +24,7 @@ VERSION = None
 REQUIRED = [
     'jetavator>=0.1.5',
     'lazy-property>=0.0.1,<1',
+    'azure-storage-queue>=12.1.0,<13'
 ]
 
 # What packages are optional?
@@ -47,7 +48,7 @@ except FileNotFoundError:
 # Import the LICENSE
 
 with open(os.path.join(here, 'LICENSE')) as f:
-    license = f.read()
+    license_text = f.read()
 
 # Load the package's __version__.py module as a dictionary
 
@@ -71,7 +72,7 @@ setup(
     install_requires=REQUIRED,
     extras_require=EXTRAS,
     include_package_data=True,
-    license=license,
+    license=license_text,
     classifiers=[
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',

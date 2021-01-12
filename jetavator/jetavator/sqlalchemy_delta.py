@@ -1,13 +1,14 @@
 from sqlalchemy.sql import compiler
-from sqlalchemy import Table, MetaData
 
 from pyhive.sqlalchemy_hive import HiveDialect, HiveCompiler, HiveTypeCompiler
 
 from pyhive.hive import HiveParamEscaper
 
 
+# noinspection PyAbstractClass
 class DeltaCompiler(HiveCompiler):
 
+    # noinspection PyMethodMayBeStatic
     def render_literal_value(self, value, type_):
         return str(HiveParamEscaper().escape_item(value))
 
@@ -26,6 +27,7 @@ class HiveDDLCompiler(compiler.DDLCompiler):
         result = result.replace(' FOREIGN KEY', '')
         return result
 
+    # noinspection PyMethodMayBeStatic
     def create_table_constraints(
         self, table, _include_foreign_key_constraints=None
     ):
@@ -48,10 +50,12 @@ class DeltaDDLCompiler(HiveDDLCompiler):
 
 class DeltaTypeCompiler(HiveTypeCompiler):
 
+    # noinspection PyMethodMayBeStatic,PyPep8Naming
     def visit_FLOAT(self, type_, **kwargs):
         return 'DOUBLE'
 
 
+# noinspection PyAbstractClass
 class HiveWithDDLDialect(HiveDialect):
     name = b'hive_with_ddl'
     statement_compiler = HiveCompiler
@@ -59,6 +63,7 @@ class HiveWithDDLDialect(HiveDialect):
     type_compiler = HiveTypeCompiler
 
 
+# noinspection PyAbstractClass
 class DeltaDialect(HiveDialect):
     name = b'delta'
     statement_compiler = DeltaCompiler

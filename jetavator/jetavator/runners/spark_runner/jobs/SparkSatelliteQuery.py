@@ -1,67 +1,22 @@
-from typing import List
-
-from jetavator.schema_registry import Satellite
 from jetavator.sql_model.functions import hash_record
 
 from sqlalchemy import Column, select, cast, alias, literal_column, text, func
-from sqlalchemy.types import *
 from sqlalchemy.sql.expression import Select
 
-from .. import SparkSQLView, SparkRunner, SparkJob
+from .. import SparkSQLView
+from jetavator.runners.jobs import SatelliteQuery
 
 
-class SatelliteQuery(SparkSQLView, register_as='satellite_query'):
-    """
-    Computes a DataFrame containing the result of the user query defined in
-    `Satellite.pipeline` for a particular `Satellite`.
-
-    :param runner:          The `SparkRunner` that created this object.
-    :param satellite:       The `Satellite` object containing the query definition.
-    """
+class SparkSatelliteQuery(SparkSQLView, SatelliteQuery, register_as='satellite_query'):
 
     sql_template = '{{job.sql}}'
     checkpoint = True
     global_view = False
 
-    def __init__(
-            self,
-            runner: SparkRunner,
-            satellite: Satellite
-    ) -> None:
-        super().__init__(
-            runner,
-            satellite
-        )
-        self.satellite = satellite
-
-    @property
-    def name(self) -> str:
-        return f'vault_updates_{self.satellite.full_name}'
-
     @property
     def sql(self) -> str:
         return self.runner.compute_service.compile_delta_lake(
             self.pipeline_query())
-
-    @property
-    def dependencies(self) -> List[SparkJob]:
-        return [
-            *[
-                self.runner.get_job('input_keys', self.satellite, satellite_owner)
-                for satellite_owner in self.satellite.input_keys
-            ],
-            *[
-                self.runner.get_job('serialise_satellite', dep.object_reference)
-                for dep in self.satellite.pipeline.dependencies
-                if dep.type == 'satellite'
-                   and dep.view in ['current', 'history']
-            ],
-            *[
-                self.runner.get_job('create_source', dep.object_reference)
-                for dep in self.satellite.pipeline.dependencies
-                if dep.type == 'source'
-            ]
-        ]
 
     def pipeline_query(self) -> Select:
         if self.satellite.pipeline.type == "source":
@@ -132,8 +87,7 @@ class SatelliteQuery(SparkSQLView, register_as='satellite_query'):
                 for hub_name, key_column in self.satellite.pipeline.key_columns.items()
             ],
             *[
-                cast(source_query.c[column.name], column.type)
-                    .label(column.name)
+                cast(source_query.c[column.name], column.type).label(column.name)
                 for column in self.satellite.satellite_columns
             ],
             load_dt_column,

@@ -36,6 +36,7 @@ class Deployment(Base):
     @property
     def is_latest(self) -> bool:
         cls = type(self)
+        # noinspection PyUnresolvedReferences
         latest_deployment = object_session(self).query(cls).order_by(
             cls.deploy_dt.desc()).first()
         return self is latest_deployment

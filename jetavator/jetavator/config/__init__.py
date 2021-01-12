@@ -4,6 +4,7 @@ from .Config import (
     Config,
     ServiceConfig,
     DBServiceConfig,
+    LocalSparkConfig,
     StorageConfig,
     RegistryServiceConfig,
     SimpleFileRegistryServiceConfig,

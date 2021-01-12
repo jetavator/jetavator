@@ -22,8 +22,8 @@ from jetavator.config.secret_lookup import SecretLookup
 from lazy_property import LazyProperty
 from sqlalchemy.schema import CreateColumn
 
-from jetavator import REQUIRED, Config
-
+from jetavator import REQUIRED
+from jetavator.config import Config, ServiceConfig
 from jetavator.runners import Runner
 
 mssql_dialect = sqlalchemy.databases.mssql.dialect()
@@ -92,7 +92,7 @@ JETAVATOR_RUN_SCRIPT = '''
 jetavator_engine.run()
 '''
 
-#TODO: Make timeouts configurable
+# TODO: Make timeouts configurable
 
 SCALA_SETUP_SCRIPT = '''
 %scala
@@ -248,7 +248,7 @@ class Timeout(object):
         self.expiry_time = time.time() + self.seconds
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, type_, value, traceback):
         pass
 
     @property
@@ -434,6 +434,8 @@ class DatabricksRunner(Runner, register_as='remote_databricks'):
         )
 
     def build_remote_config(self):
+        # noinspection PyProtectedMember
+        # TODO: Refactor so this doesn't access protected member Config._properties
         remote_config = Config({
             k: v
             for k, v in deepcopy(self.engine.config).items()
@@ -441,20 +443,22 @@ class DatabricksRunner(Runner, register_as='remote_databricks'):
         })
         databricks_services = [
             service
-            for service in remote_config.services
+            for service in remote_config.services.values()
             if service.type == 'remote_databricks'
         ]
         for service in databricks_services:
-            remote_config.services[service.name] = {
+            remote_config.services[service.name] = ServiceConfig({
                 'name': service.name,
                 'type': 'local_databricks'
-            }
+            })
         remote_config.secret_lookup = 'databricks'
         return remote_config
 
     def load_config(self):
         dbfs_path = f'{DBFS_JOB_ROOT}/{self.config.schema}/config.json'
         self.logger.info(f'Uploading config: {dbfs_path}')
+        # noinspection PyProtectedMember
+        # TODO: Refactor so this doesn't access protected member _to_json
         self.save_as_dbfs_file(
             dbfs_path,
             self.build_remote_config()._to_json()
@@ -529,7 +533,8 @@ class DatabricksRunner(Runner, register_as='remote_databricks'):
             wheel_path=self.dbfs_wheel_path
         )
 
-    def mssql_create_tables(self, table_create_statements):
+    @staticmethod
+    def mssql_create_tables(table_create_statements):
         return [
             SCALA_SETUP_SCRIPT + SQL_TEMPLATE.format(
                 sql=str(statement.compile(dialect=mssql_dialect))
@@ -549,7 +554,9 @@ class DatabricksRunner(Runner, register_as='remote_databricks'):
                             column.type.__class__.__name__,
                             column.type.__class__.__name__
                         ),
-                        'precision': getattr(column.type, 'precision',
+                        'precision': getattr(
+                            column.type,
+                            'precision',
                             getattr(column.type, 'length', 0)
                         ) or 0,
                         'scale': getattr(column.type, 'scale', 0) or 0,

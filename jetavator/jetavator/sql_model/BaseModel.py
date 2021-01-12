@@ -10,14 +10,14 @@ from wysdom.mixins import RegistersSubclasses
 
 from ..VaultAction import VaultAction
 
-from jetavator.schema_registry import VaultObject, VaultObjectKey, Project
+from jetavator.schema_registry import VaultObject, VaultObjectKey, VaultObjectMapping
 
 
 class BaseModel(RegistersSubclasses):
 
     def __init__(
             self,
-            project: Project,
+            project: VaultObjectMapping[BaseModel],
             new_object: VaultObject,
             old_object: VaultObject
     ) -> None:
@@ -29,7 +29,7 @@ class BaseModel(RegistersSubclasses):
     @classmethod
     def subclass_instance(
             cls,
-            project: Project,
+            project: VaultObjectMapping[BaseModel],
             new_object: VaultObject,
             old_object: VaultObject
     ) -> BaseModel:

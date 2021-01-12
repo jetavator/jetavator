@@ -16,7 +16,7 @@ from .. import LogListener
 
 CLUSTER_RETRY_INTERVAL_SECS = 15
 
-# TODO: Move all the constants and filepath generation into the same place
+# TODO: Move all the constants and file path generation into the same place
 DBFS_DATA_ROOT = 'dbfs:/jetavator/data'
 
 
@@ -41,6 +41,7 @@ class DatabricksService(SparkService, register_as='remote_databricks'):
 
     def __init__(self, engine, config):
         super().__init__(engine, config)
+        self._metadata = sqlalchemy.MetaData()
         self.sqlalchemy_master = self._create_sql_connection(
             schema="default"
         )
@@ -70,7 +71,6 @@ class DatabricksService(SparkService, register_as='remote_databricks'):
                 f'No wheel file found at [{self.engine.config.wheel_path}]')
         self.databricks_runner.start_cluster()
         self.databricks_runner.load_wheel()
-
 
     def deploy(self):
         self._deploy_wheel()
@@ -266,3 +266,9 @@ class DatabricksService(SparkService, register_as='remote_databricks'):
     def run_remote(self):
         self.databricks_runner.start_cluster()
         self.databricks_runner.run_remote()
+
+    @property
+    def spark(self):
+        # TODO: Doesn't makes sense in this context - remove this property from the superclass
+        #       or otherwise change the inheritance structure to avoid this
+        raise NotImplementedError()

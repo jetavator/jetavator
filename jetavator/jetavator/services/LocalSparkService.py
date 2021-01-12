@@ -38,23 +38,23 @@ class LocalSparkService(SparkService, register_as="local_spark"):
         spark_session.sparkContext.setLogLevel('ERROR')
         return spark_session
 
-    def csv_file_path(self, source):
+    def csv_file_path(self, source_name: str):
         return (
             f'{self.tempfolder}/'
             f'{self.config.schema}/'
             f'{self.engine.config.session.run_uuid}/'
-            f'{source.name}.csv'
+            f'{source_name}.csv'
         )
 
-    def source_csv_exists(self, source):
-        return os.path.exists(self.csv_file_path(source))
+    def source_csv_exists(self, source_name: str):
+        return os.path.exists(self.csv_file_path(source_name))
 
-    def load_csv(self, csv_file, source):
-        self.logger.info(f"{source.name}.csv: Uploading file")
+    def load_csv(self, csv_file, source_name: str):
+        self.logger.info(f"{source_name}.csv: Uploading file")
         try:
             os.makedirs(
                 os.path.dirname(
-                    self.csv_file_path(source)))
+                    self.csv_file_path(source_name)))
         except FileExistsError:
             pass
-        copyfile(csv_file, self.csv_file_path(source))
+        copyfile(csv_file, self.csv_file_path(source_name))

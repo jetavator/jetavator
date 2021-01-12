@@ -12,6 +12,10 @@ class AzureQueueHandler(logging.Handler):
                  protocol='https',
                  queue='logs'
                  ):
+        if protocol != 'https':
+            # TODO: Either implement alternative protocols (why would we do this?) or remove
+            #       this parameter
+            raise NotImplementedError()
         super().__init__()
         self.meta = {'hostname': socket.gethostname(), 'process': os.getpid()}
         self.queue = service.queue_client(

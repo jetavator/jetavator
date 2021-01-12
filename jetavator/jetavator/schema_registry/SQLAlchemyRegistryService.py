@@ -13,7 +13,7 @@ class SQLAlchemyRegistryService(RegistryService, Mapping, register_as="sqlalchem
     loaded: Project = None
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
         if self.config.model_path:
             self.load_from_disk()
         else:

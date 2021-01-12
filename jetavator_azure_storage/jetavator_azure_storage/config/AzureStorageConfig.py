@@ -3,7 +3,6 @@ import wysdom
 
 
 class AzureStorageConfig(ServiceConfig):
-
     type = wysdom.UserProperty(wysdom.SchemaConst('azure_storage'))
     name = wysdom.UserProperty(str)
     account_name = wysdom.UserProperty(str)

@@ -24,7 +24,7 @@ class LocalDatabricksService(SparkService, register_as="local_databricks"):
                     'protocol': 'https',
                     'queue': f'jetavator-log-{self.engine.config.session.run_uuid}',
                     'level': 'DEBUG',
-                    'class': 'jetavator.azure_queue_logging.AzureQueueHandler',
+                    'class': 'jetavator_databricks_local.logging.azure_queue_logging.AzureQueueHandler',
                     'formatter': 'verbose',
                 },
             },
@@ -60,12 +60,12 @@ class LocalDatabricksService(SparkService, register_as="local_databricks"):
     def spark(self):
         spark_session = (
             SparkSession
-                .builder
-                .appName(SPARK_APP_NAME)
-                .enableHiveSupport()
-                .getOrCreate()
+            .builder
+            .appName(SPARK_APP_NAME)
+            .enableHiveSupport()
+            .getOrCreate()
         )
-        storage_keyname = f'fs.azure.account.key.{self.azure_storage_location}'
+        storage_key_name = f'fs.azure.account.key.{self.azure_storage_location}'
         mount_point = f'/mnt/{self.azure_storage_container}'
         if not os.path.exists(f'/dbfs/{mount_point}'):
             self.engine.source_storage_service.create_container_if_not_exists()
@@ -76,18 +76,22 @@ class LocalDatabricksService(SparkService, register_as="local_databricks"):
                 ),
                 mount_point=mount_point,
                 extra_configs={
-                    storage_keyname: self.azure_storage_key
+                    storage_key_name: self.azure_storage_key
                 }
             )
         return spark_session
 
-    def csv_file_path(self, source):
+    def csv_file_path(self, source_name: str):
         return (
             f'/mnt/{self.azure_storage_container}/'
             f'{self.config.schema}/'
             f'{self.engine.config.session.run_uuid}/'
-            f'{source.name}.csv'
+            f'{source_name}.csv'
         )
 
-    def source_csv_exists(self, source):
-        return os.path.exists('/dbfs/' + self.csv_file_path(source))
+    def source_csv_exists(self, source_name: str):
+        return os.path.exists('/dbfs/' + self.csv_file_path(source_name))
+
+    def load_csv(self, csv_file, source_name: str):
+        # TODO: Either implement this or remove if from the superclass interface
+        raise NotImplementedError()

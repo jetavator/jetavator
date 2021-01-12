@@ -1,4 +1,5 @@
-# TODO: Move MSSQLService to plugin library
+import pandas
+from typing import Iterable
 
 import sqlalchemy
 from sqlalchemy.exc import ProgrammingError, DBAPIError
@@ -157,3 +158,19 @@ class MSSQLService(DBService, register_as='mssql'):
 
     def execute_sql_element(self, sql_element, async_cursor=False):
         return self.sqlalchemy_connection.execute(sql_element).fetchall()
+
+    def test(self) -> None:
+        # TODO: Implement MSSQLService.test
+        raise NotImplementedError()
+
+    def load_dataframe(self, dataframe: pandas.DataFrame, source_name: str, source_column_names: Iterable[str]) -> None:
+        # TODO: Implement MSSQLService.load_dataframe
+        raise NotImplementedError()
+
+    def create_tables(self, sqlalchemy_tables: Iterable[sqlalchemy.Table]) -> None:
+        # TODO: Implement MSSQLService.create_tables
+        raise NotImplementedError()
+
+    def execute_sql_elements_async(self, sql_elements: Iterable[sqlalchemy.sql.expression.Executable]) -> None:
+        # TODO: Implement MSSQLService.execute_sql_elements_async
+        raise NotImplementedError()

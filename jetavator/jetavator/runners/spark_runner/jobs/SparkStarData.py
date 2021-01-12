@@ -1,19 +1,8 @@
-from typing import List
-
-from jetavator.schema_registry import SatelliteOwner
-
-from .. import SparkSQLView, SparkRunner, SparkJob
+from .. import SparkSQLView
+from jetavator.runners.jobs import StarData
 
 
-class StarData(SparkSQLView, register_as='star_data'):
-    """
-    Computes the created, updated or deleted rows for the star schema table
-    for this particular `Hub` or `Link`.
-
-    :param runner:          The `SparkRunner` that created this object.
-    :param satellite_owner: The `Hub` or `Link` object that is being used to create
-                            a Dimension or Fact table, respectively.
-    """
+class SparkStarData(SparkSQLView, StarData, register_as='star_data'):
 
     sql_template = '''
         SELECT keys.{{job.satellite_owner.key_column_name}}
@@ -63,39 +52,3 @@ class StarData(SparkSQLView, register_as='star_data'):
         '''
     checkpoint = True
     global_view = False
-
-    def __init__(
-            self,
-            runner: SparkRunner,
-            satellite_owner: SatelliteOwner
-    ) -> None:
-        super().__init__(runner, satellite_owner)
-        self.satellite_owner = satellite_owner
-
-    @property
-    def name(self) -> str:
-        return f'updates_{self.satellite_owner.star_table_name}'
-
-    @property
-    def star_keys_job(self) -> SparkJob:
-        """
-        :return: The `StarKeys` job that contains the updated keys.
-        """
-        return self.runner.get_job('star_keys', self.satellite_owner)
-
-    @property
-    def satellite_query_jobs(self) -> List[SparkJob]:
-        """
-        :return: A list of the `SatelliteQuery` jobs that contain the updated data.
-        """
-        return [
-            self.runner.get_job('satellite_query', satellite)
-            for satellite in self.satellite_owner.star_satellites.values()
-        ]
-
-    @property
-    def dependencies(self) -> List[SparkJob]:
-        return [
-            self.star_keys_job,
-            *self.satellite_query_jobs
-        ]

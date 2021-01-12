@@ -1,6 +1,7 @@
-from typing import Any
-
+from typing import Any, Iterable
 from abc import ABC, abstractmethod
+
+from lazy_property import LazyProperty
 
 import pandas
 import sqlalchemy
@@ -10,12 +11,12 @@ from .Service import Service
 
 class DBService(Service, ABC):
 
-    @abstractmethod
+    @LazyProperty
     def metadata(self) -> sqlalchemy.MetaData:
-        pass
+        return sqlalchemy.MetaData()
 
     @abstractmethod
-    def execute(self, sql) -> pandas.DataFrame:
+    def execute(self, sql: str) -> pandas.DataFrame:
         pass
 
     @abstractmethod
@@ -49,7 +50,11 @@ class DBService(Service, ABC):
         pass
 
     @abstractmethod
-    def execute_sql_element(self, sql_element, async_cursor=False):
+    def execute_sql_element(
+            self,
+            sql_element: sqlalchemy.sql.expression.Executable,
+            async_cursor: bool = False
+    ) -> pandas.DataFrame:
         pass
 
     @abstractmethod
@@ -57,22 +62,27 @@ class DBService(Service, ABC):
         pass
 
     @abstractmethod
-    def load_dataframe(self, dataframe, source):
+    def load_dataframe(
+            self,
+            dataframe: pandas.DataFrame,
+            source_name: str,
+            source_column_names: Iterable[str]
+    ) -> None:
         pass
 
     @abstractmethod
-    def create_tables(self, sqlalchemy_tables):
+    def create_tables(self, sqlalchemy_tables: Iterable[sqlalchemy.Table]) -> None:
         pass
 
     @abstractmethod
-    def execute_sql_elements_async(self, sql_elements) -> None:
+    def execute_sql_elements_async(
+            self,
+            sql_elements: Iterable[sqlalchemy.sql.expression.Executable]
+    ) -> None:
         pass
 
     @staticmethod
     def sql_script_filename(ddl_element: sqlalchemy.schema.DDLElement) -> str:
-        """
-        sqlalchemy_ddl_element: sqlalchemy.sql.ddl.DDLElement
-        """
         ddl_statement_type = type(ddl_element).__visit_name__
 
         name = getattr(

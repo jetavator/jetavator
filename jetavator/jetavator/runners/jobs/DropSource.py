@@ -1,23 +1,20 @@
+from abc import ABC
 from typing import List
 
 from jetavator.schema_registry import Source
 
-from .. import SparkSQLJob, SparkRunner, SparkJob
+from .. import Job, Runner
 
 
-class DropSource(SparkSQLJob, register_as='drop_source'):
+class DropSource(Job, ABC, register_as='drop_source'):
     """
     Drop the temporary table for a source CSV file.
 
-    :param runner: The `SparkRunner` that created this object.
+    :param runner: The `Runner` that created this object.
     :param source: The `Source` object containing the source definitions.
     """
 
-    sql_template = '''
-        DROP TABLE source_{{job.source.name}}
-        '''
-
-    def __init__(self, runner: SparkRunner, source: Source) -> None:
+    def __init__(self, runner: Runner, source: Source) -> None:
         super().__init__(runner, source)
         self.source = source
 
@@ -26,8 +23,15 @@ class DropSource(SparkSQLJob, register_as='drop_source'):
         return f'drop_source_{self.source.name}'
 
     @property
-    def dependencies(self) -> List[SparkJob]:
+    def dependencies(self) -> List[Job]:
         return [
             self.runner.get_job('satellite_query', satellite)
             for satellite in self.source.dependent_satellites
         ]
+
+    @property
+    def csv_path(self) -> str:
+        """
+        :return: Returns the path to the supplied `Source` CSV file.
+        """
+        return self.runner.compute_service.csv_file_path(self.source.name)

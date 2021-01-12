@@ -1,4 +1,4 @@
-from typing import Union, Tuple, Iterator, Any
+from typing import Union, Tuple, Iterator
 
 from collections.abc import Mapping
 

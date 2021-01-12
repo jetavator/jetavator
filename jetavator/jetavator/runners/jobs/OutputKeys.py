@@ -7,15 +7,15 @@ from lazy_property import LazyProperty
 
 from jetavator.schema_registry import Satellite, SatelliteOwner
 
-from .. import SparkSQLView, SparkRunner, SparkJob
+from .. import Job, Runner
 
 
-class OutputKeys(SparkSQLView, ABC, register_as='output_keys'):
+class OutputKeys(Job, ABC, register_as='output_keys'):
     """
     Computes a DataFrame containing the `Hub` or `Link` key values for any
     satellite row that has been created, updated or deleted by this satellite.
 
-    :param runner:          The `SparkRunner` that created this object.
+    :param runner:          The `Runner` that created this object.
     :param satellite:       The `Satellite` object that is generating the
                             updated keys.
     :param satellite_owner: A `Hub` or `Link` describing the grain of the updated
@@ -23,12 +23,9 @@ class OutputKeys(SparkSQLView, ABC, register_as='output_keys'):
                             case of `Link`s, in `satellite.parent.hubs`.
     """
 
-    checkpoint = True
-    global_view = False
-
     def __init__(
             self,
-            runner: SparkRunner,
+            runner: Runner,
             satellite: Satellite,
             satellite_owner: SatelliteOwner
     ) -> None:
@@ -47,7 +44,7 @@ class OutputKeys(SparkSQLView, ABC, register_as='output_keys'):
     @classmethod
     def keys_for_satellite(
             cls,
-            runner: SparkRunner,
+            runner: Runner,
             satellite: Satellite
     ) -> List[OutputKeys]:
         """
@@ -55,7 +52,7 @@ class OutputKeys(SparkSQLView, ABC, register_as='output_keys'):
         or Link can have keys generated for it by this satellite or one
         of this satellite's eventual dependencies.
 
-        :param runner:    The `SparkRunner` that is creating these objects.
+        :param runner:    The `Runner` that is creating these objects.
         :param satellite: The `Satellite` to search for output keys for.
         :return:          A list of `OutputKeys` jobs containing output keys
                           for all relevant `Hub`s and `Link`s.
@@ -82,14 +79,14 @@ class OutputKeys(SparkSQLView, ABC, register_as='output_keys'):
         return self.satellite_owner in self.satellite.produced_keys
 
     @property
-    def input_keys_job(self) -> SparkJob:
+    def input_keys_job(self) -> Job:
         """
         :return: The `InputKeys` job for this `Satellite` and `SatelliteOwner`.
         """
         return self.runner.get_job('input_keys', self.satellite, self.satellite_owner)
 
     @property
-    def produced_keys_job(self) -> SparkJob:
+    def produced_keys_job(self) -> Job:
         """
         :return: The `ProducedKeys` job for this `Satellite` and `SatelliteOwner`.
         """
@@ -100,41 +97,7 @@ class OutputKeys(SparkSQLView, ABC, register_as='output_keys'):
         )
 
     @property
-    def sql_template(self) -> str:
-        if not self.owner_in_input_keys:
-            return '''
-                SELECT * 
-                  FROM {{ job.produced_keys_job.name }}
-            '''
-        if not self.owner_in_produced_keys:
-            return '''
-                SELECT * 
-                  FROM {{ job.input_keys_job.name }}
-            '''
-        else:
-            return '''
-                SELECT COALESCE(input_keys.{{ job.satellite_owner.key_column_name }},
-                                produced_keys.{{ job.satellite_owner.key_column_name }})
-                             AS {{ job.satellite_owner.key_column_name }},
-                       {% if job.satellite_owner.type == "link" %}
-                       {% for alias in job.satellite_owner.hubs.keys() %}
-                       COALESCE(input_keys.hub_{{ alias }}_key,
-                                produced_keys.hub_{{ alias }}_key)
-                             AS hub_{{alias}}_key,
-                       {% endfor %}
-                       {% endif %}
-                       CONCAT(COALESCE(input_keys.key_source, array()),
-                              COALESCE(produced_keys.key_source, array()))
-                           AS key_source
-                  FROM {{ job.input_keys_job.name }} AS input_keys
-                       FULL JOIN {{ job.produced_keys_job.name }} AS produced_keys
-                              ON input_keys.{{ job.satellite_owner.key_column_name }}
-                               = produced_keys.{{ job.satellite_owner.key_column_name }}
-        
-                '''
-
-    @property
-    def dependencies(self) -> List[SparkJob]:
+    def dependencies(self) -> List[Job]:
         jobs = []
         if self.owner_in_input_keys:
             jobs.append(self.input_keys_job)

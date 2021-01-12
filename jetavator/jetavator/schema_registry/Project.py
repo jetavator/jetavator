@@ -158,9 +158,7 @@ class Project(VaultObjectMapping):
     def increment_version(self, new_version: Optional[str] = None) -> None:
         self._sqlalchemy_object = Deployment(
             name=self._sqlalchemy_object.name,
-            version=(
-                    new_version or semver.bump_patch(
-                self._sqlalchemy_object.version)))
+            version=(new_version or semver.bump_patch(self._sqlalchemy_object.version)))
         self._vault_objects = {
             k: self._vault_object_from_dict(v.definition)
             for k, v in self._vault_objects.items()

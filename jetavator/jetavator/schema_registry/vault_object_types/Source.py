@@ -59,7 +59,8 @@ class Source(VaultObject, register_as="source"):
                 self._csv_to_dataframe(csv_file)
                 for csv_file in csv_files
             ]),
-            source=self
+            source_name=self.name,
+            source_column_names=self.columns.keys()
         )
 
     def _csv_to_dataframe(

@@ -30,7 +30,6 @@ from lazy_property import LazyProperty
 from .runners import Runner
 from .config import Config
 from .schema_registry import Project, RegistryService
-from .VaultAction import VaultAction
 from .services import Service, DBService
 from .sql_model import ProjectModel
 
@@ -206,7 +205,7 @@ class Engine(object):
         else:
             self.logger.info(f'Creating database {self.config.schema}')
             self.compute_service.create_schema()
-        self._deploy_template(action=VaultAction.CREATE)
+        self._deploy_template()
 
     @logged
     def run(
@@ -258,6 +257,10 @@ class Engine(object):
                                   (optional - will be auto-incremented if
                                   not supplied)
         """
+
+        if load_full_history:
+            # TODO: Re-implement or refactor load_full_history
+            raise NotImplementedError()
 
         if isinstance(new_object, str):
             new_object_dict = yaml.safe_load(new_object)
@@ -342,7 +345,7 @@ class Engine(object):
             self,
             load_full_history: bool = False
     ) -> None:
-        self._deploy_template(action=VaultAction.ALTER)
+        self._deploy_template()
         if load_full_history:
             raise NotImplementedError
 
@@ -370,10 +373,7 @@ class Engine(object):
             self.compute_service.write_empty_table(table, overwrite_schema=False)
         self.logger.info('Finished: clear_database')
 
-    def _deploy_template(
-            self,
-            action: VaultAction
-    ) -> None:
+    def _deploy_template(self) -> None:
 
         if not self.loaded_project.valid:
             raise Exception(self.loaded_project.validation_error)

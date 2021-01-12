@@ -38,22 +38,21 @@ Help:
 
 import traceback
 import jsonschema
-import logging
 
 from docopt import docopt
 from tabulate import tabulate
 from textwrap import indent
 
-from . import __version__ as VERSION
+from . import __version__ as version
 from .default_logger import default_logger
-from .Engine import Engine
+from .Engine import Engine, LoadType
 from .config import Config
 
 
 def main(argv=None, exit_callback=None):
     """Main CLI entrypoint."""
 
-    docopt_kwargs = {'version': VERSION}
+    docopt_kwargs = {'version': version}
 
     if argv:
         # Simulating CLI entry point call from Python
@@ -103,7 +102,7 @@ def main(argv=None, exit_callback=None):
 
     default_logger.info(
         f'''
-        Jetavator {VERSION} - running command:
+        Jetavator {version} - running command:
         {' '.join(printable_options)}
 
         Jetavator config:
@@ -154,7 +153,7 @@ def main(argv=None, exit_callback=None):
             engine.drop('satellite', options['<name>'])
 
         elif options['run']:
-            load_type = ('full' if options['full'] else 'delta')
+            load_type = (LoadType.FULL if options['full'] else LoadType.DELTA)
             default_logger.info(f'Engine: Performing {load_type} load.')
             if options['<target_table>=<source_csv>']:
                 table_csvs = {}
@@ -172,7 +171,7 @@ def main(argv=None, exit_callback=None):
                     filename, file_extension = os.path.splitext(dir_entry.name)
                     if file_extension == ".csv" and dir_entry.is_file():
                         engine.loaded_project.sources[filename].load_csvs([dir_entry.path])
-            engine.run(load_type='full')
+            engine.run(load_type=load_type)
 
         elif options['performance']:
             df = engine.get_performance_data()
@@ -205,12 +204,12 @@ def main(argv=None, exit_callback=None):
                 elif options['history']:
                     version_history = [
                         (
-                            version.name,
-                            version.version,
-                            version.deployed_time,
-                            version.is_latest_version
+                            project_version.name,
+                            project_version.version,
+                            project_version.deployed_time,
+                            project_version.is_latest_version
                         )
-                        for version
+                        for project_version
                         in engine.schema_registry.values()
                     ]
                     default_logger.info(
@@ -223,7 +222,7 @@ def main(argv=None, exit_callback=None):
                                 'latest_version'
                             ]))
 
-    except Exception as e:
+    except RuntimeError:
         default_logger.error(traceback.format_exc())
         if exit_callback:
             exit_callback(1)

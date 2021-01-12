@@ -1,22 +1,21 @@
 from __future__ import annotations
 
+from abc import ABC
 from typing import List
-from functools import reduce
 
 from jetavator.schema_registry import Satellite, SatelliteOwner
 
-from pyspark.sql import functions as f, DataFrame
 
-from .. import SparkView, SparkRunner, SparkJob
+from .. import Job, Runner
 
 
-class InputKeys(SparkView, register_as='input_keys'):
+class InputKeys(Job, ABC, register_as='input_keys'):
     """
     Computes a DataFrame containing the `Hub` or `Link` key values for any
     satellite row that has been created, updated or deleted by one
     of this satellite's dependencies.
 
-    :param runner:          The `SparkRunner` that created this object.
+    :param runner:          The `Runner` that created this object.
     :param satellite:       The `Satellite` object that is receiving the
                             updated keys.
     :param satellite_owner: A `Hub` or `Link` describing the grain of the updated
@@ -26,12 +25,9 @@ class InputKeys(SparkView, register_as='input_keys'):
                             can have different data grain from this satellite.
     """
 
-    checkpoint = False
-    global_view = False
-
     def __init__(
             self,
-            runner: SparkRunner,
+            runner: Runner,
             satellite: Satellite,
             satellite_owner: SatelliteOwner
     ) -> None:
@@ -55,7 +51,7 @@ class InputKeys(SparkView, register_as='input_keys'):
     @classmethod
     def keys_for_satellite(
             cls,
-            runner: SparkRunner,
+            runner: Runner,
             satellite: Satellite
     ) -> List[InputKeys]:
         """
@@ -63,7 +59,7 @@ class InputKeys(SparkView, register_as='input_keys'):
         or Link can have keys generated for it by one of this satellite's
         eventual dependencies.
 
-        :param runner:    The `SparkRunner` that is creating these objects.
+        :param runner:    The `Runner` that is creating these objects.
         :param satellite: The `Satellite` to search for output keys for.
         :return:          A list of `OutputKeys` jobs containing output keys
                           for all relevant `Hub`s and `Link`s.
@@ -73,44 +69,8 @@ class InputKeys(SparkView, register_as='input_keys'):
             for satellite_owner in satellite.input_keys
         ]
 
-    def execute_view(self) -> DataFrame:
-        keys = [self.satellite_owner.key_column_name]
-        if self.satellite_owner.type == 'link':
-            keys += [
-                f'hub_{alias}_key'
-                for alias in self.satellite_owner.hubs.keys()
-            ]
-
-        key_tables = [
-            self.spark.table(job.name)
-            for job in self.dependencies
-        ]
-
-        def combine_key_tables(
-                left: DataFrame,
-                right: DataFrame
-        ) -> DataFrame:
-            return (
-                left.join(
-                    right,
-                    left[keys[0]] == right[keys[0]],
-                    how='full'
-                ).select(
-                    *[
-                        f.coalesce(left[key], right[key]).alias(key)
-                        for key in keys
-                    ],
-                    f.concat(
-                        f.coalesce(left.key_source, f.array()),
-                        f.coalesce(right.key_source, f.array())
-                    ).alias('key_source')
-                )
-            )
-
-        return reduce(combine_key_tables, key_tables)
-
     @property
-    def dependencies(self) -> List[SparkJob]:
+    def dependencies(self) -> List[Job]:
         return [
             self.runner.get_job('output_keys', dependent_satellite, self.satellite_owner)
             for dependent_satellite in self.dependent_satellites

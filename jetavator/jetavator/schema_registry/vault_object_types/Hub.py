@@ -1,4 +1,4 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 from sqlalchemy import func
 
@@ -30,8 +30,8 @@ class Hub(SatelliteOwner, register_as="hub"):
             key: sat
             for key, sat in self.project.satellites.items()
             if sat.parent.key == self.key
-               or sat.parent.key in [link.key for link in self.links.values()]
-               or self.name in sat.referenced_hubs.keys()
+            or sat.parent.key in [link.key for link in self.links.values()]
+            or self.name in sat.referenced_hubs.keys()
         }
 
     @property
@@ -42,7 +42,7 @@ class Hub(SatelliteOwner, register_as="hub"):
             if self.name in link.unique_hubs.keys()
         }
 
-    def hub_key_columns(self, satellite: Satellite) -> Dict[str, HubKeyColumn]:
+    def hub_key_columns(self, satellite: Satellite) -> Dict[str, List[HubKeyColumn]]:
         return {
             self.name: [HubKeyColumn(
                 self.key_column_name, f'sat_{satellite.name}'

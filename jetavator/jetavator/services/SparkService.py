@@ -1,3 +1,5 @@
+from typing import Iterable
+
 import datetime
 import os
 import tempfile
@@ -6,9 +8,9 @@ import numpy as np
 import pyspark
 import sqlalchemy
 import sqlparse
+import pandas
 
 from jetavator.sqlalchemy_delta import HiveWithDDLDialect, DeltaDialect
-from lazy_property import LazyProperty
 
 from .DBService import DBService
 
@@ -32,11 +34,6 @@ def pyspark_column_type(sqlalchemy_column):
 
 class SparkService(DBService):
 
-    # In future, refactor elsewhere to separate sqlalchemy and spark concerns
-    @LazyProperty
-    def metadata(self):
-        return sqlalchemy.MetaData()
-
     @property
     def spark(self):
         raise NotImplementedError
@@ -44,7 +41,8 @@ class SparkService(DBService):
     # TODO: Require to avoid need for try/except block
     # TODO: Don't hardcode DeltaDialect - make the storage configurable and separate from the compute
     # TODO: Refactor compile_delta_lake and compile_hive back into one sensible framework
-    def compile_delta_lake(self, sqlalchemy_executable):
+    @staticmethod
+    def compile_delta_lake(sqlalchemy_executable):
         try:
             formatted = sqlparse.format(
                 str(sqlalchemy_executable.compile(
@@ -54,7 +52,7 @@ class SparkService(DBService):
                 reindent=True,
                 keyword_case='upper'
             )
-        except Exception:
+        except TypeError:
             formatted = sqlparse.format(
                 str(sqlalchemy_executable.compile(
                     dialect=DeltaDialect()
@@ -64,7 +62,8 @@ class SparkService(DBService):
             )
         return formatted
 
-    def compile_hive(self, sqlalchemy_executable):
+    @staticmethod
+    def compile_hive(sqlalchemy_executable):
         try:
             formatted = sqlparse.format(
                 str(sqlalchemy_executable.compile(
@@ -74,7 +73,7 @@ class SparkService(DBService):
                 reindent=True,
                 keyword_case='upper'
             )
-        except Exception:
+        except TypeError:
             formatted = sqlparse.format(
                 str(sqlalchemy_executable.compile(
                     dialect=HiveWithDDLDialect()
@@ -84,19 +83,24 @@ class SparkService(DBService):
             )
         return formatted
 
-    def load_dataframe(self, dataframe, source):
-        for column in source.columns.keys():
+    def load_dataframe(
+            self,
+            dataframe: pandas.DataFrame,
+            source_name: str,
+            source_column_names: Iterable[str]
+    ) -> None:
+        for column in source_column_names:
             if column not in dataframe.columns:
                 dataframe[column] = np.nan
         if 'jetavator_load_dt' not in dataframe.columns:
             dataframe['jetavator_load_dt'] = datetime.datetime.now()
         if 'jetavator_deleted_ind' not in dataframe.columns:
             dataframe['jetavator_deleted_ind'] = 0
-        columns = list(source.columns.keys()) + [
+        columns = list(source_column_names) + [
             'jetavator_load_dt',
             'jetavator_deleted_ind'
         ]
-        filename = f'{source.name}.csv'
+        filename = f'{source_name}.csv'
         with tempfile.TemporaryDirectory() as temp_path:
             temp_csv_file = os.path.join(temp_path, filename)
             (
@@ -107,15 +111,15 @@ class SparkService(DBService):
                     temp_csv_file,
                     index=False)
             )
-            self.load_csv(temp_csv_file, source)
+            self.load_csv(temp_csv_file, source_name)
 
-    def load_csv(self, csv_file, source):
+    def load_csv(self, csv_file, source_name: str):
         raise NotImplementedError
 
-    def csv_file_path(self, source):
+    def csv_file_path(self, source_name: str):
         raise NotImplementedError
 
-    def source_csv_exists(self, source):
+    def source_csv_exists(self, source_name: str):
         raise NotImplementedError
 
     def table_delta_path(self, sqlalchemy_table):

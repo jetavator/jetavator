@@ -1,14 +1,14 @@
-from .CreateSource import CreateSource
-from .DropSource import DropSource
-from .InputKeys import InputKeys
-from .OutputKeys import OutputKeys
-from .ProducedKeys import (
-    ProducedKeys,
-    ProducedLinkKeys,
-    ProducedHubKeys
+from .SparkCreateSource import SparkCreateSource
+from .SparkDropSource import SparkDropSource
+from .SparkInputKeys import SparkInputKeys
+from .SparkOutputKeys import SparkOutputKeys
+from .SparkProducedKeys import (
+    SparkProducedKeys,
+    SparkProducedLinkKeys,
+    SparkProducedHubKeys
 )
-from .SatelliteQuery import SatelliteQuery
-from .SerialiseSatellite import SerialiseSatellite
-from .StarData import StarData
-from .StarKeys import StarKeys
-from .StarMerge import StarMerge
+from .SparkSatelliteQuery import SparkSatelliteQuery
+from .SparkSerialiseSatellite import SparkSerialiseSatellite
+from .SparkStarData import SparkStarData
+from .SparkStarKeys import SparkStarKeys
+from .SparkStarMerge import SparkStarMerge

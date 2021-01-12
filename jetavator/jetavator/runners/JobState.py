@@ -1,7 +1,7 @@
 from enum import IntEnum
 
 
-class SparkJobState(IntEnum):
+class JobState(IntEnum):
     """
     Indicates the current execution state of a `SparkJob`.
     """
