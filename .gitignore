@@ -97,7 +97,6 @@ spark-warehouse/
 artifacts/
 version.txt
 
-.ipynb_checkpoints
 .DS_Store
 *.ipynb
 *.pkl
@@ -106,3 +105,5 @@ performance.csv
 
 config.yml
 old_config.yml
+
+*.jar

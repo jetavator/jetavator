@@ -2,12 +2,11 @@ import os
 import random
 import shutil
 import pandas
-import behave
 import datetime
 
 import logging
 
-from behave import given, when, then
+from behave import given, when, then, model
 
 from sqlalchemy import MetaData, Table, Column
 from sqlalchemy.sql import and_, select
@@ -25,7 +24,7 @@ SCHEMA_METADATA_TABLE = {
     "view": "INFORMATION_SCHEMA.VIEWS"
 }
 
-use_step_matcher("parse")
+# use_step_matcher("parse")
 
 
 class ListenFilter(logging.Filter):
@@ -300,7 +299,7 @@ def step_impl(context, table_name, datastore):
 
     for row in context.table:
         where_clauses = [
-            table.c[heading] == row[heading]
+            table.c[heading] == (None if row[heading] == "None" else row[heading])
             for heading in row.headings
         ]
         row_results = connection.execute_sql_element(
@@ -398,7 +397,7 @@ def assert_returns_table(context, actual_dataframe, expected_table):
             "actual_dataframe must be type pandas.DataFrame, "
             f"not {type(actual_dataframe)}"
         )
-        assert isinstance(expected_table, behave.model.Table), (
+        assert isinstance(expected_table, model.Table), (
             "expected_table must be type behave.model.Table, "
             f"not {type(expected_table)}"
         )
@@ -412,7 +411,7 @@ def assert_returns_table(context, actual_dataframe, expected_table):
         )
         for row in expected_table:
             matches = [
-                (actual_dataframe[heading] == row[heading]).tolist()
+                (actual_dataframe[heading] == row[heading])
                 for heading in row.headings
                 if row[heading] != "*"  # exclude wildcard values
             ]
