@@ -12,14 +12,6 @@ from pathlib import Path
 from .secret_lookup import SecretLookup
 from .ConfigProperty import ConfigProperty
 
-PROPERTIES_TO_PRINT = [
-    "model_path",
-    "schema",
-    "drop_schema_if_exists",
-    "skip_deploy",
-    "environment_type"
-]
-
 # TODO: Co-locate config classes with their related service classes
 # TODO: Split services into service types in config file structure
 
@@ -32,29 +24,41 @@ class ServiceConfig(wysdom.UserObject, wysdom.RegistersSubclasses):
         return wysdom.key(self)
 
 
-class DBServiceConfig(ServiceConfig):
+class StorageConfig(wysdom.UserObject):
+    vault: str = ConfigProperty(str)
+    star: str = ConfigProperty(str)
+
+
+class RegistryServiceConfig(ServiceConfig):
+    service_type: str = ConfigProperty(wysdom.SchemaConst('registry'))
+
+
+class StorageServiceConfig(ServiceConfig):
+    service_type: str = ConfigProperty(wysdom.SchemaConst('storage'))
+
+    def _get_default_schema(self):
+        if not wysdom.document(self) is self:
+            return f"{wysdom.document(self).schema}_{wysdom.key(self)}"
+
+    type: str = ConfigProperty(str)
+    schema: str = ConfigProperty(str, default_function=_get_default_schema)
+    drop_schema_if_exists: bool = ConfigProperty(bool, default=False)
+
+
+class ComputeServiceConfig(ServiceConfig):
+    service_type: str = ConfigProperty(wysdom.SchemaConst('compute'))
+    storage_services: Dict[str, StorageServiceConfig] = ConfigProperty(
+        wysdom.SchemaDict(StorageServiceConfig),
+        default={},
+        persist_defaults=True)
+    storage: StorageConfig = ConfigProperty(StorageConfig)
 
     def _get_default_schema(self):
         if not wysdom.document(self) is self:
             return wysdom.document(self).schema
 
-    type: str = ConfigProperty(str)
     schema: str = ConfigProperty(str, default_function=_get_default_schema)
-
-
-class LocalSparkConfig(DBServiceConfig):
-    type: str = ConfigProperty(wysdom.SchemaConst('local_spark'))
-
-
-class StorageConfig(wysdom.UserObject):
-    source: str = ConfigProperty(str)
-    vault: str = ConfigProperty(str)
-    star: str = ConfigProperty(str)
-    logs: str = ConfigProperty(str)
-
-
-class RegistryServiceConfig(ServiceConfig):
-    service_type: str = ConfigProperty(wysdom.SchemaConst('registry'))
+    drop_schema_if_exists: bool = ConfigProperty(bool, default=False)
 
 
 class SQLAlchemyRegistryServiceConfig(RegistryServiceConfig):
@@ -79,13 +83,11 @@ class SessionConfig(wysdom.UserObject):
 class Config(wysdom.UserObject, wysdom.ReadsJSON, wysdom.ReadsYAML):
     model_path: str = ConfigProperty(str, default_function=lambda self: os.getcwd())
     schema: str = ConfigProperty(str)
-    drop_schema_if_exists: bool = ConfigProperty(bool, default=False)
     skip_deploy: bool = ConfigProperty(bool, default=False)
     environment_type: str = ConfigProperty(str, default="local_spark")
     session: SessionConfig = ConfigProperty(SessionConfig, default={}, persist_defaults=True)
     services: Dict[str, ServiceConfig] = ConfigProperty(
         wysdom.SchemaDict(ServiceConfig), default={}, persist_defaults=True)
-    storage: StorageConfig = ConfigProperty(StorageConfig)
     compute: str = ConfigProperty(str)
     registry: str = ConfigProperty(str)
 

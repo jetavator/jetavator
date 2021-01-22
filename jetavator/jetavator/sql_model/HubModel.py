@@ -2,13 +2,17 @@ from typing import List
 
 from sqlalchemy import Column, Index
 
+from jetavator.schema_registry import Hub
+
 from .SatelliteOwnerModel import SatelliteOwnerModel
+from .BaseModel import BaseModel
 
 
-class HubModel(SatelliteOwnerModel, register_as="hub"):
+class HubModel(SatelliteOwnerModel, BaseModel[Hub], register_as="hub"):
 
     @property
     def static_columns(self) -> List[Column]:
+        # TODO: Replace eval with a JSON/YAML type declaration
         return [
             Column(
                 column_name,

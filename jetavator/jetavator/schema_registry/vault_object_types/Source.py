@@ -31,6 +31,7 @@ class Source(VaultObject, register_as="source"):
     def create_table_statement(self) -> CreateTable:
         return CreateTable(self.table)
 
+    # TODO: Move to sql_model?
     @LazyProperty
     def table(self) -> Table:
         return Table(
@@ -41,6 +42,8 @@ class Source(VaultObject, register_as="source"):
 
     # TODO: Re-implement assume_schema_integrity for loading CSVs
     #       (perhaps with a header line safety check!)
+    # TODO: Move this responsibility elsewhere - not part of the
+    #       core schema registry functionality
     def load_csvs(
             self,
             csv_files: List[str]
@@ -54,11 +57,14 @@ class Source(VaultObject, register_as="source"):
         #     source = self.schema_registry.loaded["source", table_name]
         #     self.spark_runner.load_csv(csv_file, source)
         # else:
+        df = pandas.concat([
+            self._csv_to_dataframe(csv_file)
+            for csv_file in csv_files
+        ])
+        if "jetavator_deleted_ind" in df:
+            df["jetavator_deleted_ind"] = df["jetavator_deleted_ind"].fillna(0).astype("int")
         self.compute_service.load_dataframe(
-            dataframe=pandas.concat([
-                self._csv_to_dataframe(csv_file)
-                for csv_file in csv_files
-            ]),
+            dataframe=df,
             source_name=self.name,
             source_column_names=self.columns.keys()
         )
@@ -67,9 +73,7 @@ class Source(VaultObject, register_as="source"):
             self,
             csv_file: str
     ) -> pandas.DataFrame:
-        date_columns = {
-            "jetavator_load_dt"
-        }
+        date_columns = set()
         dtypes = {
             "jetavator_deleted_ind": "int"
         }
@@ -78,19 +82,14 @@ class Source(VaultObject, register_as="source"):
                 date_columns.add(k)
             else:
                 dtypes[k] = v.pandas_dtype
-        try:
-            return pandas.read_csv(
-                csv_file,
-                parse_dates=list(date_columns),
-                dtype=dtypes
-            )
-        except ValueError:
-            # File may be missing jetavator_load_dt column, so try again without it
-            return pandas.read_csv(
-                csv_file,
-                parse_dates=list(date_columns - {"jetavator_load_dt"}),
-                dtype=dtypes
-            )
+        df = pandas.read_csv(
+            csv_file,
+            parse_dates=list(date_columns),
+            dtype=dtypes
+        )
+        if "jetavator_load_dt" in df:
+            df["jetavator_load_dt"] = pandas.to_datetime(df["jetavator_load_dt"])
+        return df
 
     def _table_columns(self) -> List[Column]:
         # TODO: Spark/Hive does not allow PKs. Make this configurable per engine?
@@ -116,12 +115,15 @@ class Source(VaultObject, register_as="source"):
         return [
             Column(
                 "jetavator_load_dt",
-                DATETIME,
+                DateTime(),
                 nullable=True,
                 primary_key=use_primary_key),
             Column(
                 "jetavator_deleted_ind",
-                CHAR(1),
+                # TODO: Loading as integer saves space in CSVs.
+                #       Does this make sense for other file formats?
+                #       Is there a more general solution?
+                Integer(),
                 nullable=True,
                 default=0)
         ]

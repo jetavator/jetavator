@@ -3,8 +3,6 @@ from __future__ import annotations
 from typing import Any, Dict, List
 from abc import ABC, abstractmethod
 
-import yaml
-
 from datetime import datetime
 from collections import namedtuple
 
@@ -14,7 +12,9 @@ from .sqlalchemy_tables import ObjectDefinition
 
 import wysdom
 
-from jetavator.services import DBService
+from jetavator.services import ComputeServiceABC
+
+from .ProjectABC import ProjectABC
 
 VaultObjectKey = namedtuple('VaultObjectKey', ['type', 'name'])
 HubKeyColumn = namedtuple('HubKeyColumn', ['name', 'source'])
@@ -29,7 +29,7 @@ class VaultObject(wysdom.UserObject, wysdom.RegistersSubclasses, ABC):
 
     def __init__(
         self,
-        project: Project,
+        project: ProjectABC,
         sqlalchemy_object: ObjectDefinition
     ) -> None:
         self.project = project
@@ -43,7 +43,7 @@ class VaultObject(wysdom.UserObject, wysdom.RegistersSubclasses, ABC):
     @classmethod
     def subclass_instance(
         cls,
-        project: Project,
+        project: ProjectABC,
         definition: ObjectDefinition
     ) -> VaultObject:
         return cls.registered_subclass_instance(
@@ -74,15 +74,7 @@ class VaultObject(wysdom.UserObject, wysdom.RegistersSubclasses, ABC):
         pass
 
     @property
-    def yaml(self) -> str:
-        dumper = yaml.dumper.SafeDumper
-        dumper.ignore_aliases = lambda self_, data: True
-        return yaml.dump(
-            yaml_object, Dumper=noalias_dumper, default_flow_style=False
-        )
-
-    @property
-    def compute_service(self) -> DBService:
+    def compute_service(self) -> ComputeServiceABC:
         return self.project.compute_service
 
     @property

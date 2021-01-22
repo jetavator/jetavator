@@ -2,6 +2,7 @@ import shutil
 import tempfile
 import yaml
 import os
+import jetavator
 
 from behave import fixture
 
@@ -115,3 +116,17 @@ def jetavator_schema_name(context):
         return context.config.userdata["db"]
     except KeyError:
         return os.path.split(context.tempfolder)[1]
+
+
+@registered_fixture("fixture.remove_database_after_scenario")
+def fixture_remove_database(context):
+    yield None
+
+
+@fixture_hook("fixture.remove_database_after_scenario", when="after_scenario")
+def fixture_remove_after_scenario(context, step):
+    engine = jetavator.Engine(
+        jetavator.Config.from_yaml_file(
+            jetavator.Config.config_file()))
+    engine.logger.info("fixture.remove_database_after_scenario: running")
+    engine.drop_schemas()

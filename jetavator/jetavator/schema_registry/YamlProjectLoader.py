@@ -30,7 +30,7 @@ class YamlProjectLoader(object):
 
     @staticmethod
     def load_yaml(file: str) -> Dict[str, Any]:
-        with open(file, "r") as stream:
+        with open(file) as stream:
             return yaml.safe_load(stream)
 
     @staticmethod

@@ -9,9 +9,12 @@ import wysdom
 
 from .SatelliteColumn import SatelliteColumn
 from ..VaultObject import VaultObject, HubKeyColumn
+from .SatelliteABC import SatelliteABC
 
 
 class SatelliteOwner(VaultObject, ABC, register_as="satellite_owner"):
+
+    key_length: int = None
     options: List[str] = wysdom.UserProperty(wysdom.SchemaArray(str), default=[])
     exclude_from_star_schema: bool = wysdom.UserProperty(bool, default=False)
 
@@ -21,7 +24,7 @@ class SatelliteOwner(VaultObject, ABC, register_as="satellite_owner"):
         pass
 
     @property
-    def satellites(self) -> Dict[str, VaultObject]:
+    def satellites(self) -> Dict[str, SatelliteABC]:
         return {
             satellite.name: satellite
             for satellite in self.project.satellites.values()
@@ -29,7 +32,7 @@ class SatelliteOwner(VaultObject, ABC, register_as="satellite_owner"):
         }
 
     @property
-    def star_satellites(self) -> Dict[str, VaultObject]:
+    def star_satellites(self) -> Dict[str, SatelliteABC]:
         return {
             satellite.name: satellite
             for satellite in self.satellites.values()
@@ -38,7 +41,7 @@ class SatelliteOwner(VaultObject, ABC, register_as="satellite_owner"):
 
     @property
     @abstractmethod
-    def satellites_containing_keys(self) -> Dict[str, VaultObject]:
+    def satellites_containing_keys(self) -> Dict[str, SatelliteABC]:
         pass
 
     @property
@@ -102,18 +105,6 @@ class SatelliteOwner(VaultObject, ABC, register_as="satellite_owner"):
     @abstractmethod
     def link_key_columns(self):
         pass
-
-    def generate_table_keys(self, source_table, alias=None):
-        alias = alias or self.name
-        if self.option("hash_key"):
-            hash_key = [hash_keygen(
-                source_table.c[self.alias_key_name(alias)]
-                ).label(self.alias_hash_key_name(alias))]
-        else:
-            hash_key = []
-        return hash_key + [
-            source_table.c[self.alias_key_name(alias)]
-        ]
 
     def alias_key_column(self, alias):
         return Column(

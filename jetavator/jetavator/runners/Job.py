@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Any
 
 import datetime
 
@@ -10,9 +10,9 @@ from concurrent.futures import Future
 from wysdom.mixins import RegistersSubclasses
 from lazy_property import LazyProperty
 
-from jetavator.schema_registry import VaultObject
+from jetavator.schema_registry import VaultObject, Satellite
 from .JobState import JobState
-from .RunnerABC import RunnerABC
+from jetavator.runners.RunnerABC import RunnerABC
 
 
 class Job(RegistersSubclasses, ABC):
@@ -77,6 +77,14 @@ class Job(RegistersSubclasses, ABC):
                 for vault_object in args
             ]
         ])
+
+    @classmethod
+    def keys_for_satellite(
+            cls,
+            runner: RunnerABC,
+            satellite: Satellite
+    ) -> List[Job]:
+        return []
 
     @property
     def primary_vault_object(self) -> VaultObject:

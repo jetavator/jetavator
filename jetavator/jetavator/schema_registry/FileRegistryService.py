@@ -16,25 +16,27 @@ class FileRegistryService(RegistryService, Mapping, register_as="simple_file_reg
             self,
             key: Union[str, Tuple[str, str]]
     ) -> Project:
-        session = self.engine.compute_service.session()
+        session = self.owner.compute_service.session()
         deployment = session.query(Deployment).get(key)
         return Project.from_sqlalchemy_object(
-            self.config, self.engine.compute_service, deployment)
+            self.config, self.owner.compute_service, deployment)
 
     def __len__(self) -> int:
-        return len(list(session.query(Deployment)))
+        return len(list(self.session().query(Deployment)))
 
     def __iter__(self) -> Iterator[str]:
-        session = self.engine.compute_service.session()
         return iter(
             deployment.version
-            for deployment in session.query(Deployment)
+            for deployment in self.session().query(Deployment)
         )
+
+    def session(self):
+        return self.owner.compute_service.session()
 
     def load_from_disk(self) -> None:
         self.loaded = Project.from_directory(
             self.config,
-            self.engine.compute_service,
+            self.owner.compute_service,
             self.config.model_path)
 
     def load_from_database(self) -> None:
@@ -43,8 +45,8 @@ class FileRegistryService(RegistryService, Mapping, register_as="simple_file_reg
     # TODO: Implement storage/retrieval of deployed definitions on Spark/Hive
     @property
     def deployed(self) -> Project:
-        # self.engine.compute_service.test()
-        # session = self.engine.compute_service.session()
+        # self.owner.compute_service.test()
+        # session = self.owner.compute_service.session()
         # try:
         #     deployment = session.query(Deployment).order_by(
         #         Deployment.deploy_dt.desc()).first()
@@ -59,10 +61,10 @@ class FileRegistryService(RegistryService, Mapping, register_as="simple_file_reg
         #     deployment = Deployment()
         # return Project.from_sqlalchemy_object(self, deployment)
         return Project.from_sqlalchemy_object(
-            self.config, self.engine.compute_service, Deployment())
+            self.config, self.owner.compute_service, Deployment())
 
     def write_definitions_to_sql(self) -> None:
-        session = self.engine.compute_service.session()
+        session = self.owner.compute_service.session()
         session.add(self.loaded.export_sqlalchemy_object())
         session.add_all([
             object_definition.export_sqlalchemy_object()

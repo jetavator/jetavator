@@ -21,12 +21,12 @@ def hash_record(
         column_names: Iterable[str]
 ) -> FunctionElement:
     value_to_hash = cast(
-        coalesce(table.c[deleted_ind_name], literal_column("0")),
-        String(None)
+        coalesce(table.c[deleted_ind_name], literal_column("FALSE")),
+        String()
     )
     for column_name in column_names:
         value_to_hash = value_to_hash.concat(
             coalesce(
-                cast(table.c[column_name], String(None)),
+                cast(table.c[column_name], String()),
                 literal_column("''")))
     return hash_value(value_to_hash)

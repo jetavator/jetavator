@@ -7,25 +7,7 @@ Feature: Build star schema from project
 
     Given a random string in the environment variable $RANDOM_TEST_SCHEMA
 
-    And a file saved as config.yml:
-      """
-      services:
-        spark:
-          type: local_spark
-        file_registry:
-          service_type: registry
-          type: simple_file_registry
-          storage_path: ~/.jetavator/registry
-      storage:
-        source: spark
-        vault: spark
-        star: spark
-        logs: azure_queue
-      compute: spark
-      registry: file_registry
-      secret_lookup: environment
-      schema: $RANDOM_TEST_SCHEMA
-      """
+    And a config file saved as config.yml
 
     And a definition for a project:
       """
@@ -264,6 +246,7 @@ Feature: Build star schema from project
       jetavator config --config-file={tempfolder}/config.yml --set model_path={tempfolder}/definitions
       """
 
+  @fixture.remove_database_after_scenario
   Scenario: Initial load
 
     When all the definitions are saved to disk
@@ -302,6 +285,7 @@ Feature: Build star schema from project
       | ORD                 | LHR                 | 1           | 0             | 1                 |
       | ORD                 | DEN                 | 2           | 0             | 1                 |
 
+  @fixture.remove_database_after_scenario
   Scenario: Delta load - Update
 
     When all the definitions are saved to disk
@@ -352,7 +336,7 @@ Feature: Build star schema from project
        | ORD                 | LHR                 | 1           | 0             | 0                 |
        | ORD                 | DEN                 | 2           | 0             | 0                 |
 
-
+  @fixture.remove_database_after_scenario
   Scenario: Delta load - Insert
 
     When all the definitions are saved to disk
@@ -407,43 +391,44 @@ Feature: Build star schema from project
        | ATL                 | CDG                 | 0           | 1             | 1                 |
        | ORD                 | CDG                 | 1           | 0             | 1                 |
 
-   Scenario: Delta load - Delete
+  @fixture.remove_database_after_scenario
+  Scenario: Delta load - Delete
 
-     When all the definitions are saved to disk
-      And we run the CLI command "jetavator deploy -d"
-      And we run the CLI command:
-        """
-        jetavator run delta \
-          --csv airport_details="{tempfolder}/airport_details.csv" \
-          --csv airport_pair_details="{tempfolder}/airport_pair_details.csv"
-        """
-      And the following CSV file airport_details_delete.csv is saved in the temporary folder:
-         | code | jetavator_deleted_ind                            |
-         | ATL  | 1                                                |
-         | LAX  | 1                                                |
-      And the following CSV file airport_pair_details_delete.csv is saved in the temporary folder:
-         | dep_airport | arr_airport | jetavator_deleted_ind |
-         | ORD         | DEN         | 1                     |
-      And we run the CLI command:
-        """
-        jetavator run delta \
-          --csv airport_details="{tempfolder}/airport_details_delete.csv" \
-          --csv airport_pair_details="{tempfolder}/airport_pair_details_delete.csv"
-        """
+    When all the definitions are saved to disk
+     And we run the CLI command "jetavator deploy -d"
+     And we run the CLI command:
+       """
+       jetavator run delta \
+         --csv airport_details="{tempfolder}/airport_details.csv" \
+         --csv airport_pair_details="{tempfolder}/airport_pair_details.csv"
+       """
+     And the following CSV file airport_details_delete.csv is saved in the temporary folder:
+        | code | jetavator_deleted_ind                            |
+        | ATL  | 1                                                |
+        | LAX  | 1                                                |
+     And the following CSV file airport_pair_details_delete.csv is saved in the temporary folder:
+        | dep_airport | arr_airport | jetavator_deleted_ind |
+        | ORD         | DEN         | 1                     |
+     And we run the CLI command:
+       """
+       jetavator run delta \
+         --csv airport_details="{tempfolder}/airport_details_delete.csv" \
+         --csv airport_pair_details="{tempfolder}/airport_pair_details_delete.csv"
+       """
 
      Then the table star_dim_airport exists on the star datastore
       And the table star_dim_airport on the star datastore contains 9 rows
       And the table star_dim_airport on the star datastore contains these columns with this data:
-        | hub_airport_key | name                                             | allcaps_name                                     | last_updated_airport |
-        | PEK             | Beijing Capital International Airport            | BEIJING CAPITAL INTERNATIONAL AIRPORT            | 0                    |
-        | DXB             | Dubai International Airport                      | DUBAI INTERNATIONAL AIRPORT                      | 0                    |
-        | HND             | Haneda Airport                                   | HANEDA AIRPORT                                   | 0                    |
-        | ORD             | Orchard Field                                    | ORCHARD FIELD                                    | 0                    |
-        | LHR             | London Heathrow Airport                          | LONDON HEATHROW AIRPORT                          | 0                    |
-        | HKG             | Hong Kong International Airport                  | HONG KONG INTERNATIONAL AIRPORT                  | 0                    |
-        | PVG             | Shanghai Pudong International Airport            | SHANGHAI PUDONG INTERNATIONAL AIRPORT            | 0                    |
-        | DEN             | None                                             | None                                             | None                 |
-        | CDG             | Paris-Charles de Gaulle Airport                  | PARIS-CHARLES DE GAULLE AIRPORT                  | 0                    |
+       | hub_airport_key | name                                             | allcaps_name                                     | last_updated_airport |
+       | PEK             | Beijing Capital International Airport            | BEIJING CAPITAL INTERNATIONAL AIRPORT            | 0                    |
+       | DXB             | Dubai International Airport                      | DUBAI INTERNATIONAL AIRPORT                      | 0                    |
+       | HND             | Haneda Airport                                   | HANEDA AIRPORT                                   | 0                    |
+       | ORD             | Orchard Field                                    | ORCHARD FIELD                                    | 0                    |
+       | LHR             | London Heathrow Airport                          | LONDON HEATHROW AIRPORT                          | 0                    |
+       | HKG             | Hong Kong International Airport                  | HONG KONG INTERNATIONAL AIRPORT                  | 0                    |
+       | PVG             | Shanghai Pudong International Airport            | SHANGHAI PUDONG INTERNATIONAL AIRPORT            | 0                    |
+       | DEN             | None                                             | None                                             | None                 |
+       | CDG             | Paris-Charles de Gaulle Airport                  | PARIS-CHARLES DE GAULLE AIRPORT                  | 0                    |
       And the table star_fact_airport_pair exists on the star datastore
       And the table star_fact_airport_pair on the star datastore contains 6 rows
       And the table star_fact_airport_pair on the star datastore contains these columns with this data:
@@ -455,46 +440,47 @@ Feature: Build star schema from project
         | ORD                 | PVG                 | 1           | 0             | 0                 |
         | ORD                 | LHR                 | 1           | 0             | 0                 |
 
-   Scenario: Delta load - All Together
+  @fixture.remove_database_after_scenario
+  Scenario: Delta load - All Together
 
-     When all the definitions are saved to disk
-      And we run the CLI command "jetavator deploy -d"
-      And we run the CLI command:
-        """
-        jetavator run delta \
-          --csv airport_details="{tempfolder}/airport_details.csv" \
-          --csv airport_pair_details="{tempfolder}/airport_pair_details.csv"
-        """
-      And the following CSV file airport_details_update.csv is saved in the temporary folder:
-         | code | name                                             |
-         | ORD  | O'Hare International Airport                     |
-      And the following CSV file airport_details_insert.csv is saved in the temporary folder:
-         | code | name                                             |
-         | AMS  | Amsterdam Airport Schiphol                       |
-      And the following CSV file airport_details_delete.csv is saved in the temporary folder:
-         | code | jetavator_deleted_ind                            |
-         | ATL  | 1                                                |
-         | LAX  | 1                                                |
-      And the following CSV file airport_pair_details_update.csv is saved in the temporary folder:
-         | dep_airport | arr_airport | num_changes |
-         | ORD         | PVG         | 0           |
+    When all the definitions are saved to disk
+     And we run the CLI command "jetavator deploy -d"
+     And we run the CLI command:
+       """
+       jetavator run delta \
+         --csv airport_details="{tempfolder}/airport_details.csv" \
+         --csv airport_pair_details="{tempfolder}/airport_pair_details.csv"
+       """
+     And the following CSV file airport_details_update.csv is saved in the temporary folder:
+        | code | name                                             |
+        | ORD  | O'Hare International Airport                     |
+     And the following CSV file airport_details_insert.csv is saved in the temporary folder:
+        | code | name                                             |
+        | AMS  | Amsterdam Airport Schiphol                       |
+     And the following CSV file airport_details_delete.csv is saved in the temporary folder:
+        | code | jetavator_deleted_ind                            |
+        | ATL  | 1                                                |
+        | LAX  | 1                                                |
+     And the following CSV file airport_pair_details_update.csv is saved in the temporary folder:
+        | dep_airport | arr_airport | num_changes |
+        | ORD         | PVG         | 0           |
       And the following CSV file airport_pair_details_insert.csv is saved in the temporary folder:
-         | dep_airport | arr_airport | num_changes |
-         | ATL         | CDG         | 0           |
-         | ORD         | CDG         | 1           |
-      And the following CSV file airport_pair_details_delete.csv is saved in the temporary folder:
-         | dep_airport | arr_airport | jetavator_deleted_ind |
-         | ORD         | DEN         | 1                     |
-      And we run the CLI command:
-        """
-        jetavator run delta \
-          --csv airport_details="{tempfolder}/airport_details_update.csv" \
-          --csv airport_details="{tempfolder}/airport_details_insert.csv" \
-          --csv airport_details="{tempfolder}/airport_details_delete.csv" \
-          --csv airport_pair_details="{tempfolder}/airport_pair_details_update.csv" \
-          --csv airport_pair_details="{tempfolder}/airport_pair_details_insert.csv" \
-          --csv airport_pair_details="{tempfolder}/airport_pair_details_delete.csv"
-        """
+        | dep_airport | arr_airport | num_changes |
+        | ATL         | CDG         | 0           |
+        | ORD         | CDG         | 1           |
+     And the following CSV file airport_pair_details_delete.csv is saved in the temporary folder:
+        | dep_airport | arr_airport | jetavator_deleted_ind |
+        | ORD         | DEN         | 1                     |
+     And we run the CLI command:
+       """
+       jetavator run delta \
+         --csv airport_details="{tempfolder}/airport_details_update.csv" \
+         --csv airport_details="{tempfolder}/airport_details_insert.csv" \
+         --csv airport_details="{tempfolder}/airport_details_delete.csv" \
+         --csv airport_pair_details="{tempfolder}/airport_pair_details_update.csv" \
+         --csv airport_pair_details="{tempfolder}/airport_pair_details_insert.csv" \
+         --csv airport_pair_details="{tempfolder}/airport_pair_details_delete.csv"
+       """
 
     Then the table star_dim_airport exists on the star datastore
      And the table star_dim_airport on the star datastore contains 10 rows
@@ -523,52 +509,55 @@ Feature: Build star schema from project
        | ATL                 | CDG                 | 0           | 1             | 1                 |
        | ORD                 | CDG                 | 1           | 0             | 1                 |
 
-    Scenario: Allow users to exclude hubs from the star schema
+  @fixture.remove_database_after_scenario
+  Scenario: Allow users to exclude hubs from the star schema
 
-      Given a definition for a hub:
-        """
+    Given a definition for a hub:
+      """
+      name: airport
+      type: hub
+      key_length: 3
+      exclude_from_star_schema: True
+      """
+
+    When all the definitions are saved to disk
+     And we run the CLI command "jetavator deploy -d"
+
+    Then the table star_dim_airport does not exist on the star datastore
+
+  @fixture.remove_database_after_scenario
+  Scenario: Allow users to exclude hub satellites from the star schema
+
+    Given a definition for a satellite:
+      """
+      name: airport_details
+      type: satellite
+      parent:
         name: airport
         type: hub
-        key_length: 3
-        exclude_from_star_schema: True
-        """
+      columns:
+        "name": {"type": "varchar(64)", "nullable": False}
+      pipeline:
+        type: source
+        source: airport_details
+        key_columns:
+          "airport": "code"
+      exclude_from_star_schema: True
+      """
 
-      When all the definitions are saved to disk
-       And we run the CLI command "jetavator deploy -d"
+    And a definition for a hub:
+      """
+      name: airport
+      type: hub
+      key_length: 3
+      """
 
-      Then the table star_dim_airport does not exist on the star datastore
+    When all the definitions are saved to disk
+     And we run the CLI command "jetavator deploy -d"
 
-    Scenario: Allow users to exclude hub satellites from the star schema
+    Then the column name does not exist in the table star_dim_airport on the star datastore
 
-      Given a definition for a satellite:
-        """
-        name: airport_details
-        type: satellite
-        parent:
-          name: airport
-          type: hub
-        columns:
-          "name": {"type": "varchar(64)", "nullable": False}
-        pipeline:
-          type: source
-          source: airport_details
-          key_columns:
-            "airport": "code"
-        exclude_from_star_schema: True
-        """
-
-      And a definition for a hub:
-        """
-        name: airport
-        type: hub
-        key_length: 3
-        """
-
-      When all the definitions are saved to disk
-       And we run the CLI command "jetavator deploy -d"
-
-      Then the column name does not exist in the table star_dim_airport on the star datastore
-
+  @fixture.remove_database_after_scenario
   Scenario: Allow users to exclude links from the star schema
 
      Given a definition for a link:
@@ -586,33 +575,33 @@ Feature: Build star schema from project
 
      Then the table star_fact_airport_pair does not exist on the star datastore
 
-   Scenario: Allow users to exclude link satellites from the star schema
+  Scenario: Allow users to exclude link satellites from the star schema
 
-     Given a definition for a satellite:
-       """
-       name: airport_pair_details
-       type: satellite
-       parent:
-         name: airport_pair
-         type: link
-       columns:
-         "num_changes": {"type": "int", "nullable": False}
-       pipeline:
-         type: source
-         source: airport_pair_details
-       exclude_from_star_schema: True
-       """
+    Given a definition for a satellite:
+      """
+      name: airport_pair_details
+      type: satellite
+      parent:
+        name: airport_pair
+        type: link
+      columns:
+        "num_changes": {"type": "int", "nullable": False}
+      pipeline:
+        type: source
+        source: airport_pair_details
+      exclude_from_star_schema: True
+      """
 
      And a definition for a link:
-       """
-       name: airport_pair
-       type: link
-       link_hubs:
-          dep_airport: airport
-          arr_airport: airport
-       """
+      """
+      name: airport_pair
+      type: link
+      link_hubs:
+         dep_airport: airport
+         arr_airport: airport
+      """
 
-     When all the definitions are saved to disk
-      And we run the CLI command "jetavator deploy -d"
+    When all the definitions are saved to disk
+     And we run the CLI command "jetavator deploy -d"
 
-     Then the column num_changes does not exist in the table star_fact_airport_pair on the star datastore
+    Then the column num_changes does not exist in the table star_fact_airport_pair on the star datastore

@@ -55,7 +55,7 @@ class SparkSQLJob(SparkJob, ABC):
         Execute the Spark SQL statement and return the resulting `DataFrame`.
         """
         try:
-            self.logger.debug(self.query)
+            self.logger.debug(f"{self.__class__.__name__}:\n{self.query}")
             return self.spark.sql(self.query).coalesce(COALESCE_PARTITIONS)
         except Exception as e:
             raise Exception(f'''

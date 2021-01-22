@@ -6,10 +6,10 @@ from sqlalchemy.exc import ProgrammingError, DBAPIError
 
 from lazy_property import LazyProperty
 
-from jetavator.services.DBService import DBService
+from jetavator.services import StorageService
 
 
-class MSSQLService(DBService, register_as='mssql'):
+class MSSQLService(StorageService, register_as='mssql'):
 
     @LazyProperty
     def sqlalchemy_connection(self):
@@ -36,30 +36,28 @@ class MSSQLService(DBService, register_as='mssql'):
                 deprecate_large_types=True
             )
 
-    @LazyProperty
-    def metadata(self):
-        meta = sqlalchemy.MetaData()
-        meta.bind = self.sqlalchemy_connection
-        return meta
-
     def execute(self, sql):
-        for sql_statement in sql.encode(
-                "ascii", "ignore"
-        ).decode("ascii").split("GO\n"):
-            try:
-                self.sqlalchemy_connection.execute(
-                    sql_statement
-                )
-            except (ProgrammingError, DBAPIError) as e:
-                raise Exception(
-                    f"""
-                    Config dump:
-                    {self.config}
+        sql_statement = sql.encode("ascii", "ignore").decode("ascii")
+        try:
+            result_proxy = self.sqlalchemy_connection.execute(
+                sql_statement
+            )
+        except (ProgrammingError, DBAPIError) as e:
+            raise Exception(
+                f"""
+                Config dump:
+                {self.config}
 
-                    Error while strying to run script:
-                    {sql_statement}
-                    """ + str(e)
-                )
+                Error while strying to run script:
+                {sql_statement}
+                """ + str(e)
+            )
+        if result_proxy.returns_rows:
+            df = pandas.DataFrame(result_proxy.fetchall())
+            df.columns = result_proxy.keys()
+            return df
+        else:
+            return pandas.DataFrame()
 
     def drop_schema(self):
         self.sqlalchemy_connection.execute(
@@ -68,9 +66,17 @@ class MSSQLService(DBService, register_as='mssql'):
             DECLARE @statement AS VARCHAR(max)
 
             SET @drop_statements = CURSOR FOR
-            SELECT 'DROP TABLE [{self.config.schema}].[' + TABLE_NAME + ']'
-              FROM INFORMATION_SCHEMA.TABLES
-             WHERE TABLE_SCHEMA = '{self.config.schema}'
+
+                SELECT 'DROP VIEW [{self.config.schema}].[' + TABLE_NAME + ']'
+                  FROM INFORMATION_SCHEMA.VIEWS
+                 WHERE TABLE_SCHEMA = '{self.config.schema}'
+    
+                UNION ALL
+    
+                SELECT 'DROP TABLE [{self.config.schema}].[' + TABLE_NAME + ']'
+                  FROM INFORMATION_SCHEMA.TABLES
+                 WHERE TABLE_SCHEMA = '{self.config.schema}'
+                   AND TABLE_TYPE = 'BASE TABLE'
 
             OPEN @drop_statements
 
@@ -156,21 +162,22 @@ class MSSQLService(DBService, register_as='mssql'):
         except TypeError:
             return None
 
-    def execute_sql_element(self, sql_element, async_cursor=False):
-        return self.sqlalchemy_connection.execute(sql_element).fetchall()
+    # def execute_sql_element(
+    #         self,
+    #         sqlalchemy_element: sqlalchemy.sql.expression.Executable,
+    #         async_cursor: bool = False
+    # ) -> pandas.DataFrame:
+    #     return self.sqlalchemy_connection.execute(sqlalchemy_element).fetchall()
 
     def test(self) -> None:
-        # TODO: Implement MSSQLService.test
-        raise NotImplementedError()
+        self.execute("SELECT 1")
 
     def load_dataframe(self, dataframe: pandas.DataFrame, source_name: str, source_column_names: Iterable[str]) -> None:
         # TODO: Implement MSSQLService.load_dataframe
         raise NotImplementedError()
 
-    def create_tables(self, sqlalchemy_tables: Iterable[sqlalchemy.Table]) -> None:
-        # TODO: Implement MSSQLService.create_tables
-        raise NotImplementedError()
-
-    def execute_sql_elements_async(self, sql_elements: Iterable[sqlalchemy.sql.expression.Executable]) -> None:
-        # TODO: Implement MSSQLService.execute_sql_elements_async
-        raise NotImplementedError()
+    # def compile_sqlalchemy(
+    #         self,
+    #         sqlalchemy_element: sqlalchemy.sql.expression.ClauseElement
+    # ) -> str:
+    #     return super().compile_sqlalchemy(sqlalchemy_element).replace("DATETIME", "DATETIME2")

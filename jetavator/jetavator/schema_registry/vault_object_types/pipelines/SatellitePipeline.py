@@ -9,7 +9,8 @@ from wysdom.mixins import RegistersSubclasses
 from .PerformanceHints import PerformanceHints
 from .SatellitePipelineDependency import SatellitePipelineDependency
 
-from ... import VaultObject, Project
+from ... import Project
+from ..SatelliteABC import SatelliteABC
 
 
 class SatellitePipeline(wysdom.UserObject, RegistersSubclasses, ABC):
@@ -21,12 +22,13 @@ class SatellitePipeline(wysdom.UserObject, RegistersSubclasses, ABC):
         wysdom.SchemaDict(str), name="key_columns", persist_defaults=True, default={})
 
     @property
-    def satellite(self) -> VaultObject:
+    def satellite(self) -> SatelliteABC:
+        # TODO: Improve the type checking here?
         parent = wysdom.parent(self)
-        if isinstance(parent, VaultObject):
+        if isinstance(parent, SatelliteABC):
             return parent
         else:
-            raise TypeError('Parent is not a subclass of VaultObject')
+            raise TypeError('Parent is not a subclass of SatelliteABC')
 
     @property
     def project(self) -> Project:

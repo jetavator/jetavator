@@ -23,6 +23,7 @@ VERSION = None
 REQUIRED = [
     'jetavator>=0.1.5',
     'lazy-property>=0.0.1,<1',
+    'pyodbc>=4.0.30,<5',
 ]
 
 # What packages are optional?

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict
+from typing import Dict, List
 
 from lazy_property import LazyProperty
 
@@ -40,6 +40,7 @@ from ..VaultObject import (
 from ..VaultObjectCollection import VaultObjectSet
 from .SatelliteColumn import SatelliteColumn
 from .SatelliteOwner import SatelliteOwner
+from .SatelliteABC import SatelliteABC
 from .pipelines import SatellitePipeline
 
 SQLALCHEMY_TYPES = {
@@ -80,7 +81,7 @@ class VaultObjectReference(wysdom.UserObject):
         return VaultObjectKey(self.type, self.name)
 
 
-class Satellite(VaultObject, register_as="satellite"):
+class Satellite(SatelliteABC, register_as="satellite"):
 
     _parent: VaultObjectReference = wysdom.UserProperty(
         VaultObjectReference, name="parent")
@@ -135,7 +136,7 @@ class Satellite(VaultObject, register_as="satellite"):
         return VaultObjectSet(
             owner
             for dep in self.pipeline.dependencies
-            if type(dep.object_reference) is Satellite
+            if isinstance(dep.object_reference, Satellite)
             for owner in dep.object_reference.output_keys
         )
 
@@ -163,7 +164,7 @@ class Satellite(VaultObject, register_as="satellite"):
         return [
             dep.object_reference
             for dep in self.pipeline.dependencies
-            if type(dep.object_reference) is Satellite
+            if isinstance(dep.object_reference, Satellite)
             for output_key in dep.object_reference.output_keys
             if output_key is satellite_owner
         ]

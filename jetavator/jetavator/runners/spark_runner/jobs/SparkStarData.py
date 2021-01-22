@@ -23,17 +23,17 @@ class SparkStarData(SparkSQLView, StarData, register_as='star_data'):
                {% endfor %}
 
                {% if job.satellite_owner.star_satellites.values() | length > 1 %}
-               , (LEAST(
+               , (
                    {% for satellite in job.satellite_owner.star_satellites.values() %}
-                   {{satellite.name}}.sat_deleted_ind{{"," if not loop.last}}
+                   {{satellite.name}}.sat_deleted_ind{{" AND " if not loop.last}}
                    {% endfor %}
-               ) == 1) AS deleted_ind
+               ) AS deleted_ind
                {% elif job.satellite_owner.star_satellites.values() | length == 1 %}
                {% for satellite in job.satellite_owner.star_satellites.values() %}
-               , ({{satellite.name}}.sat_deleted_ind == 1) AS deleted_ind
+               , {{satellite.name}}.sat_deleted_ind AS deleted_ind
                {% endfor %}
                {% else %}
-               , false AS deleted_ind
+               , FALSE AS deleted_ind
                {% endif %}
 
                {% for satellite in job.satellite_owner.star_satellites.values() %}

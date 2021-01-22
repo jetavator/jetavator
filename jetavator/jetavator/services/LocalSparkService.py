@@ -1,10 +1,18 @@
 import os
+from abc import ABC
+
+import wysdom
 
 from shutil import copyfile
 from lazy_property import LazyProperty
 from pyspark.sql import SparkSession
 
+from jetavator.config import ComputeServiceConfig, ConfigProperty
 from .SparkService import SparkService, SPARK_APP_NAME, DELTA_VERSION
+
+
+class LocalSparkConfig(ComputeServiceConfig):
+    type: str = ConfigProperty(wysdom.SchemaConst('local_spark'))
 
 
 class LocalSparkService(SparkService, register_as="local_spark"):
@@ -42,11 +50,11 @@ class LocalSparkService(SparkService, register_as="local_spark"):
         return (
             f'{self.tempfolder}/'
             f'{self.config.schema}/'
-            f'{self.engine.config.session.run_uuid}/'
+            f'{self.owner.config.session.run_uuid}/'
             f'{source_name}.csv'
         )
 
-    def source_csv_exists(self, source_name: str):
+    def source_csv_exists(self, source_name: str) -> bool:
         return os.path.exists(self.csv_file_path(source_name))
 
     def load_csv(self, csv_file, source_name: str):

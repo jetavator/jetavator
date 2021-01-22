@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import List, Tuple, Iterator
+from typing import List, Dict
 
 from jetavator.schema_registry import SatelliteOwner, Satellite
 
@@ -36,14 +36,16 @@ class StarMerge(Job, ABC, register_as='star_merge'):
         return self.runner.get_job('star_data', self.satellite_owner)
 
     @property
-    def star_column_references(self) -> Iterator[Tuple[str, Satellite]]:
+    def star_column_references(self) -> Dict[str, Satellite]:
         """
         :return: An iterator of tuples containing column names in the star schema
                  and their owning satellites.
         """
-        for satellite in self.satellite_owner.star_satellites.values():
-            for column in satellite.columns.keys():
-                yield column, satellite
+        return {
+            column: satellite.name
+            for satellite in self.satellite_owner.star_satellites.values()
+            for column in satellite.columns.keys()
+        }
 
     @property
     def dependencies(self) -> List[Job]:

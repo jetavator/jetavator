@@ -46,6 +46,6 @@ def step_impl(context, csv_filename):
                 heading: "str"
                 for heading in context.table.headings
             }
-        ).to_csv(context.csv_file_path)
+        ).to_csv(context.csv_file_path, index=False)
     else:
         raise Exception("No table or CSV text found in this step")

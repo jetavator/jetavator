@@ -2,10 +2,9 @@ from typing import Dict, List
 
 import wysdom
 
-from ... import VaultObject
-
 from .SatellitePipeline import SatellitePipeline
 from .SatellitePipelineDependency import SatellitePipelineDependency
+from ..Source import Source
 
 
 class SatelliteSourcePipeline(
@@ -30,9 +29,11 @@ class SatelliteSourcePipeline(
             }
 
     @property
-    def source(self) -> VaultObject:
+    def source(self) -> Source:
         # TODO: Refactor so this definitely returns Source, not VaultObject
-        return self.project["source", self._source]
+        source_obj = self.project["source", self._source]
+        assert isinstance(source_obj, Source)
+        return source_obj
 
     @property
     def dependencies(self) -> List[SatellitePipelineDependency]:

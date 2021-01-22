@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, TypeVar, Generic
 
 import wysdom
 
@@ -6,7 +6,10 @@ import wysdom
 from ... import VaultObject, VaultObjectKey, Project
 
 
-class SatellitePipelineDependency(wysdom.UserObject):
+DependencyType = TypeVar("DependencyType", bound=VaultObject)
+
+
+class SatellitePipelineDependency(wysdom.UserObject, Generic[DependencyType]):
 
     name: str = wysdom.UserProperty(str)
     type: str = wysdom.UserProperty(str)
@@ -21,7 +24,7 @@ class SatellitePipelineDependency(wysdom.UserObject):
         return wysdom.document(self).project
 
     @property
-    def object_reference(self) -> VaultObject:
+    def object_reference(self) -> DependencyType:
         return self.project[self.type, self.name]
 
     def validate(self) -> None:

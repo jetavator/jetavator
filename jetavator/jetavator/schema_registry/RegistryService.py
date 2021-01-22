@@ -1,7 +1,7 @@
-from abc import ABC
+# from abc import ABC
 
-from jetavator.services.Service import Service
+from jetavator.services.EngineOwnedService import EngineOwnedService
 
 
-class RegistryService(Service, ABC):
+class RegistryService(EngineOwnedService):
     pass

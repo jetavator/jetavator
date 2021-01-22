@@ -2,10 +2,13 @@ from typing import Dict, List
 
 from sqlalchemy import Column, Index
 
+from jetavator.schema_registry import Link
+
 from .SatelliteOwnerModel import SatelliteOwnerModel
+from .BaseModel import BaseModel
 
 
-class LinkModel(SatelliteOwnerModel, register_as="link"):
+class LinkModel(SatelliteOwnerModel, BaseModel[Link], register_as="link"):
 
     @property
     def hub_key_columns(self) -> List[Column]:

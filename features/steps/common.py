@@ -98,8 +98,8 @@ def jetavator_engine():
 
 
 def engine_datastore(datastore):
-    engine = jetavator_engine()
-    return engine.services[engine.config.storage[datastore]]
+    compute = jetavator_engine().compute_service
+    return compute.storage_services[compute.config.storage[datastore]]
 
 
 def engine_metadata(datastore):
@@ -135,14 +135,18 @@ def step_impl(context, datastore):
 )
 def step_impl(context, sql_object, table, row_count, datastore):
     store = engine_datastore(datastore)
+    qualified_table_name = f"{store.config.schema}.{table}"
     actual_row_count = store.sql_query_single_value(
         f"""
         SELECT COUNT(*) AS row_count
-        FROM {store.config.schema}.{table}
+        FROM {qualified_table_name}
         """
     )
     assert int(actual_row_count) == int(row_count), (
-        f"Expected {row_count} rows, got {actual_row_count} rows"
+        f"""
+        Expected {row_count} rows, got {actual_row_count} rows. The table contents are:
+        {store.execute("SELECT * FROM " + qualified_table_name)}
+        """
     )
 
 
@@ -658,3 +662,11 @@ def step_impl(context, env_var_name):
 def step_impl(context, filename):
     with open(os.path.join(context.tempfolder, filename), "w") as f:
         f.write(context.text)
+
+
+@given(u'a config file saved as {filename}')
+def step_impl(context, filename):
+    with open(os.path.join(context.config.userdata.get("config"))) as from_file:
+        text = from_file.read()
+    with open(os.path.join(context.tempfolder, filename), "w") as to_file:
+        to_file.write(text)

@@ -20,9 +20,9 @@ class LocalDatabricksService(SparkService, register_as="local_databricks"):
             },
             'handlers': {
                 'queue': {
-                    'service': self.engine.logs_storage_service,
+                    'service': self.owner.logs_storage_service,
                     'protocol': 'https',
-                    'queue': f'jetavator-log-{self.engine.config.session.run_uuid}',
+                    'queue': f'jetavator-log-{self.owner.config.session.run_uuid}',
                     'level': 'DEBUG',
                     'class': 'jetavator_databricks_local.logging.azure_queue_logging.AzureQueueHandler',
                     'formatter': 'verbose',
@@ -38,16 +38,16 @@ class LocalDatabricksService(SparkService, register_as="local_databricks"):
 
     @property
     def azure_storage_key(self):
-        return self.engine.source_storage_service.config.account_key
+        return self.owner.source_storage_service.config.account_key
 
     @property
     def azure_storage_container(self):
-        return self.engine.source_storage_service.config.blob_container_name
+        return self.owner.source_storage_service.config.blob_container_name
 
     @property
     def azure_storage_location(self):
         return (
-            f'{self.engine.source_storage_service.config.account_name}.'
+            f'{self.owner.source_storage_service.config.account_name}.'
             'blob.core.windows.net'
         )
 
@@ -68,7 +68,7 @@ class LocalDatabricksService(SparkService, register_as="local_databricks"):
         storage_key_name = f'fs.azure.account.key.{self.azure_storage_location}'
         mount_point = f'/mnt/{self.azure_storage_container}'
         if not os.path.exists(f'/dbfs/{mount_point}'):
-            self.engine.source_storage_service.create_container_if_not_exists()
+            self.owner.source_storage_service.create_container_if_not_exists()
             self.dbutils.fs.mount(
                 source=(
                     f'wasbs://{self.azure_storage_container}@'
@@ -85,7 +85,7 @@ class LocalDatabricksService(SparkService, register_as="local_databricks"):
         return (
             f'/mnt/{self.azure_storage_container}/'
             f'{self.config.schema}/'
-            f'{self.engine.config.session.run_uuid}/'
+            f'{self.owner.config.session.run_uuid}/'
             f'{source_name}.csv'
         )
 

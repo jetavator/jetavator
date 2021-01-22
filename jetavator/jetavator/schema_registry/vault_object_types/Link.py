@@ -5,7 +5,9 @@ from sqlalchemy import literal_column
 import wysdom
 
 from .SatelliteOwner import SatelliteOwner
-from ..VaultObject import VaultObject, HubKeyColumn
+from ..VaultObject import HubKeyColumn
+from .Hub import Hub
+from .Satellite import Satellite
 
 
 class Link(SatelliteOwner, register_as="link"):
@@ -17,14 +19,14 @@ class Link(SatelliteOwner, register_as="link"):
         wysdom.SchemaDict(str), name='link_hubs')
 
     @property
-    def hubs(self) -> Dict[str, VaultObject]:
+    def hubs(self) -> Dict[str, Hub]:
         return {
             k: self.project['hub', v]
             for k, v in self._link_hubs.items()
         }
 
     @property
-    def satellites_containing_keys(self) -> Dict[str, VaultObject]:
+    def satellites_containing_keys(self) -> Dict[str, Satellite]:
         return self.star_satellites
 
     @property
@@ -35,7 +37,7 @@ class Link(SatelliteOwner, register_as="link"):
         ]) - 1
 
     @property
-    def unique_hubs(self) -> Dict[str, VaultObject]:
+    def unique_hubs(self) -> Dict[str, Hub]:
         return {
             hub_name: self.project["hub", hub_name]
             for hub_name in set(x.name for x in self.hubs.values())

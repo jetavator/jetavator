@@ -1,6 +1,7 @@
 from typing import Optional, Dict, List
 
 from sqlalchemy import func
+from sqlalchemy.types import VARCHAR
 
 import wysdom
 
@@ -52,6 +53,7 @@ class Hub(SatelliteOwner, register_as="hub"):
     def generate_key(self, from_table):
         return from_table.c[self.key_name]
 
+    # TODO: Should this be in HubModel?
     def prepare_key_for_link(self, alias, from_table):
         key_column = from_table.c[self.alias_key_name(alias)]
         if self.key_type == "DATETIME":

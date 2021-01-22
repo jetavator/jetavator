@@ -1,4 +1,5 @@
 from typing import Iterable
+from abc import ABC
 
 import datetime
 import os
@@ -12,7 +13,9 @@ import pandas
 
 from jetavator.sqlalchemy_delta import HiveWithDDLDialect, DeltaDialect
 
-from .DBService import DBService
+from .ComputeService import ComputeService
+from .HiveMetastoreInterface import HiveMetastoreInterface
+from .ExecutesSparkSQL import ExecutesSparkSQL
 
 SPARK_APP_NAME = 'jetavator'
 DELTA_VERSION = 'delta-core_2.12:0.7.0'
@@ -32,11 +35,7 @@ def pyspark_column_type(sqlalchemy_column):
             return pyspark_type()
 
 
-class SparkService(DBService):
-
-    @property
-    def spark(self):
-        raise NotImplementedError
+class SparkService(ComputeService, ExecutesSparkSQL, HiveMetastoreInterface, ABC):
 
     # TODO: Require to avoid need for try/except block
     # TODO: Don't hardcode DeltaDialect - make the storage configurable and separate from the compute
@@ -119,9 +118,6 @@ class SparkService(DBService):
     def csv_file_path(self, source_name: str):
         raise NotImplementedError
 
-    def source_csv_exists(self, source_name: str):
-        raise NotImplementedError
-
     def table_delta_path(self, sqlalchemy_table):
         return (
             '/tmp'
@@ -129,69 +125,15 @@ class SparkService(DBService):
             f'/{sqlalchemy_table.name}'
         )
 
-    def create_table(self, sqlalchemy_table):
+    def create_table(self, sqlalchemy_table: sqlalchemy.schema.CreateTable) -> None:
         self.spark.sql(self.compile_delta_lake(sqlalchemy_table))
 
-    def create_tables(self, sqlalchemy_tables):
-        for table in sqlalchemy_tables:
-            self.create_table(table)
-
-    def deploy(self):
-        self.engine.deploy()
-
-    def execute(self, sql):
-        try:
-            return self.spark.sql(sql).toPandas()
-        except Exception as e:
-            raise Exception(
-                f"""
-                Config dump:
-                {self.config}
-
-                Error while trying to run script:
-                {sql}
-                """ + str(e)
-            )
-
-    def drop_schema(self):
+    def prepare_environment(self) -> None:
+        # TODO: Make this platform-independent - currently HIVE specific
+        # TODO: Is this obsolete now?
         self.execute(
-            f'DROP DATABASE `{self.config.schema}` CASCADE'
+            f'USE `{self.config.schema}`'
         )
-
-    def create_schema(self):
-        self.execute(
-            f'CREATE DATABASE `{self.config.schema}`'
-        )
-
-    @property
-    def schema_empty(self):
-        return not any([
-            row
-            for row in self.execute(
-                f'SHOW TABLES IN `{self.config.schema}`'
-            )
-        ])
-
-    @property
-    def schema_exists(self):
-        return any([
-            database == self.config.schema
-            for database in self.execute('SHOW DATABASES')['namespace']
-        ])
-
-    def table_exists(self, table_name):
-        return any([
-            table == table_name
-            for table in self.execute(
-                f'SHOW TABLES IN `{self.config.schema}`')['tableName']
-        ])
-
-    def column_exists(self, table_name, column_name):
-        return any([
-            column == column_name
-            for column in self.execute(
-                f'DESCRIBE FORMATTED `{self.config.schema}`.`{table_name}`')['col_name']
-        ])
 
     def sql_query_single_value(self, sql):
         return self.execute(sql).iloc[0, 0]
@@ -205,14 +147,3 @@ class SparkService(DBService):
             self.compile_delta_lake(sql_element)
         )
 
-    def execute_sql_elements_async(self, sql_elements):
-        # Async not implemented!
-        if type(sql_elements) is dict:
-            jobs = sql_elements
-        else:
-            jobs = {
-                self.sql_script_filename(sql_element): sql_element
-                for sql_element in sql_elements
-            }
-        for job in jobs.values():
-            self.execute_sql_element(job)

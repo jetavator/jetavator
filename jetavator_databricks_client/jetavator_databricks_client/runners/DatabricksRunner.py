@@ -276,7 +276,7 @@ class DatabricksJob(object):
     def notebook_dir(self):
         return '/'.join([
             NOTEBOOK_PATH_ROOT,
-            self.runner.config.schema
+            self.runner.config.vault_schema
         ])
 
     @property
@@ -308,7 +308,7 @@ class DatabricksJob(object):
             notebook_task={
                 'notebook_path': self.notebook_path,
                 'base_parameters': {
-                    'schema': self.runner.config.schema,
+                    'schema': self.runner.config.vault_schema,
                     'run_uuid': self.runner.engine.config.session.run_uuid
                 }
             },
@@ -397,7 +397,7 @@ class DatabricksRunner(Runner, register_as='remote_databricks'):
         with open(csv_file, "rb") as data:
             self.engine.source_storage_service.upload_blob(
                 filename=(
-                    f'{self.config.schema}/'
+                    f'{self.config.vault_schema}/'
                     f'{self.engine.config.session.run_uuid}/'
                     f'{source.name}.csv'
                 ),
@@ -407,7 +407,7 @@ class DatabricksRunner(Runner, register_as='remote_databricks'):
     @property
     def dbfs_definitions_dir(self):
         return (
-            f'{DBFS_JOB_ROOT}/{self.config.schema}/definitions/'
+            f'{DBFS_JOB_ROOT}/{self.config.vault_schema}/definitions/'
         )
 
     def clear_yaml(self):
@@ -455,7 +455,7 @@ class DatabricksRunner(Runner, register_as='remote_databricks'):
         return remote_config
 
     def load_config(self):
-        dbfs_path = f'{DBFS_JOB_ROOT}/{self.config.schema}/config.json'
+        dbfs_path = f'{DBFS_JOB_ROOT}/{self.config.vault_schema}/config.json'
         self.logger.info(f'Uploading config: {dbfs_path}')
         # noinspection PyProtectedMember
         # TODO: Refactor so this doesn't access protected member _to_json
@@ -545,7 +545,7 @@ class DatabricksRunner(Runner, register_as='remote_databricks'):
     def mssql_bulk_load_tables(self, satellite_owners):
         return [
             SCALA_SETUP_SCRIPT + jinja2.Template(BULK_COPY_TEMPLATE).render(
-                schema=self.engine.config.schema,
+                schema=self.engine.config.vault_schema,
                 table_name=satellite_owner.sql_model.star_table_name,
                 columns=[
                     {
@@ -580,7 +580,7 @@ class DatabricksRunner(Runner, register_as='remote_databricks'):
 
     def mssql_create_schema(self):
         return SCALA_SETUP_SCRIPT + SQL_TEMPLATE.format(
-            sql=f'CREATE SCHEMA {self.engine.config.schema}'
+            sql=f'CREATE SCHEMA {self.engine.config.vault_schema}'
         )
 
     @LazyProperty

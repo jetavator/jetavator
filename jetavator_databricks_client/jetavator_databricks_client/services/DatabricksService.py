@@ -39,8 +39,8 @@ def retry_if_cluster_not_ready(original_function):
 
 class DatabricksService(SparkService, register_as='remote_databricks'):
 
-    def __init__(self, engine, config):
-        super().__init__(engine, config)
+    def __init__(self, owner, config):
+        super().__init__(owner, config)
         self._metadata = sqlalchemy.MetaData()
         self.sqlalchemy_master = self._create_sql_connection(
             schema="default"
@@ -55,10 +55,10 @@ class DatabricksService(SparkService, register_as='remote_databricks'):
 
     @LazyProperty
     def log_listener(self):
-        return LogListener(self.engine.config, self.engine.logs_storage_service)
+        return LogListener(self.owner.config, self.owner.logs_storage_service)
 
     def yaml_file_paths(self):
-        for root, _, files in os.walk(self.engine.config.model_path):
+        for root, _, files in os.walk(self.owner.config.model_path):
             for yaml_file in filter(
                 lambda x: os.path.splitext(x)[1] == '.yaml',
                 files
@@ -66,9 +66,9 @@ class DatabricksService(SparkService, register_as='remote_databricks'):
                 yield os.path.join(root, yaml_file)
 
     def _deploy_wheel(self):
-        if not os.path.isfile(self.engine.config.wheel_path):
+        if not os.path.isfile(self.owner.config.wheel_path):
             raise Exception(
-                f'No wheel file found at [{self.engine.config.wheel_path}]')
+                f'No wheel file found at [{self.owner.config.wheel_path}]')
         self.databricks_runner.start_cluster()
         self.databricks_runner.load_wheel()
 
@@ -80,7 +80,7 @@ class DatabricksService(SparkService, register_as='remote_databricks'):
         self.databricks_runner.clear_yaml()
         for path in self.yaml_file_paths():
             self.databricks_runner.load_yaml(
-                os.path.relpath(path, self.engine.config.model_path))
+                os.path.relpath(path, self.owner.config.model_path))
         self.databricks_runner.deploy_remote()
 
     def session(self):
