@@ -16,6 +16,16 @@ from .ConfigProperty import ConfigProperty
 # TODO: Split services into service types in config file structure
 
 
+def _get_default_schema(config):
+    if not wysdom.document(config) is config:
+        return f"{wysdom.document(config).schema}_{wysdom.key(config)}"
+
+
+def _get_default_drop_schema_if_exists(config):
+    if not wysdom.document(config) is config:
+        return wysdom.document(config).drop_schema_if_exists
+    
+
 class ServiceConfig(wysdom.UserObject, wysdom.RegistersSubclasses):
     type: str = ConfigProperty(str)
 
@@ -36,13 +46,9 @@ class RegistryServiceConfig(ServiceConfig):
 class StorageServiceConfig(ServiceConfig):
     service_type: str = ConfigProperty(wysdom.SchemaConst('storage'))
 
-    def _get_default_schema(self):
-        if not wysdom.document(self) is self:
-            return f"{wysdom.document(self).schema}_{wysdom.key(self)}"
-
     type: str = ConfigProperty(str)
     schema: str = ConfigProperty(str, default_function=_get_default_schema)
-    drop_schema_if_exists: bool = ConfigProperty(bool, default=False)
+    drop_schema_if_exists: bool = ConfigProperty(bool, default_function=_get_default_drop_schema_if_exists)
 
 
 class ComputeServiceConfig(ServiceConfig):
@@ -53,12 +59,8 @@ class ComputeServiceConfig(ServiceConfig):
         persist_defaults=True)
     storage: StorageConfig = ConfigProperty(StorageConfig)
 
-    def _get_default_schema(self):
-        if not wysdom.document(self) is self:
-            return wysdom.document(self).schema
-
     schema: str = ConfigProperty(str, default_function=_get_default_schema)
-    drop_schema_if_exists: bool = ConfigProperty(bool, default=False)
+    drop_schema_if_exists: bool = ConfigProperty(bool, default_function=_get_default_drop_schema_if_exists)
 
 
 class SQLAlchemyRegistryServiceConfig(RegistryServiceConfig):
@@ -90,6 +92,7 @@ class Config(wysdom.UserObject, wysdom.ReadsJSON, wysdom.ReadsYAML):
         wysdom.SchemaDict(ServiceConfig), default={}, persist_defaults=True)
     compute: str = ConfigProperty(str)
     registry: str = ConfigProperty(str)
+    drop_schema_if_exists: bool = ConfigProperty(bool, default=False)
 
     @LazyProperty
     def secret_lookup(self) -> SecretLookup:
