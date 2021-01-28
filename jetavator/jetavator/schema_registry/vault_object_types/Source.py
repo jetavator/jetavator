@@ -4,7 +4,7 @@ from lazy_property import LazyProperty
 
 from sqlalchemy import MetaData, Column, Table
 from sqlalchemy.schema import CreateTable
-from sqlalchemy.types import *
+from sqlalchemy.types import DateTime, Integer
 
 import wysdom
 import pandas
@@ -78,10 +78,10 @@ class Source(VaultObject, register_as="source"):
             "jetavator_deleted_ind": "int"
         }
         for k, v in self.columns.items():
-            if v.pandas_dtype in ["datetime64[ns]", "timedelta64[ns]"]:
+            if v.type.pandas_dtype in ["datetime64[ns]", "timedelta64[ns]"]:
                 date_columns.add(k)
             else:
-                dtypes[k] = v.pandas_dtype
+                dtypes[k] = v.type.pandas_dtype
         df = pandas.read_csv(
             csv_file,
             parse_dates=list(date_columns),
@@ -103,7 +103,7 @@ class Source(VaultObject, register_as="source"):
         return [
             Column(
                 column_name,
-                eval(column.type.upper().replace("MAX", "None")),
+                column.type.sqlalchemy_type,
                 nullable=True,
                 primary_key=(use_primary_key and column.pk)
             )

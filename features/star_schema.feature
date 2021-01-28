@@ -21,8 +21,8 @@ Feature: Build star schema from project
       name: airport_details
       type: source
       columns:
-        "code": {"type": "char(3)", "nullable": False, "pk": True}
-        "name": {"type": "varchar(64)", "nullable": False}
+        "code": {"type": "CHAR(3)", "nullable": False, "pk": True}
+        "name": {"type": "String(64)", "nullable": False}
       """
 
     And a definition for a source:
@@ -30,16 +30,16 @@ Feature: Build star schema from project
       name: airport_pair_details
       type: source
       columns:
-        "dep_airport": {"type": "char(3)", "nullable": False, "pk": True}
-        "arr_airport": {"type": "char(3)", "nullable": False, "pk": True}
-        "num_changes": {"type": "int", "nullable": False}
+        "dep_airport": {"type": "CHAR(3)", "nullable": False, "pk": True}
+        "arr_airport": {"type": "CHAR(3)", "nullable": False, "pk": True}
+        "num_changes": {"type": "Integer", "nullable": False}
       """
 
     And a definition for a hub:
       """
       name: airport
       type: hub
-      key_length: 3
+      key_type: "CHAR(3)"
       """
 
     And a definition for a link:
@@ -59,7 +59,7 @@ Feature: Build star schema from project
         name: airport
         type: hub
       columns:
-        "name": {"type": "varchar(64)", "nullable": False}
+        "name": {"type": "String(64)", "nullable": False}
       pipeline:
         type: source
         source: airport_details
@@ -75,7 +75,7 @@ Feature: Build star schema from project
         name: airport
         type: hub
       columns:
-        "allcaps_name": {"type": "varchar(64)", "nullable": True}
+        "allcaps_name": {"type": "String(64)", "nullable": True}
       pipeline:
         type: sql
         key_columns:
@@ -104,7 +104,7 @@ Feature: Build star schema from project
         name: airport
         type: hub
       columns:
-        "last_updated_airport": {"type": "char(1)"}
+        "last_updated_airport": {"type": "Boolean"}
       pipeline:
         type: sql
         key_columns:
@@ -139,7 +139,7 @@ Feature: Build star schema from project
         name: airport_pair
         type: link
       columns:
-        "num_changes": {"type": "int", "nullable": False}
+        "num_changes": {"type": "Integer", "nullable": False}
       pipeline:
         type: source
         source: airport_pair_details
@@ -153,7 +153,7 @@ Feature: Build star schema from project
         name: airport_pair
         type: link
       columns:
-        "direct_flight": {"type": "char(1)", "nullable": True}
+        "direct_flight": {"type": "Boolean", "nullable": True}
       pipeline:
         type: sql
         key_columns:
@@ -170,8 +170,8 @@ Feature: Build star schema from project
             hub_dep_airport_key,
             hub_arr_airport_key,
             CASE
-              WHEN num_changes = 0 THEN 1
-              WHEN num_changes > 0 THEN 0
+              WHEN num_changes = 0 THEN True
+              WHEN num_changes > 0 THEN False
             END AS direct_flight,
             sat_load_dt,
             sat_deleted_ind
@@ -187,7 +187,7 @@ Feature: Build star schema from project
         name: airport_pair
         type: link
       columns:
-        "last_updated_pair": {"type": "char(1)"}
+        "last_updated_pair": {"type": "Boolean"}
       pipeline:
         type: sql
         key_columns:
@@ -205,8 +205,8 @@ Feature: Build star schema from project
                  COALESCE(updates.hub_arr_airport_key,
                           now.hub_arr_airport_key) AS hub_arr_airport_key,
                  CASE WHEN updates.link_airport_pair_key IS NULL
-                      THEN 0
-                      ELSE 1
+                      THEN False
+                      ELSE True
                     END AS last_updated_pair,
                  CURRENT_TIMESTAMP AS sat_load_dt,
                  COALESCE(updates.sat_deleted_ind,
@@ -516,7 +516,7 @@ Feature: Build star schema from project
       """
       name: airport
       type: hub
-      key_length: 3
+      key_type: "CHAR(3)"
       exclude_from_star_schema: True
       """
 
@@ -536,7 +536,7 @@ Feature: Build star schema from project
         name: airport
         type: hub
       columns:
-        "name": {"type": "varchar(64)", "nullable": False}
+        "name": {"type": "String(64)", "nullable": False}
       pipeline:
         type: source
         source: airport_details
@@ -549,7 +549,7 @@ Feature: Build star schema from project
       """
       name: airport
       type: hub
-      key_length: 3
+      key_type: "CHAR(3)"
       """
 
     When all the definitions are saved to disk
@@ -585,7 +585,7 @@ Feature: Build star schema from project
         name: airport_pair
         type: link
       columns:
-        "num_changes": {"type": "int", "nullable": False}
+        "num_changes": {"type": "Integer", "nullable": False}
       pipeline:
         type: source
         source: airport_pair_details

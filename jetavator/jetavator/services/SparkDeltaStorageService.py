@@ -13,7 +13,7 @@ import pyspark
 from lazy_property import LazyProperty
 
 from jetavator.config import StorageServiceConfig
-from jetavator.sqlalchemy_delta import HiveWithDDLDialect, DeltaDialect
+from jetavator.sqlalchemy_delta import DeltaDialect
 
 from .Service import Service
 from .SparkStorageService import SparkStorageService
@@ -34,11 +34,6 @@ class SparkDeltaStorageService(
     @property
     def spark(self):
         return self.owner.spark
-
-    @classmethod
-    def compile_hive(cls, sqlalchemy_executable):
-        return cls.compile_sqlalchemy_with_dialect(
-            sqlalchemy_executable, HiveWithDDLDialect())
 
     def load_dataframe(
             self,

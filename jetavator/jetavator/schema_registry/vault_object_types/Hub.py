@@ -1,23 +1,29 @@
-from typing import Optional, Dict, List
-
-from sqlalchemy import func
-from sqlalchemy.types import VARCHAR
+from typing import Dict, List
 
 import wysdom
 
 from .SatelliteOwner import SatelliteOwner
 from .Satellite import Satellite
 from .SatelliteColumn import SatelliteColumn
+from .ColumnType import ColumnType
 from ..VaultObject import VaultObject, HubKeyColumn
 
 
 class Hub(SatelliteOwner, register_as="hub"):
     star_prefix = "dim"
 
-    key_length: int = wysdom.UserProperty(int)
-    key_type: Optional[str] = wysdom.UserProperty(str, optional=True)
+    _key_type: str = wysdom.UserProperty(str, name="key_type")
+
     static_columns: Dict[str, SatelliteColumn] = wysdom.UserProperty(
         wysdom.SchemaDict(SatelliteColumn), persist_defaults=True, default={})
+
+    @property
+    def key_type(self) -> ColumnType:
+        return ColumnType(self._key_type)
+
+    @property
+    def key_length(self) -> int:
+        return self.key_type.serialized_length
 
     @property
     def hubs(self) -> Dict[str, VaultObject]:
@@ -56,12 +62,7 @@ class Hub(SatelliteOwner, register_as="hub"):
     # TODO: Should this be in HubModel?
     def prepare_key_for_link(self, alias, from_table):
         key_column = from_table.c[self.alias_key_name(alias)]
-        if self.key_type == "DATETIME":
-            return func.convert(VARCHAR, key_column, 126)
-        elif self.key_type == "DATE":
-            return func.convert(VARCHAR, key_column, 23)
-        else:
-            return func.upper(func.ltrim(func.rtrim(key_column)))
+        return self.key_type.serialize_column_expression(key_column)
 
     @property
     def link_key_columns(self):

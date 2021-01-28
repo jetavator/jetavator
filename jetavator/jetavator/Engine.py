@@ -1,24 +1,3 @@
-# TODO: Support all possible operations for upgrading from one version of a project to another.
-#       Operations to support:
-#           Add source
-#           Delete source - requires all satellites referencing it to be deleted
-#           Modify source
-#           Rename source - requires all satellites referencing it to be modified
-#           Add hub
-#           Delete hub - requires all links and satellites referencing it to be deleted
-#           Modify hub - requires all links and satellites referencing it to be modified
-#           Rename hub - requires all links and satellites referencing it to be modified
-#           Add link
-#           Delete link - requires all satellites referencing it to be deleted
-#           Modify link - requires all satellites referencing it to be modified
-#           Rename link - requires all satellites referencing it to be modified
-#           Add satellite
-#           Delete satellite - requires all satellites referencing it as a dependency to be deleted
-#           Modify satellite - requires all satellites referencing it as a dependency to be modified
-#           Rename satellite - requires all satellites referencing it as a dependency to be modified
-#           Backfill satellite to date (by calculating)
-#           Backfill satellite to date (by copying from previous version)
-
 from enum import Enum
 from functools import wraps
 from typing import Any, Union, Dict, Callable

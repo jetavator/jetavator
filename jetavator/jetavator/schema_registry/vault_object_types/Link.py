@@ -1,13 +1,16 @@
 from typing import Dict
 
-from sqlalchemy import literal_column
+from sqlalchemy import literal_column, func
 
 import wysdom
 
-from .SatelliteOwner import SatelliteOwner
 from ..VaultObject import HubKeyColumn
+from .SatelliteOwner import SatelliteOwner
 from .Hub import Hub
 from .Satellite import Satellite
+from .ColumnType import ColumnType
+
+SEPARATOR = 31  # ASCII unit separator control character
 
 
 class Link(SatelliteOwner, register_as="link"):
@@ -37,6 +40,10 @@ class Link(SatelliteOwner, register_as="link"):
         ]) - 1
 
     @property
+    def key_type(self) -> ColumnType:
+        return ColumnType(f"CHAR({self.key_length})")
+
+    @property
     def unique_hubs(self) -> Dict[str, Hub]:
         return {
             hub_name: self.project["hub", hub_name]
@@ -58,7 +65,7 @@ class Link(SatelliteOwner, register_as="link"):
         composite_key = next(key_components)
         for column in key_components:
             composite_key = composite_key.concat(
-                literal_column("'/'")
+                func.char(literal_column(str(SEPARATOR)))
             ).concat(column)
         return composite_key
 

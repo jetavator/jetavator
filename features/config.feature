@@ -7,25 +7,7 @@ Feature: Config CLI commands
 
     Given a random string in the environment variable $RANDOM_TEST_SCHEMA
 
-    And a file saved as config.yml:
-      """
-      services:
-        spark:
-          type: local_spark
-        file_registry:
-          service_type: registry
-          type: simple_file_registry
-          storage_path: ~/.jetavator/registry
-      storage:
-        source: spark
-        vault: spark
-        star: spark
-        logs: azure_queue
-      compute: spark
-      registry: file_registry
-      secret_lookup: environment
-      schema: $RANDOM_TEST_SCHEMA
-      """
+    And a config file saved as config.yml
 
     And a definition for a project:
       """

@@ -8,10 +8,9 @@ import tempfile
 import numpy as np
 import pyspark
 import sqlalchemy
-import sqlparse
 import pandas
 
-from jetavator.sqlalchemy_delta import HiveWithDDLDialect, DeltaDialect
+from jetavator.sqlalchemy_delta import HiveWithDDLDialect
 
 from .ComputeService import ComputeService
 from .HiveMetastoreInterface import HiveMetastoreInterface
@@ -37,50 +36,9 @@ def pyspark_column_type(sqlalchemy_column):
 
 class SparkService(ComputeService, ExecutesSparkSQL, HiveMetastoreInterface, ABC):
 
-    # TODO: Require to avoid need for try/except block
-    # TODO: Don't hardcode DeltaDialect - make the storage configurable and separate from the compute
-    # TODO: Refactor compile_delta_lake and compile_hive back into one sensible framework
-    @staticmethod
-    def compile_delta_lake(sqlalchemy_executable):
-        try:
-            formatted = sqlparse.format(
-                str(sqlalchemy_executable.compile(
-                    dialect=DeltaDialect(),
-                    compile_kwargs={"literal_binds": True}
-                )),
-                reindent=True,
-                keyword_case='upper'
-            )
-        except TypeError:
-            formatted = sqlparse.format(
-                str(sqlalchemy_executable.compile(
-                    dialect=DeltaDialect()
-                )),
-                reindent=True,
-                keyword_case='upper'
-            )
-        return formatted
-
-    @staticmethod
-    def compile_hive(sqlalchemy_executable):
-        try:
-            formatted = sqlparse.format(
-                str(sqlalchemy_executable.compile(
-                    dialect=HiveWithDDLDialect(),
-                    compile_kwargs={"literal_binds": True}
-                )),
-                reindent=True,
-                keyword_case='upper'
-            )
-        except TypeError:
-            formatted = sqlparse.format(
-                str(sqlalchemy_executable.compile(
-                    dialect=HiveWithDDLDialect()
-                )),
-                reindent=True,
-                keyword_case='upper'
-            )
-        return formatted
+    @property
+    def sqlalchemy_dialect(self) -> sqlalchemy.engine.interfaces.Dialect:
+        return HiveWithDDLDialect()
 
     def load_dataframe(
             self,
@@ -125,9 +83,6 @@ class SparkService(ComputeService, ExecutesSparkSQL, HiveMetastoreInterface, ABC
             f'/{sqlalchemy_table.name}'
         )
 
-    def create_table(self, sqlalchemy_table: sqlalchemy.schema.CreateTable) -> None:
-        self.spark.sql(self.compile_delta_lake(sqlalchemy_table))
-
     def prepare_environment(self) -> None:
         # TODO: Make this platform-independent - currently HIVE specific
         # TODO: Is this obsolete now?
@@ -142,8 +97,4 @@ class SparkService(ComputeService, ExecutesSparkSQL, HiveMetastoreInterface, ABC
         assert self.sql_query_single_value("SELECT 1") == 1
         return True
 
-    def execute_sql_element(self, sql_element, async_cursor=False):
-        return self.execute(
-            self.compile_delta_lake(sql_element)
-        )
 

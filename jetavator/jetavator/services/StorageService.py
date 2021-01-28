@@ -4,7 +4,6 @@ from typing import Iterable, Any, Dict
 import sqlalchemy
 import sqlalchemy_views
 import pandas
-import sqlparse
 
 from jetavator import EngineABC
 from jetavator.config import StorageServiceConfig
@@ -97,38 +96,6 @@ class StorageService(
             source_column_names: Iterable[str]
     ) -> None:
         pass
-
-    @property
-    @abstractmethod
-    def sqlalchemy_dialect(self) -> sqlalchemy.engine.interfaces.Dialect:
-        pass
-
-    @staticmethod
-    def compile_sqlalchemy_with_dialect(
-            sqlalchemy_element: sqlalchemy.sql.expression.ClauseElement,
-            dialect: sqlalchemy.engine.interfaces.Dialect
-    ) -> str:
-        def compile_with_kwargs(**compile_kwargs: Any) -> str:
-            return sqlparse.format(
-                    str(sqlalchemy_element.compile(
-                        dialect=dialect,
-                        compile_kwargs=compile_kwargs
-                    )),
-                    reindent=True,
-                    keyword_case='upper'
-                )
-        try:
-            return compile_with_kwargs(literal_binds=True)
-        except TypeError:
-            return compile_with_kwargs()
-
-    def compile_sqlalchemy(
-            self,
-            sqlalchemy_element: sqlalchemy.sql.expression.ClauseElement
-    ) -> str:
-        return self.compile_sqlalchemy_with_dialect(
-            sqlalchemy_element,
-            self.sqlalchemy_dialect)
 
     @abstractmethod
     def merge_from_spark_view(

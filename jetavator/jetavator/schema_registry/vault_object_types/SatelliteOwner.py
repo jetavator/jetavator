@@ -7,9 +7,10 @@ from sqlalchemy.types import *
 
 import wysdom
 
-from .SatelliteColumn import SatelliteColumn
 from ..VaultObject import VaultObject, HubKeyColumn
+from .SatelliteColumn import SatelliteColumn
 from .SatelliteABC import SatelliteABC
+from .ColumnType import ColumnType
 
 
 class SatelliteOwner(VaultObject, ABC, register_as="satellite_owner"):
@@ -106,10 +107,16 @@ class SatelliteOwner(VaultObject, ABC, register_as="satellite_owner"):
     def link_key_columns(self):
         pass
 
+    @property
+    @abstractmethod
+    def key_type(self) -> ColumnType:
+        pass
+    
+    # TODO: Move SQLAlchemy column generation to sql_model
     def alias_key_column(self, alias):
         return Column(
             self.alias_key_name(alias),
-            CHAR(self.key_length),
+            self.key_type.sqlalchemy_type,
             nullable=False
         )
 

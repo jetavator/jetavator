@@ -8,10 +8,7 @@ import tempfile
 import numpy as np
 import pyspark
 import sqlalchemy
-import sqlalchemy_views
 import pandas
-
-from jetavator.sqlalchemy_delta import HiveWithDDLDialect
 
 from .StorageService import StorageService
 from .HiveMetastoreInterface import HiveMetastoreInterface
@@ -36,9 +33,6 @@ def pyspark_column_type(sqlalchemy_column):
 
 
 class SparkStorageService(StorageService, ExecutesSparkSQL, HiveMetastoreInterface, ABC):
-
-    # TODO: Require to avoid need for try/except block
-    # TODO: Don't hardcode DeltaDialect - make the storage configurable and separate from the compute
 
     def load_dataframe(
             self,

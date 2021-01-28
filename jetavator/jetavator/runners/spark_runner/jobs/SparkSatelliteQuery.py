@@ -87,6 +87,7 @@ class SparkSatelliteQuery(SparkSQLView, SatelliteQuery, register_as='satellite_q
         self.connector = StorageViewConnector(self.runner.compute_service.vault_storage_service)
         if self.satellite.pipeline.type == "sql":
             self.user_query_sql = jinja2.Template(self.satellite.pipeline.sql).render(self.table_aliases)
+        assert self.sql is not None
 
     def execute(self) -> DataFrame:
         self.connector.connect_storage_views()
@@ -135,11 +136,8 @@ class SparkSatelliteQuery(SparkSQLView, SatelliteQuery, register_as='satellite_q
 
     @property
     def sql(self) -> str:
-        try:
-            return self.runner.compute_service.compile_delta_lake(
-                self.pipeline_query())
-        except Exception as e:
-            return str(e)
+        return self.runner.compute_service.compile_sqlalchemy(
+            self.pipeline_query())
 
     def pipeline_query(self) -> Select:
         if self.satellite.pipeline.type == "source":

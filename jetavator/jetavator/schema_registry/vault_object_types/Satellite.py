@@ -5,70 +5,15 @@ from typing import Dict, List
 from lazy_property import LazyProperty
 
 from sqlalchemy import Column
-from sqlalchemy.types import (
-    ARRAY,
-    BIGINT,
-    BINARY,
-    BLOB,
-    BOOLEAN,
-    CHAR,
-    CLOB,
-    DATE,
-    DATETIME,
-    DECIMAL,
-    FLOAT,
-    INT,
-    INTEGER,
-    JSON,
-    NCHAR,
-    NUMERIC,
-    NVARCHAR,
-    REAL,
-    SMALLINT,
-    TEXT,
-    TIME,
-    TIMESTAMP,
-    VARBINARY,
-    VARCHAR
-)
 
 import wysdom
 
-from ..VaultObject import (
-    VaultObject, VaultObjectKey, HubKeyColumn
-)
+from ..VaultObject import VaultObjectKey, HubKeyColumn
 from ..VaultObjectCollection import VaultObjectSet
 from .SatelliteColumn import SatelliteColumn
 from .SatelliteOwner import SatelliteOwner
 from .SatelliteABC import SatelliteABC
 from .pipelines import SatellitePipeline
-
-SQLALCHEMY_TYPES = {
-    "ARRAY": ARRAY,
-    "BIGINT": BIGINT,
-    "BINARY": BINARY,
-    "BLOB": BLOB,
-    "BOOLEAN": BOOLEAN,
-    "CHAR": CHAR,
-    "CLOB": CLOB,
-    "DATE": DATE,
-    "DATETIME": DATETIME,
-    "DECIMAL": DECIMAL,
-    "FLOAT": FLOAT,
-    "INT": INT,
-    "INTEGER": INTEGER,
-    "JSON": JSON,
-    "NCHAR": NCHAR,
-    "NUMERIC": NUMERIC,
-    "NVARCHAR": NVARCHAR,
-    "REAL": REAL,
-    "SMALLINT": SMALLINT,
-    "TEXT": TEXT,
-    "TIME": TIME,
-    "TIMESTAMP": TIMESTAMP,
-    "VARBINARY": VARBINARY,
-    "VARCHAR": VARCHAR
-}
 
 
 class VaultObjectReference(wysdom.UserObject):
@@ -180,9 +125,7 @@ class Satellite(SatelliteABC, register_as="satellite"):
         return [
             Column(
                 column_name,
-                # TODO: Update API to specify SQL types using a JSON schema,
-                #       not using the unsafe eval method
-                eval(column.type.upper().replace("MAX", "None")),
+                column.type.sqlalchemy_type,
                 nullable=True
             )
             for column_name, column in self.columns.items()

@@ -23,7 +23,7 @@ class SparkCreateSource(SparkSQLJob, CreateSource, register_as='create_source'):
         """
         :return: The Spark SQL DDL statement to create this `Source` table.
         """
-        ddl = self.runner.compute_service.compile_hive(
+        ddl = self.runner.compute_service.compile_sqlalchemy(
             self.source.create_table_statement)
         if self.csv_path:
             self.logger.info(f"Using CSV path {self.csv_path} for {self.name}")

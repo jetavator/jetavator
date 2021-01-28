@@ -12,11 +12,10 @@ class HubModel(SatelliteOwnerModel, BaseModel[Hub], register_as="hub"):
 
     @property
     def static_columns(self) -> List[Column]:
-        # TODO: Replace eval with a JSON/YAML type declaration
         return [
             Column(
                 column_name,
-                eval(column.type),
+                column.type.sqlalchemy_type,
                 nullable=True
             )
             for column_name, column in self.definition.static_columns.items()
