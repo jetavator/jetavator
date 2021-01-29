@@ -23,6 +23,8 @@ Feature: Build star schema from project
       columns:
         "code": {"type": "CHAR(3)", "nullable": False, "pk": True}
         "name": {"type": "String(64)", "nullable": False}
+        "jetavator_deleted_ind": {"type": "Integer", "nullable": False}
+      deleted_indicator_column: jetavator_deleted_ind
       """
 
     And a definition for a source:
@@ -33,6 +35,8 @@ Feature: Build star schema from project
         "dep_airport": {"type": "CHAR(3)", "nullable": False, "pk": True}
         "arr_airport": {"type": "CHAR(3)", "nullable": False, "pk": True}
         "num_changes": {"type": "Integer", "nullable": False}
+        "jetavator_deleted_ind": {"type": "Integer", "nullable": False}
+      deleted_indicator_column: jetavator_deleted_ind
       """
 
     And a definition for a hub:
@@ -219,27 +223,27 @@ Feature: Build star schema from project
       """
 
     And a CSV file airport_details.csv saved in a temporary folder:
-      | code | name                                             |
-      | ATL  | Hartsfield-Jackson Atlanta International Airport |
-      | PEK  | Beijing Capital International Airport            |
-      | DXB  | Dubai International Airport                      |
-      | HND  | Haneda Airport                                   |
-      | LAX  | Los Angeles International Airport                |
-      | ORD  | Orchard Field                                    |
-      | LHR  | London Heathrow Airport                          |
-      | HKG  | Hong Kong International Airport                  |
-      | PVG  | Shanghai Pudong International Airport            |
-      | CDG  | Paris-Charles de Gaulle Airport	                |
+      | code | name                                             | jetavator_deleted_ind |
+      | ATL  | Hartsfield-Jackson Atlanta International Airport | 0                     |
+      | PEK  | Beijing Capital International Airport            | 0                     |
+      | DXB  | Dubai International Airport                      | 0                     |
+      | HND  | Haneda Airport                                   | 0                     |
+      | LAX  | Los Angeles International Airport                | 0                     |
+      | ORD  | Orchard Field                                    | 0                     |
+      | LHR  | London Heathrow Airport                          | 0                     |
+      | HKG  | Hong Kong International Airport                  | 0                     |
+      | PVG  | Shanghai Pudong International Airport            | 0                     |
+      | CDG  | Paris-Charles de Gaulle Airport	                | 0                     |
 
     And a CSV file airport_pair_details.csv saved in a temporary folder:
-      | dep_airport | arr_airport | num_changes |
-      | ATL         | LHR         | 0           |
-      | ATL         | ORD         | 0           |
-      | ATL         | PVG         | 0           |
-      | LHR         | DEN         | 0           |
-      | ORD         | PVG         | 1           |
-      | ORD         | LHR         | 1           |
-      | ORD         | DEN         | 2           |
+      | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
+      | ATL         | LHR         | 0           | 0                     |
+      | ATL         | ORD         | 0           | 0                     |
+      | ATL         | PVG         | 0           | 0                     |
+      | LHR         | DEN         | 0           | 0                     |
+      | ORD         | PVG         | 1           | 0                     |
+      | ORD         | LHR         | 1           | 0                     |
+      | ORD         | DEN         | 2           | 0                     |
 
     And we run the CLI command:
       """
@@ -297,11 +301,11 @@ Feature: Build star schema from project
          --csv airport_pair_details="{tempfolder}/airport_pair_details.csv"
        """
      And the following CSV file airport_details_update.csv is saved in the temporary folder:
-        | code | name                                             |
-        | ORD  | O'Hare International Airport                     |
+        | code | name                                             | jetavator_deleted_ind |
+        | ORD  | O'Hare International Airport                     | 0                     |
      And the following CSV file airport_pair_details_update.csv is saved in the temporary folder:
-        | dep_airport | arr_airport | num_changes |
-        | ORD         | PVG         | 0           |
+        | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
+        | ORD         | PVG         | 0           | 0                     |
      And we run the CLI command:
        """
        jetavator run delta \
@@ -348,12 +352,12 @@ Feature: Build star schema from project
          --csv airport_pair_details="{tempfolder}/airport_pair_details.csv"
        """
      And the following CSV file airport_details_insert.csv is saved in the temporary folder:
-        | code | name                                             |
-        | AMS  | Amsterdam Airport Schiphol                       |
+        | code | name                                             | jetavator_deleted_ind |
+        | AMS  | Amsterdam Airport Schiphol                       | 0                     |
      And the following CSV file airport_pair_details_insert.csv is saved in the temporary folder:
-        | dep_airport | arr_airport | num_changes |
-        | ATL         | CDG         | 0           |
-        | ORD         | CDG         | 1           |
+        | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
+        | ATL         | CDG         | 0           | 0                     |
+        | ORD         | CDG         | 1           | 0                     |
      And we run the CLI command:
        """
        jetavator run delta \
@@ -403,12 +407,12 @@ Feature: Build star schema from project
          --csv airport_pair_details="{tempfolder}/airport_pair_details.csv"
        """
      And the following CSV file airport_details_delete.csv is saved in the temporary folder:
-        | code | jetavator_deleted_ind                            |
-        | ATL  | 1                                                |
-        | LAX  | 1                                                |
+        | code | name | jetavator_deleted_ind                            |
+        | ATL  |      | 1                                                |
+        | LAX  |      | 1                                                |
      And the following CSV file airport_pair_details_delete.csv is saved in the temporary folder:
-        | dep_airport | arr_airport | jetavator_deleted_ind |
-        | ORD         | DEN         | 1                     |
+        | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
+        | ORD         | DEN         |             | 1                     |
      And we run the CLI command:
        """
        jetavator run delta \
@@ -452,25 +456,25 @@ Feature: Build star schema from project
          --csv airport_pair_details="{tempfolder}/airport_pair_details.csv"
        """
      And the following CSV file airport_details_update.csv is saved in the temporary folder:
-        | code | name                                             |
-        | ORD  | O'Hare International Airport                     |
+        | code | name                                             | jetavator_deleted_ind |
+        | ORD  | O'Hare International Airport                     | 0                     |
      And the following CSV file airport_details_insert.csv is saved in the temporary folder:
-        | code | name                                             |
-        | AMS  | Amsterdam Airport Schiphol                       |
+        | code | name                                             | jetavator_deleted_ind |
+        | AMS  | Amsterdam Airport Schiphol                       | 0                     |
      And the following CSV file airport_details_delete.csv is saved in the temporary folder:
-        | code | jetavator_deleted_ind                            |
-        | ATL  | 1                                                |
-        | LAX  | 1                                                |
+        | code | name                                             | jetavator_deleted_ind |
+        | ATL  |                                                  | 1                     |
+        | LAX  |                                                  | 1                     |
      And the following CSV file airport_pair_details_update.csv is saved in the temporary folder:
-        | dep_airport | arr_airport | num_changes |
-        | ORD         | PVG         | 0           |
+        | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
+        | ORD         | PVG         | 0           | 0                     |
       And the following CSV file airport_pair_details_insert.csv is saved in the temporary folder:
-        | dep_airport | arr_airport | num_changes |
-        | ATL         | CDG         | 0           |
-        | ORD         | CDG         | 1           |
+        | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
+        | ATL         | CDG         | 0           | 0                     |
+        | ORD         | CDG         | 1           | 0                     |
      And the following CSV file airport_pair_details_delete.csv is saved in the temporary folder:
-        | dep_airport | arr_airport | jetavator_deleted_ind |
-        | ORD         | DEN         | 1                     |
+        | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
+        | ORD         | DEN         |             | 1                     |
      And we run the CLI command:
        """
        jetavator run delta \
@@ -605,3 +609,5 @@ Feature: Build star schema from project
      And we run the CLI command "jetavator deploy -d"
 
     Then the column num_changes does not exist in the table star_fact_airport_pair on the star datastore
+
+

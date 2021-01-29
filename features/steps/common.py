@@ -3,10 +3,11 @@ import random
 import shutil
 import pandas
 import datetime
-
 import logging
 
 from behave import given, when, then, model
+
+from freezegun import freeze_time
 
 from sqlalchemy import MetaData, Table, Column
 from sqlalchemy.sql import and_, select
@@ -121,6 +122,16 @@ def given_table_is_empty(context, table, datastore):
 @when(u"we execute the following SQL on the {datastore} datastore")
 def step_impl(context, datastore):
     engine_datastore(datastore).execute(context.text)
+
+
+@given(u"the system time is {time}")
+def step_impl(context, time):
+
+    if "fixture.freeze_time" not in context.tags:
+        raise Exception("Must use @fixture.freeze_time")
+
+    context.freezer = freeze_time(time)
+    context.freezer.start()
 
 
 @then(

@@ -25,7 +25,7 @@ class CreateSource(Job, ABC, register_as='create_source'):
 
     @property
     def name(self) -> str:
-        return f'create_source_{self.source.name}'
+        return f'source_{self.source.name}'
 
     @LazyProperty
     def csv_exists(self) -> bool:

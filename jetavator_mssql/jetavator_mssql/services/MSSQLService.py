@@ -54,7 +54,8 @@ class MSSQLService(StorageService, register_as='mssql'):
             )
         if result_proxy.returns_rows:
             df = pandas.DataFrame(result_proxy.fetchall())
-            df.columns = result_proxy.keys()
+            if df.shape != (0, 0):
+                df.columns = result_proxy.keys()
             return df
         else:
             return pandas.DataFrame()
