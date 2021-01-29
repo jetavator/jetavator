@@ -27,18 +27,22 @@ class SparkStarData(SparkSQLView, StarData, register_as='star_data'):
                    {% for satellite in job.satellite_owner.star_satellites.values() %}
                    {{satellite.name}}.sat_deleted_ind{{" AND " if not loop.last}}
                    {% endfor %}
-               ) AS deleted_ind
+               ) AS soft_deleted_ind
                {% elif job.satellite_owner.star_satellites.values() | length == 1 %}
                {% for satellite in job.satellite_owner.star_satellites.values() %}
-               , {{satellite.name}}.sat_deleted_ind AS deleted_ind
+               , {{satellite.name}}.sat_deleted_ind AS soft_deleted_ind
                {% endfor %}
                {% else %}
-               , FALSE AS deleted_ind
+               , FALSE AS soft_deleted_ind
                {% endif %}
+               
+               , FALSE AS deleted_ind  -- don't actually delete the row in the merge (may change later, see #66)
 
                {% for satellite in job.satellite_owner.star_satellites.values() %}
                {% for column in satellite.columns.keys() %}
-               , {{satellite.name}}.{{column}}
+               , CASE WHEN {{satellite.name}}.sat_deleted_ind THEN NULL 
+                      ELSE {{satellite.name}}.{{column}}
+                  END AS {{column}}
                {% endfor %}
                {% endfor %}
 
