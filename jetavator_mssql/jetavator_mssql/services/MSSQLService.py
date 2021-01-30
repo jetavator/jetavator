@@ -1,6 +1,6 @@
-import pandas
-from typing import Iterable
+from typing import Iterable, Set
 
+import pandas
 import sqlalchemy
 from sqlalchemy.exc import ProgrammingError, DBAPIError
 
@@ -10,6 +10,8 @@ from jetavator.services import StorageService
 
 
 class MSSQLService(StorageService, register_as='mssql'):
+
+    index_option_kwargs: Set[str] = {"mssql_clustered"}
 
     @LazyProperty
     def sqlalchemy_connection(self):

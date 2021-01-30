@@ -11,6 +11,7 @@ from sqlalchemy_views import CreateView, DropView
 
 from ..VaultAction import VaultAction
 
+from jetavator.services import StorageService
 from jetavator.schema_registry import VaultObject, VaultObjectMapping, VaultObjectKey
 
 from .ProjectModelABC import ProjectModelABC
@@ -76,12 +77,20 @@ class BaseModel(RegistersSubclasses, Generic[VaultObjectType], ABC):
             return VaultAction.NONE
 
     @property
+    def vault_storage_service(self) -> StorageService:
+        return self.project.compute_service.vault_storage_service
+
+    @property
+    def star_storage_service(self) -> StorageService:
+        return self.project.compute_service.star_storage_service
+
+    @property
     def vault_schema(self) -> str:
-        return self.project.compute_service.vault_storage_service.config.schema
+        return self.vault_storage_service.config.schema
 
     @property
     def star_schema(self) -> str:
-        return self.project.compute_service.star_storage_service.config.schema
+        return self.star_storage_service.config.schema
 
     def define_table(
             self,

@@ -7,6 +7,7 @@ from sqlalchemy.schema import SchemaItem, DDLElement
 from sqlalchemy.types import *
 
 from jetavator.schema_registry import SatelliteOwner
+from jetavator.services import StorageService
 
 from ..VaultAction import VaultAction
 from .BaseModel import BaseModel
@@ -65,40 +66,43 @@ class SatelliteOwnerModel(BaseModel[SatelliteOwner], ABC, register_as="satellite
     def key_columns(self) -> List[Column]:
         return self.definition.alias_key_columns(self.definition.name)
 
-    # TODO: Move MSSQL clustering options to a plugin
+    def index_kwargs(
+            self,
+            storage_service: StorageService
+    ) -> Dict[str, bool]:
+        return {
+            x: self.definition.option(x)
+            for x in storage_service.index_option_kwargs
+        }
 
     def index(
             self,
+            storage_service: StorageService,
             name: str,
-            alias: Optional[str] = None,
-            allow_clustered: bool = True
+            alias: Optional[str] = None
     ) -> Index:
         alias = alias or self.definition.name
-        mssql_clustered = allow_clustered and self.definition.option(
-            "mssql_clustered")
         return Index(
             f"ix_{name}",
             self.definition.alias_primary_key_column(alias),
             unique=False,
-            mssql_clustered=mssql_clustered
+            **self.index_kwargs(storage_service)
         )
 
     def index_or_key(
             self,
+            storage_service: StorageService,
             name: str,
-            alias: Optional[str] = None,
-            allow_clustered: bool = True
+            alias: Optional[str] = None
     ) -> SchemaItem:
         alias = alias or self.definition.name
         if self.definition.option("no_primary_key"):
-            return self.index(name, alias, allow_clustered)
+            return self.index(storage_service, name, alias)
         else:
-            mssql_clustered = allow_clustered and self.definition.option(
-                "mssql_clustered")
             return PrimaryKeyConstraint(
                 self.definition.alias_primary_key_name(alias),
                 name=f"pk_{name}",
-                mssql_clustered=mssql_clustered
+                **self.index_kwargs(storage_service)
             )
 
     def custom_indexes(self, table_name) -> List[Index]:
@@ -133,8 +137,11 @@ class SatelliteOwnerModel(BaseModel[SatelliteOwner], ABC, register_as="satellite
         return self.define_table(
             self.definition.table_name,
             *self.table_columns,
-            self.index_or_key(f"{self.definition.type}_{self.definition.name}"),
+            self.index_or_key(
+                self.vault_storage_service,
+                f"{self.definition.type}_{self.definition.name}"),
             *self.satellite_owner_indexes(
+                self.vault_storage_service,
                 f"{self.definition.type}_{self.definition.name}"),
             schema=self.vault_schema
         )
@@ -154,8 +161,11 @@ class SatelliteOwnerModel(BaseModel[SatelliteOwner], ABC, register_as="satellite
             *self.key_columns,
             *self.role_specific_columns,
             *self.star_satellite_columns,
-            self.index_or_key(f"{self.star_prefix}_{self.definition.name}"),
+            self.index_or_key(
+                self.star_storage_service,
+                f"{self.star_prefix}_{self.definition.name}"),
             *self.satellite_owner_indexes(
+                self.star_storage_service,
                 f"{self.star_prefix}_{self.definition.name}"),
             *self.custom_indexes(
                 f"{self.star_prefix}_{self.definition.name}"),
@@ -173,7 +183,11 @@ class SatelliteOwnerModel(BaseModel[SatelliteOwner], ABC, register_as="satellite
         }
 
     @abstractmethod
-    def satellite_owner_indexes(self, table_name: str) -> List[Index]:
+    def satellite_owner_indexes(
+            self,
+            storage_service: StorageService,
+            table_name: str
+    ) -> List[Index]:
         pass
 
     def generate_table_keys(self, source_table, alias=None):

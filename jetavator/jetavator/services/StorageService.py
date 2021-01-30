@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Iterable, Any, Dict, Optional
+from typing import Iterable, Any, Dict, Optional, Set
 
 import sqlalchemy
 import sqlalchemy_views
@@ -7,6 +7,7 @@ import pandas
 
 from jetavator import EngineABC
 from jetavator.config import StorageServiceConfig
+
 from .Service import Service
 from .ComputeOwnedService import ComputeOwnedService
 from .StorageServiceABC import StorageServiceABC
@@ -87,6 +88,10 @@ class StorageService(
     @abstractmethod
     def test(self) -> None:
         pass
+
+    @property
+    def index_option_kwargs(self) -> Set[str]:
+        return set()
 
     @abstractmethod
     def load_dataframe(
