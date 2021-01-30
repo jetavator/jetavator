@@ -12,9 +12,7 @@ class SparkStarData(SparkSQLView, StarData, register_as='star_data'):
                , keys.hub_{{alias}}_key
                {% endfor %}
                {% endif %}
-
-               , keys.key_source
-
+               
                {% for satellite in job.satellite_owner.star_satellites.values() %}
                , array_contains(
                     keys.key_source,
