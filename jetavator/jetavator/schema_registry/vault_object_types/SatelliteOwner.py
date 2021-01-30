@@ -145,7 +145,11 @@ class SatelliteOwner(VaultObject, ABC, register_as="satellite_owner"):
             return self.alias_key_column(alias)
 
     @property
-    def star_table_name(self):
+    def table_name(self) -> str:
+        return f"vault_{self.type}_{self.name}"
+
+    @property
+    def star_table_name(self) -> str:
         return f"star_{self.star_prefix}_{self.name}"
 
     @property

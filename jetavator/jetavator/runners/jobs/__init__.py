@@ -9,6 +9,7 @@ from .ProducedKeys import (
 )
 from .SatelliteQuery import SatelliteQuery
 from .SerialiseSatellite import SerialiseSatellite
+from .SerialiseSatelliteOwner import SerialiseSatelliteOwner
 from .StarData import StarData
-from .StarKeys import StarKeys
+from .SatelliteOwnerKeys import SatelliteOwnerKeys
 from .StarMerge import StarMerge

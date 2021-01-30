@@ -263,32 +263,58 @@ Feature: Build star schema from project
          --csv airport_pair_details="{tempfolder}/airport_pair_details.csv"
        """
 
-    Then the table star_dim_airport exists on the star datastore
+    Then the table vault_hub_airport exists on the vault datastore
+     And the table vault_hub_airport on the vault datastore contains 11 rows
+     And the table vault_hub_airport on the vault datastore contains these columns with this data:
+       | hub_airport_key |
+       | ATL             |
+       | PEK             |
+       | DXB             |
+       | HND             |
+       | LAX             |
+       | ORD             |
+       | LHR             |
+       | HKG             |
+       | PVG             |
+       | CDG             |
+       | DEN             |
+     And the table star_dim_airport exists on the star datastore
      And the table star_dim_airport on the star datastore contains 11 rows
      And the table star_dim_airport on the star datastore contains these columns with this data:
-      | hub_airport_key | name                                             | allcaps_name                                     | last_updated_airport |
-      | ATL             | Hartsfield-Jackson Atlanta International Airport | HARTSFIELD-JACKSON ATLANTA INTERNATIONAL AIRPORT | 1                    |
-      | PEK             | Beijing Capital International Airport            | BEIJING CAPITAL INTERNATIONAL AIRPORT            | 1                    |
-      | DXB             | Dubai International Airport                      | DUBAI INTERNATIONAL AIRPORT                      | 1                    |
-      | HND             | Haneda Airport                                   | HANEDA AIRPORT                                   | 1                    |
-      | LAX             | Los Angeles International Airport                | LOS ANGELES INTERNATIONAL AIRPORT                | 1                    |
-      | ORD             | Orchard Field                                    | ORCHARD FIELD                                    | 1                    |
-      | LHR             | London Heathrow Airport                          | LONDON HEATHROW AIRPORT                          | 1                    |
-      | HKG             | Hong Kong International Airport                  | HONG KONG INTERNATIONAL AIRPORT                  | 1                    |
-      | PVG             | Shanghai Pudong International Airport            | SHANGHAI PUDONG INTERNATIONAL AIRPORT            | 1                    |
-      | CDG             | Paris-Charles de Gaulle Airport                  | PARIS-CHARLES DE GAULLE AIRPORT                  | 1                    |
-      | DEN             | None                                             | None                                             | None                 |
+       | hub_airport_key | name                                             | allcaps_name                                     | last_updated_airport |
+       | ATL             | Hartsfield-Jackson Atlanta International Airport | HARTSFIELD-JACKSON ATLANTA INTERNATIONAL AIRPORT | 1                    |
+       | PEK             | Beijing Capital International Airport            | BEIJING CAPITAL INTERNATIONAL AIRPORT            | 1                    |
+       | DXB             | Dubai International Airport                      | DUBAI INTERNATIONAL AIRPORT                      | 1                    |
+       | HND             | Haneda Airport                                   | HANEDA AIRPORT                                   | 1                    |
+       | LAX             | Los Angeles International Airport                | LOS ANGELES INTERNATIONAL AIRPORT                | 1                    |
+       | ORD             | Orchard Field                                    | ORCHARD FIELD                                    | 1                    |
+       | LHR             | London Heathrow Airport                          | LONDON HEATHROW AIRPORT                          | 1                    |
+       | HKG             | Hong Kong International Airport                  | HONG KONG INTERNATIONAL AIRPORT                  | 1                    |
+       | PVG             | Shanghai Pudong International Airport            | SHANGHAI PUDONG INTERNATIONAL AIRPORT            | 1                    |
+       | CDG             | Paris-Charles de Gaulle Airport                  | PARIS-CHARLES DE GAULLE AIRPORT                  | 1                    |
+       | DEN             | None                                             | None                                             | None                 |
+     And the table vault_link_airport_pair exists on the vault datastore
+     And the table vault_link_airport_pair on the vault datastore contains 7 rows
+     And the table vault_link_airport_pair on the vault datastore contains these columns with this data:
+       | hub_dep_airport_key | hub_arr_airport_key |
+       | ATL                 | LHR                 |
+       | ATL                 | ORD                 |
+       | ATL                 | PVG                 |
+       | LHR                 | DEN                 |
+       | ORD                 | PVG                 |
+       | ORD                 | LHR                 |
+       | ORD                 | DEN                 |
      And the table star_fact_airport_pair exists on the star datastore
      And the table star_fact_airport_pair on the star datastore contains 7 rows
      And the table star_fact_airport_pair on the star datastore contains these columns with this data:
-      | hub_dep_airport_key | hub_arr_airport_key | num_changes | direct_flight | last_updated_pair |
-      | ATL                 | LHR                 | 0           | 1             | 1                 |
-      | ATL                 | ORD                 | 0           | 1             | 1                 |
-      | ATL                 | PVG                 | 0           | 1             | 1                 |
-      | LHR                 | DEN                 | 0           | 1             | 1                 |
-      | ORD                 | PVG                 | 1           | 0             | 1                 |
-      | ORD                 | LHR                 | 1           | 0             | 1                 |
-      | ORD                 | DEN                 | 2           | 0             | 1                 |
+       | hub_dep_airport_key | hub_arr_airport_key | num_changes | direct_flight | last_updated_pair |
+       | ATL                 | LHR                 | 0           | 1             | 1                 |
+       | ATL                 | ORD                 | 0           | 1             | 1                 |
+       | ATL                 | PVG                 | 0           | 1             | 1                 |
+       | LHR                 | DEN                 | 0           | 1             | 1                 |
+       | ORD                 | PVG                 | 1           | 0             | 1                 |
+       | ORD                 | LHR                 | 1           | 0             | 1                 |
+       | ORD                 | DEN                 | 2           | 0             | 1                 |
 
   @fixture.remove_database_after_scenario
   Scenario: Delta load - Update
@@ -302,11 +328,11 @@ Feature: Build star schema from project
          --csv airport_pair_details="{tempfolder}/airport_pair_details.csv"
        """
      And the following CSV file airport_details_update.csv is saved in the temporary folder:
-        | code | name                                             | jetavator_deleted_ind |
-        | ORD  | O'Hare International Airport                     | 0                     |
+       | code | name                                             | jetavator_deleted_ind |
+       | ORD  | O'Hare International Airport                     | 0                     |
      And the following CSV file airport_pair_details_update.csv is saved in the temporary folder:
-        | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
-        | ORD         | PVG         | 0           | 0                     |
+       | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
+       | ORD         | PVG         | 0           | 0                     |
      And we run the CLI command:
        """
        jetavator run delta \
@@ -314,7 +340,22 @@ Feature: Build star schema from project
          --csv airport_pair_details="{tempfolder}/airport_pair_details_update.csv"
        """
 
-    Then the table star_dim_airport exists on the star datastore
+    Then the table vault_hub_airport exists on the vault datastore
+     And the table vault_hub_airport on the vault datastore contains 11 rows
+     And the table vault_hub_airport on the vault datastore contains these columns with this data:
+       | hub_airport_key |
+       | ATL             |
+       | PEK             |
+       | DXB             |
+       | HND             |
+       | LAX             |
+       | ORD             |
+       | LHR             |
+       | HKG             |
+       | PVG             |
+       | CDG             |
+       | DEN             |
+     And the table star_dim_airport exists on the star datastore
      And the table star_dim_airport on the star datastore contains 11 rows
      And the table star_dim_airport on the star datastore contains these columns with this data:
        | hub_airport_key | name                                             | allcaps_name                                     | last_updated_airport |
@@ -329,6 +370,17 @@ Feature: Build star schema from project
        | PVG             | Shanghai Pudong International Airport            | SHANGHAI PUDONG INTERNATIONAL AIRPORT            | 0                    |
        | CDG             | Paris-Charles de Gaulle Airport                  | PARIS-CHARLES DE GAULLE AIRPORT                  | 0                    |
        | DEN             | None                                             | None                                             | None                 |
+     And the table vault_link_airport_pair exists on the vault datastore
+     And the table vault_link_airport_pair on the vault datastore contains 7 rows
+     And the table vault_link_airport_pair on the vault datastore contains these columns with this data:
+       | hub_dep_airport_key | hub_arr_airport_key |
+       | ATL                 | LHR                 |
+       | ATL                 | ORD                 |
+       | ATL                 | PVG                 |
+       | LHR                 | DEN                 |
+       | ORD                 | PVG                 |
+       | ORD                 | LHR                 |
+       | ORD                 | DEN                 |
      And the table star_fact_airport_pair exists on the star datastore
      And the table star_fact_airport_pair on the star datastore contains 7 rows
      And the table star_fact_airport_pair on the star datastore contains these columns with this data:
@@ -353,12 +405,12 @@ Feature: Build star schema from project
          --csv airport_pair_details="{tempfolder}/airport_pair_details.csv"
        """
      And the following CSV file airport_details_insert.csv is saved in the temporary folder:
-        | code | name                                             | jetavator_deleted_ind |
-        | AMS  | Amsterdam Airport Schiphol                       | 0                     |
+       | code | name                                             | jetavator_deleted_ind |
+       | AMS  | Amsterdam Airport Schiphol                       | 0                     |
      And the following CSV file airport_pair_details_insert.csv is saved in the temporary folder:
-        | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
-        | ATL         | CDG         | 0           | 0                     |
-        | ORD         | CDG         | 1           | 0                     |
+       | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
+       | ATL         | CDG         | 0           | 0                     |
+       | ORD         | CDG         | 1           | 0                     |
      And we run the CLI command:
        """
        jetavator run delta \
@@ -366,7 +418,23 @@ Feature: Build star schema from project
          --csv airport_pair_details="{tempfolder}/airport_pair_details_insert.csv"
        """
 
-    Then the table star_dim_airport exists on the star datastore
+    Then the table vault_hub_airport exists on the vault datastore
+     And the table vault_hub_airport on the vault datastore contains 12 rows
+     And the table vault_hub_airport on the vault datastore contains these columns with this data:
+       | hub_airport_key |
+       | ATL             |
+       | PEK             |
+       | DXB             |
+       | HND             |
+       | LAX             |
+       | ORD             |
+       | LHR             |
+       | HKG             |
+       | PVG             |
+       | CDG             |
+       | DEN             |
+       | AMS             |
+     And the table star_dim_airport exists on the star datastore
      And the table star_dim_airport on the star datastore contains 12 rows
      And the table star_dim_airport on the star datastore contains these columns with this data:
        | hub_airport_key | name                                             | allcaps_name                                     | last_updated_airport |
@@ -382,6 +450,19 @@ Feature: Build star schema from project
        | CDG             | Paris-Charles de Gaulle Airport                  | PARIS-CHARLES DE GAULLE AIRPORT                  | 0                    |
        | DEN             | None                                             | None                                             | None                 |
        | AMS             | Amsterdam Airport Schiphol                       | AMSTERDAM AIRPORT SCHIPHOL                       | 1                    |
+     And the table vault_link_airport_pair exists on the vault datastore
+     And the table vault_link_airport_pair on the vault datastore contains 9 rows
+     And the table vault_link_airport_pair on the vault datastore contains these columns with this data:
+       | hub_dep_airport_key | hub_arr_airport_key |
+       | ATL                 | LHR                 |
+       | ATL                 | ORD                 |
+       | ATL                 | PVG                 |
+       | LHR                 | DEN                 |
+       | ORD                 | PVG                 |
+       | ORD                 | LHR                 |
+       | ORD                 | DEN                 |
+       | ATL                 | CDG                 |
+       | ORD                 | CDG                 |
      And the table star_fact_airport_pair exists on the star datastore
      And the table star_fact_airport_pair on the star datastore contains 9 rows
      And the table star_fact_airport_pair on the star datastore contains these columns with this data:
@@ -408,12 +489,12 @@ Feature: Build star schema from project
          --csv airport_pair_details="{tempfolder}/airport_pair_details.csv"
        """
      And the following CSV file airport_details_delete.csv is saved in the temporary folder:
-        | code | name | jetavator_deleted_ind                            |
-        | ATL  |      | 1                                                |
-        | LAX  |      | 1                                                |
+       | code | name | jetavator_deleted_ind                            |
+       | ATL  |      | 1                                                |
+       | LAX  |      | 1                                                |
      And the following CSV file airport_pair_details_delete.csv is saved in the temporary folder:
-        | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
-        | ORD         | DEN         |             | 1                     |
+       | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
+       | ORD         | DEN         |             | 1                     |
      And we run the CLI command:
        """
        jetavator run delta \
@@ -421,7 +502,22 @@ Feature: Build star schema from project
          --csv airport_pair_details="{tempfolder}/airport_pair_details_delete.csv"
        """
 
-     Then the table star_dim_airport exists on the star datastore
+    Then the table vault_hub_airport exists on the vault datastore
+     And the table vault_hub_airport on the vault datastore contains 11 rows
+     And the table vault_hub_airport on the vault datastore contains these columns with this data:
+       | hub_airport_key |
+       | ATL             |
+       | PEK             |
+       | DXB             |
+       | HND             |
+       | LAX             |
+       | ORD             |
+       | LHR             |
+       | HKG             |
+       | PVG             |
+       | CDG             |
+       | DEN             |
+      And the table star_dim_airport exists on the star datastore
       And the table star_dim_airport on the star datastore contains 11 rows
       And the table star_dim_airport on the star datastore contains these columns with this data:
        | hub_airport_key | name                                             | allcaps_name                                     | last_updated_airport |
@@ -434,19 +530,30 @@ Feature: Build star schema from project
        | LHR             | London Heathrow Airport                          | LONDON HEATHROW AIRPORT                          | 0                    |
        | HKG             | Hong Kong International Airport                  | HONG KONG INTERNATIONAL AIRPORT                  | 0                    |
        | PVG             | Shanghai Pudong International Airport            | SHANGHAI PUDONG INTERNATIONAL AIRPORT            | 0                    |
-       | DEN             | None                                             | None                                             | None                 |
        | CDG             | Paris-Charles de Gaulle Airport                  | PARIS-CHARLES DE GAULLE AIRPORT                  | 0                    |
-      And the table star_fact_airport_pair exists on the star datastore
-      And the table star_fact_airport_pair on the star datastore contains 7 rows
-      And the table star_fact_airport_pair on the star datastore contains these columns with this data:
-        | hub_dep_airport_key | hub_arr_airport_key | num_changes | direct_flight | last_updated_pair |
-        | ATL                 | LHR                 | 0           | 1             | 0                 |
-        | ATL                 | ORD                 | 0           | 1             | 0                 |
-        | ATL                 | PVG                 | 0           | 1             | 0                 |
-        | LHR                 | DEN                 | 0           | 1             | 0                 |
-        | ORD                 | PVG                 | 1           | 0             | 0                 |
-        | ORD                 | LHR                 | 1           | 0             | 0                 |
-        | ORD                 | DEN                 | None        | None          | None              |
+       | DEN             | None                                             | None                                             | None                 |
+     And the table vault_link_airport_pair exists on the vault datastore
+     And the table vault_link_airport_pair on the vault datastore contains 7 rows
+     And the table vault_link_airport_pair on the vault datastore contains these columns with this data:
+       | hub_dep_airport_key | hub_arr_airport_key |
+       | ATL                 | LHR                 |
+       | ATL                 | ORD                 |
+       | ATL                 | PVG                 |
+       | LHR                 | DEN                 |
+       | ORD                 | PVG                 |
+       | ORD                 | LHR                 |
+       | ORD                 | DEN                 |
+     And the table star_fact_airport_pair exists on the star datastore
+     And the table star_fact_airport_pair on the star datastore contains 7 rows
+     And the table star_fact_airport_pair on the star datastore contains these columns with this data:
+       | hub_dep_airport_key | hub_arr_airport_key | num_changes | direct_flight | last_updated_pair |
+       | ATL                 | LHR                 | 0           | 1             | 0                 |
+       | ATL                 | ORD                 | 0           | 1             | 0                 |
+       | ATL                 | PVG                 | 0           | 1             | 0                 |
+       | LHR                 | DEN                 | 0           | 1             | 0                 |
+       | ORD                 | PVG                 | 1           | 0             | 0                 |
+       | ORD                 | LHR                 | 1           | 0             | 0                 |
+       | ORD                 | DEN                 | None        | None          | None              |
 
   @fixture.remove_database_after_scenario
   Scenario: Delta load - All Together
@@ -460,25 +567,25 @@ Feature: Build star schema from project
          --csv airport_pair_details="{tempfolder}/airport_pair_details.csv"
        """
      And the following CSV file airport_details_update.csv is saved in the temporary folder:
-        | code | name                                             | jetavator_deleted_ind |
-        | ORD  | O'Hare International Airport                     | 0                     |
+       | code | name                                             | jetavator_deleted_ind |
+       | ORD  | O'Hare International Airport                     | 0                     |
      And the following CSV file airport_details_insert.csv is saved in the temporary folder:
-        | code | name                                             | jetavator_deleted_ind |
-        | AMS  | Amsterdam Airport Schiphol                       | 0                     |
+       | code | name                                             | jetavator_deleted_ind |
+       | AMS  | Amsterdam Airport Schiphol                       | 0                     |
      And the following CSV file airport_details_delete.csv is saved in the temporary folder:
-        | code | name                                             | jetavator_deleted_ind |
-        | ATL  |                                                  | 1                     |
-        | LAX  |                                                  | 1                     |
+       | code | name                                             | jetavator_deleted_ind |
+       | ATL  |                                                  | 1                     |
+       | LAX  |                                                  | 1                     |
      And the following CSV file airport_pair_details_update.csv is saved in the temporary folder:
-        | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
-        | ORD         | PVG         | 0           | 0                     |
-      And the following CSV file airport_pair_details_insert.csv is saved in the temporary folder:
-        | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
-        | ATL         | CDG         | 0           | 0                     |
-        | ORD         | CDG         | 1           | 0                     |
+       | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
+       | ORD         | PVG         | 0           | 0                     |
+     And the following CSV file airport_pair_details_insert.csv is saved in the temporary folder:
+       | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
+       | ATL         | CDG         | 0           | 0                     |
+       | ORD         | CDG         | 1           | 0                     |
      And the following CSV file airport_pair_details_delete.csv is saved in the temporary folder:
-        | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
-        | ORD         | DEN         |             | 1                     |
+       | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
+       | ORD         | DEN         |             | 1                     |
      And we run the CLI command:
        """
        jetavator run delta \
@@ -490,7 +597,23 @@ Feature: Build star schema from project
          --csv airport_pair_details="{tempfolder}/airport_pair_details_delete.csv"
        """
 
-    Then the table star_dim_airport exists on the star datastore
+    Then the table vault_hub_airport exists on the vault datastore
+     And the table vault_hub_airport on the vault datastore contains 12 rows
+     And the table vault_hub_airport on the vault datastore contains these columns with this data:
+       | hub_airport_key |
+       | ATL             |
+       | PEK             |
+       | DXB             |
+       | HND             |
+       | LAX             |
+       | ORD             |
+       | LHR             |
+       | HKG             |
+       | PVG             |
+       | CDG             |
+       | DEN             |
+       | AMS             |
+     And the table star_dim_airport exists on the star datastore
      And the table star_dim_airport on the star datastore contains 12 rows
      And the table star_dim_airport on the star datastore contains these columns with this data:
        | hub_airport_key | name                                             | allcaps_name                                     | last_updated_airport |
@@ -506,6 +629,19 @@ Feature: Build star schema from project
        | CDG             | Paris-Charles de Gaulle Airport                  | PARIS-CHARLES DE GAULLE AIRPORT                  | 0                    |
        | DEN             | None                                             | None                                             | None                 |
        | AMS             | Amsterdam Airport Schiphol                       | AMSTERDAM AIRPORT SCHIPHOL                       | 1                    |
+     And the table vault_link_airport_pair exists on the vault datastore
+     And the table vault_link_airport_pair on the vault datastore contains 9 rows
+     And the table vault_link_airport_pair on the vault datastore contains these columns with this data:
+       | hub_dep_airport_key | hub_arr_airport_key |
+       | ATL                 | LHR                 |
+       | ATL                 | ORD                 |
+       | ATL                 | PVG                 |
+       | LHR                 | DEN                 |
+       | ORD                 | PVG                 |
+       | ORD                 | LHR                 |
+       | ORD                 | DEN                 |
+       | ATL                 | CDG                 |
+       | ORD                 | CDG                 |
      And the table star_fact_airport_pair exists on the star datastore
      And the table star_fact_airport_pair on the star datastore contains 9 rows
      And the table star_fact_airport_pair on the star datastore contains these columns with this data:
@@ -536,25 +672,25 @@ Feature: Build star schema from project
          --csv airport_pair_details="{tempfolder}/airport_pair_details.csv"
        """
      And the following CSV file airport_details_update.csv is saved in the temporary folder:
-        | code | name                                             | jetavator_deleted_ind |
-        | ORD  | O'Hare International Airport                     | 0                     |
+       | code | name                                             | jetavator_deleted_ind |
+       | ORD  | O'Hare International Airport                     | 0                     |
      And the following CSV file airport_details_insert.csv is saved in the temporary folder:
-        | code | name                                             | jetavator_deleted_ind |
-        | AMS  | Amsterdam Airport Schiphol                       | 0                     |
+       | code | name                                             | jetavator_deleted_ind |
+       | AMS  | Amsterdam Airport Schiphol                       | 0                     |
      And the following CSV file airport_details_delete.csv is saved in the temporary folder:
-        | code | name                                             | jetavator_deleted_ind |
-        | ATL  |                                                  | 1                     |
-        | LAX  |                                                  | 1                     |
+       | code | name                                             | jetavator_deleted_ind |
+       | ATL  |                                                  | 1                     |
+       | LAX  |                                                  | 1                     |
      And the following CSV file airport_pair_details_update.csv is saved in the temporary folder:
-        | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
-        | ORD         | PVG         | 0           | 0                     |
+       | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
+       | ORD         | PVG         | 0           | 0                     |
      And the following CSV file airport_pair_details_insert.csv is saved in the temporary folder:
-        | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
-        | ATL         | CDG         | 0           | 0                     |
-        | ORD         | CDG         | 1           | 0                     |
+       | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
+       | ATL         | CDG         | 0           | 0                     |
+       | ORD         | CDG         | 1           | 0                     |
      And the following CSV file airport_pair_details_delete.csv is saved in the temporary folder:
-        | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
-        | ORD         | DEN         |             | 1                     |
+       | dep_airport | arr_airport | num_changes | jetavator_deleted_ind |
+       | ORD         | DEN         |             | 1                     |
      And we run the CLI command:
        """
        jetavator run delta \
@@ -586,7 +722,23 @@ Feature: Build star schema from project
          --csv airport_pair_details="{tempfolder}/airport_pair_details_insert.csv"
        """
 
-    Then the table star_dim_airport exists on the star datastore
+    Then the table vault_hub_airport exists on the vault datastore
+     And the table vault_hub_airport on the vault datastore contains 12 rows
+     And the table vault_hub_airport on the vault datastore contains these columns with this data:
+       | hub_airport_key |
+       | ATL             |
+       | PEK             |
+       | DXB             |
+       | HND             |
+       | LAX             |
+       | ORD             |
+       | LHR             |
+       | HKG             |
+       | PVG             |
+       | CDG             |
+       | DEN             |
+       | AMS             |
+     And the table star_dim_airport exists on the star datastore
      And the table star_dim_airport on the star datastore contains 12 rows
      And the table star_dim_airport on the star datastore contains these columns with this data:
        | hub_airport_key | name                                             | allcaps_name                                     | last_updated_airport |
@@ -602,6 +754,19 @@ Feature: Build star schema from project
        | CDG             | Paris-Charles de Gaulle Airport                  | PARIS-CHARLES DE GAULLE AIRPORT                  | 0                    |
        | DEN             | None                                             | None                                             | None                 |
        | AMS             | Amsterdam Airport Schiphol                       | AMSTERDAM AIRPORT SCHIPHOL                       | 1                    |
+     And the table vault_link_airport_pair exists on the vault datastore
+     And the table vault_link_airport_pair on the vault datastore contains 9 rows
+     And the table vault_link_airport_pair on the vault datastore contains these columns with this data:
+       | hub_dep_airport_key | hub_arr_airport_key |
+       | ATL                 | LHR                 |
+       | ATL                 | ORD                 |
+       | ATL                 | PVG                 |
+       | LHR                 | DEN                 |
+       | ORD                 | PVG                 |
+       | ORD                 | LHR                 |
+       | ORD                 | DEN                 |
+       | ATL                 | CDG                 |
+       | ORD                 | CDG                 |
      And the table star_fact_airport_pair exists on the star datastore
      And the table star_fact_airport_pair on the star datastore contains 9 rows
      And the table star_fact_airport_pair on the star datastore contains these columns with this data:

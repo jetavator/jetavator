@@ -1,4 +1,4 @@
-from typing import Iterable, Dict
+from typing import Iterable, Dict, Optional
 
 import datetime
 import os
@@ -95,16 +95,18 @@ class SparkDeltaStorageService(
             spark_view_name: str,
             key_column_name: str,
             column_names: Iterable[str],
-            column_references: Dict[str, str]
+            column_references: Dict[str, str],
+            deleted_indicator: Optional[str] = None
     ):
-        # TODO: Switch from key_source array to indicator columns
         merge_sql_template = '''
             MERGE 
              INTO {{ target }} AS target
             USING {{ source }} AS source
                ON target.{{ key_column_name }}
                 = source.{{ key_column_name }}
-             WHEN MATCHED AND source.deleted_ind = 1 THEN DELETE
+             {% if deleted_indicator %}
+             WHEN MATCHED AND source.{{ deleted_indicator }} = 1 THEN DELETE
+             {% endif %}
              {% for column, satellite_name in column_references.items() %}
              {{ "WHEN MATCHED THEN UPDATE SET" if loop.first }}
                  {{ column }} = CASE WHEN update_ind_{{ satellite_name }} = 1
@@ -119,7 +121,8 @@ class SparkDeltaStorageService(
             target=f"{self.config.schema}.{storage_table_name}",
             source=spark_view_name,
             key_column_name=key_column_name,
-            column_references=column_references
+            column_references=column_references,
+            deleted_indicator=deleted_indicator
         )
         self.execute(merge_sql)
 

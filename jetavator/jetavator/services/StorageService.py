@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Iterable, Any, Dict
+from typing import Iterable, Any, Dict, Optional
 
 import sqlalchemy
 import sqlalchemy_views
@@ -104,6 +104,7 @@ class StorageService(
             spark_view_name: str,
             key_column_name: str,
             column_names: Iterable[str],
-            column_references: Dict[str, str]
+            column_references: Dict[str, str],
+            deleted_indicator: Optional[str] = None
     ):
         pass

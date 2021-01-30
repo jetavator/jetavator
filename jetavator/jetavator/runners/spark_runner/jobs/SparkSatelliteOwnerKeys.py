@@ -1,8 +1,8 @@
 from .. import SparkSQLView
-from jetavator.runners.jobs import StarKeys
+from jetavator.runners.jobs import SatelliteOwnerKeys
 
 
-class SparkStarKeys(SparkSQLView, StarKeys, register_as='star_keys'):
+class SparkSatelliteOwnerKeys(SparkSQLView, SatelliteOwnerKeys, register_as='satellite_owner_keys'):
 
     sql_template = '''
         SELECT {{ job.satellite_owner.key_column_name }},
@@ -11,7 +11,9 @@ class SparkStarKeys(SparkSQLView, StarKeys, register_as='star_keys'):
                first(hub_{{alias}}_key) AS hub_{{alias}}_key,
                {% endfor %}
                {% endif %}
-               flatten(collect_set(key_source)) AS key_source
+               flatten(collect_set(key_source)) AS key_source,
+               CURRENT_TIMESTAMP AS {{job.satellite_owner.type}}_load_dt,
+               concat_ws('|', flatten(collect_set(key_source))) AS {{job.satellite_owner.type}}_record_source
           FROM (
                 {% for dep in job.dependencies %}
                 SELECT

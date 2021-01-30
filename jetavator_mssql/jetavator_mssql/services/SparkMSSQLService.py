@@ -1,5 +1,5 @@
 import pandas
-from typing import Iterable, Dict, Union
+from typing import Iterable, Dict, Optional
 
 import uuid
 import jinja2
@@ -102,7 +102,8 @@ class SparkMSSQLService(MSSQLService, SparkStorageService, Service[SparkMSSQLCon
             spark_view_name: str,
             key_column_name: str,
             column_names: Iterable[str],
-            column_references: Dict[str, str]
+            column_references: Dict[str, str],
+            deleted_indicator: Optional[str] = None
     ) -> pyspark.sql.DataFrame:
         temp_table_suffix = str(uuid.uuid4()).replace('-', '_')
         temp_table_name = f"{storage_table_name}_{temp_table_suffix}"
@@ -112,7 +113,9 @@ class SparkMSSQLService(MSSQLService, SparkStorageService, Service[SparkMSSQLCon
             USING {{ source }} AS source
                ON target.{{ key_column_name }}
                 = source.{{ key_column_name }}
-             WHEN MATCHED AND source.deleted_ind = 1 THEN DELETE
+             {% if deleted_indicator %}
+             WHEN MATCHED AND source.{{ deleted_indicator }} = 1 THEN DELETE
+             {% endif %}
              {% for column, satellite_name in column_references.items() %}
              {{ "WHEN MATCHED THEN UPDATE SET" if loop.first }}
                  {{ column }} = (CASE WHEN update_ind_{{ satellite_name }} = 1
@@ -140,7 +143,8 @@ class SparkMSSQLService(MSSQLService, SparkStorageService, Service[SparkMSSQLCon
             source=self.qualified_table_name(temp_table_name),
             key_column_name=key_column_name,
             column_references=column_references,
-            column_names=column_names
+            column_names=column_names,
+            deleted_indicator=deleted_indicator
         )
         self.logger.debug("Pushing down SQL merge to MSSQL:\n" + merge_sql)
         self.execute(merge_sql)

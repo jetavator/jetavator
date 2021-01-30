@@ -9,6 +9,7 @@ from .SparkProducedKeys import (
 )
 from .SparkSatelliteQuery import SparkSatelliteQuery
 from .SparkSerialiseSatellite import SparkSerialiseSatellite
+from .SparkSerialiseSatelliteOwner import SparkSerialiseSatelliteOwner
 from .SparkStarData import SparkStarData
-from .SparkStarKeys import SparkStarKeys
+from .SparkSatelliteOwnerKeys import SparkSatelliteOwnerKeys
 from .SparkStarMerge import SparkStarMerge

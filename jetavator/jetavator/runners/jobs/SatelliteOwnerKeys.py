@@ -6,7 +6,7 @@ from jetavator.schema_registry import SatelliteOwner
 from .. import Job, Runner
 
 
-class StarKeys(Job, ABC, register_as='star_keys'):
+class SatelliteOwnerKeys(Job, ABC, register_as='satellite_owner_keys'):
     """
     Collects all the key values for any `Satellite` row that has been created,
     updated or deleted for this particular `Hub` or `Link`.

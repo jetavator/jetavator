@@ -131,7 +131,7 @@ class SatelliteOwnerModel(BaseModel[SatelliteOwner], ABC, register_as="satellite
     @property
     def table(self) -> Table:
         return self.define_table(
-            f"vault_{self.definition.type}_{self.definition.name}",
+            self.definition.table_name,
             *self.table_columns,
             self.index_or_key(f"{self.definition.type}_{self.definition.name}"),
             *self.satellite_owner_indexes(

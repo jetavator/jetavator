@@ -209,7 +209,7 @@ class Runner(RegistersSubclasses, RunnerABC, ABC):
            job
            for satellite_owner in self.project.satellite_owners.values()
            if satellite_owner.satellites_containing_keys
-           for job in self._create_star_jobs(satellite_owner)
+           for job in self._create_satellite_owner_jobs(satellite_owner)
         ]
 
     def _job_class_by_name(self, name: str) -> Type[Job]:
@@ -234,9 +234,10 @@ class Runner(RegistersSubclasses, RunnerABC, ABC):
             self._job_class_by_name("serialise_satellite")(self, satellite)
         ]
 
-    def _create_star_jobs(self, satellite_owner: SatelliteOwner) -> List[Job]:
+    def _create_satellite_owner_jobs(self, satellite_owner: SatelliteOwner) -> List[Job]:
         return [
-            self._job_class_by_name("star_keys")(self, satellite_owner),
+            self._job_class_by_name("satellite_owner_keys")(self, satellite_owner),
+            self._job_class_by_name("serialise_satellite_owner")(self, satellite_owner),
             self._job_class_by_name("star_data")(self, satellite_owner),
             self._job_class_by_name("star_merge")(self, satellite_owner)
         ]

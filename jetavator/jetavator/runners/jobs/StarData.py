@@ -29,11 +29,11 @@ class StarData(Job, ABC, register_as='star_data'):
         return f'updates_{self.satellite_owner.star_table_name}'
 
     @property
-    def star_keys_job(self) -> Job:
+    def satellite_owner_keys_job(self) -> Job:
         """
-        :return: The `StarKeys` job that contains the updated keys.
+        :return: The `SatelliteOwnerKeys` job that contains the updated keys.
         """
-        return self.runner.get_job('star_keys', self.satellite_owner)
+        return self.runner.get_job('satellite_owner_keys', self.satellite_owner)
 
     @property
     def satellite_query_jobs(self) -> List[Job]:
@@ -48,6 +48,6 @@ class StarData(Job, ABC, register_as='star_data'):
     @property
     def dependencies(self) -> List[Job]:
         return [
-            self.star_keys_job,
+            self.satellite_owner_keys_job,
             *self.satellite_query_jobs
         ]

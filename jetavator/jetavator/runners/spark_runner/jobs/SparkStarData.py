@@ -46,7 +46,7 @@ class SparkStarData(SparkSQLView, StarData, register_as='star_data'):
                {% endfor %}
                {% endfor %}
 
-          FROM {{ job.star_keys_job.name }} AS keys
+          FROM {{ job.satellite_owner_keys_job.name }} AS keys
           {% for query_job in job.satellite_query_jobs %}
           LEFT
           JOIN {{ query_job.name }} AS {{ query_job.satellite.name }}
