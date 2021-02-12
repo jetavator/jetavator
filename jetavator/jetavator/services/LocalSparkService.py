@@ -1,14 +1,11 @@
 import os
-from abc import ABC
 
 import wysdom
 
 from shutil import copyfile
-from lazy_property import LazyProperty
-from pyspark.sql import SparkSession
 
 from jetavator.config import ComputeServiceConfig, ConfigProperty
-from .SparkService import SparkService, SPARK_APP_NAME, DELTA_VERSION
+from .SparkService import SparkService
 
 
 class LocalSparkConfig(ComputeServiceConfig):
@@ -26,25 +23,6 @@ class LocalSparkService(SparkService, register_as="local_spark"):
     # TODO: Remove SparkService.session
     def session(self):
         raise NotImplementedError
-
-    @LazyProperty
-    def spark(self):
-        os.environ['PYSPARK_SUBMIT_ARGS'] = (
-            '--packages'
-            f' io.delta:{DELTA_VERSION}'
-            ' pyspark-shell'
-        )
-        spark_session = (
-            SparkSession
-            .builder
-            .appName(SPARK_APP_NAME)
-            .enableHiveSupport()
-            .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
-            .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
-            .getOrCreate()
-        )
-        spark_session.sparkContext.setLogLevel('ERROR')
-        return spark_session
 
     def csv_file_path(self, source_name: str):
         return (

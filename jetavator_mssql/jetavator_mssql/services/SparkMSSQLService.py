@@ -1,24 +1,29 @@
 import pandas
-from typing import Iterable, Dict, Optional
+from typing import Iterable, Dict, Optional, List
 
 import uuid
 import jinja2
 import sqlalchemy
-import sqlalchemy_views
-from sqlalchemy.exc import ProgrammingError, DBAPIError
 from sqlalchemy.dialects.mssql import dialect
 
 from lazy_property import LazyProperty
 
 import pyspark
-from pyspark.sql import functions as f
 
 from ..config import SparkMSSQLConfig
 from jetavator.services import Service, SparkStorageService
 from .MSSQLService import MSSQLService
 
+DRIVER_GROUP_ID = "com.microsoft.sqlserver"
+DRIVER_ARTIFACT_ID = "mssql-jdbc"
+DRIVER_VERSION = "8.2.2.jre8"
+
 
 class SparkMSSQLService(MSSQLService, SparkStorageService, Service[SparkMSSQLConfig], register_as='spark_mssql'):
+
+    spark_jars_packages: List[str] = [
+        f"{DRIVER_GROUP_ID}:{DRIVER_ARTIFACT_ID}:{DRIVER_VERSION}"
+    ]
 
     def load_dataframe(self, dataframe: pandas.DataFrame, source_name: str, source_column_names: Iterable[str]) -> None:
         pass
@@ -57,6 +62,7 @@ class SparkMSSQLService(MSSQLService, SparkStorageService, Service[SparkMSSQLCon
             .option("dbtable", self.qualified_table_name(table_name))
             .option("user", self.config.username)
             .option("password", self.config.password)
+            .option("driver", "com.microsoft.sqlserver.jdbc.SQLServerDriver")
             .load()
         )
 
@@ -76,6 +82,7 @@ class SparkMSSQLService(MSSQLService, SparkStorageService, Service[SparkMSSQLCon
             .option("dbtable", self.qualified_table_name(table_name))
             .option("user", self.config.username)
             .option("password", self.config.password)
+            .option("driver", "com.microsoft.sqlserver.jdbc.SQLServerDriver")
             .save()
         )
 
@@ -88,7 +95,8 @@ class SparkMSSQLService(MSSQLService, SparkStorageService, Service[SparkMSSQLCon
               url "{self.url}",
               dbtable "{self.qualified_table_name(table_name)}",
               user "{self.config.username}",
-              password "{self.config.password}"
+              password "{self.config.password}",
+              driver "com.microsoft.sqlserver.jdbc.SQLServerDriver"
             )
             """
         )

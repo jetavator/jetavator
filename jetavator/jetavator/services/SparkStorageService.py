@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Iterable, List, Dict
 from abc import ABC, abstractmethod
 
 import datetime
@@ -15,7 +15,6 @@ from .HiveMetastoreInterface import HiveMetastoreInterface
 from .ExecutesSparkSQL import ExecutesSparkSQL
 
 SPARK_APP_NAME = 'jetavator'
-DELTA_VERSION = 'delta-core_2.12:0.7.0'
 
 PYSPARK_COLUMN_TYPE_MAPPINGS = [
     (sqlalchemy.types.String, pyspark.sql.types.StringType),
@@ -33,6 +32,9 @@ def pyspark_column_type(sqlalchemy_column):
 
 
 class SparkStorageService(StorageService, ExecutesSparkSQL, HiveMetastoreInterface, ABC):
+
+    spark_config_options: Dict[str, str] = {}
+    spark_jars_packages: List[str] = []
 
     def load_dataframe(
             self,

@@ -1,4 +1,4 @@
-from typing import Iterable, Dict, Optional
+from typing import Iterable, Dict, Optional, List
 
 import datetime
 import os
@@ -18,7 +18,9 @@ from jetavator.sqlalchemy_delta import DeltaDialect
 from .Service import Service
 from .SparkStorageService import SparkStorageService
 
-DELTA_VERSION = 'delta-core_2.12:0.7.0'
+DRIVER_GROUP_ID = "io.delta"
+DRIVER_ARTIFACT_ID = "delta-core_2.12"
+DRIVER_VERSION = "0.7.0"
 
 
 class SparkDeltaStorageConfig(StorageServiceConfig):
@@ -30,6 +32,15 @@ class SparkDeltaStorageService(
     Service[SparkDeltaStorageConfig],
     register_as="spark_delta"
 ):
+
+    spark_config_options: Dict[str, str] = {
+        "spark.sql.extensions": "io.delta.sql.DeltaSparkSessionExtension",
+        "spark.sql.catalog.spark_catalog": "org.apache.spark.sql.delta.catalog.DeltaCatalog"
+    }
+
+    spark_jars_packages: List[str] = [
+        f"{DRIVER_GROUP_ID}:{DRIVER_ARTIFACT_ID}:{DRIVER_VERSION}"
+    ]
 
     @property
     def spark(self):

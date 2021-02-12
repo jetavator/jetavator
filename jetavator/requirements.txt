@@ -3,6 +3,6 @@
 wheel
 sphinx
 behave
-keyring
+freezegun
 python-dotenv
 git+https://github.com/jtv8/behave-pandas.git@supply-dtypes-in-code#egg=behave-pandas

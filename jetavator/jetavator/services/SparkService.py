@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Iterable, List, Set
 from abc import ABC
 
 import datetime
@@ -10,6 +10,10 @@ import pyspark
 import sqlalchemy
 import pandas
 
+from pyspark.sql import SparkSession
+
+from lazy_property import LazyProperty
+
 from jetavator.sqlalchemy_delta import HiveWithDDLDialect
 
 from .ComputeService import ComputeService
@@ -17,7 +21,6 @@ from .HiveMetastoreInterface import HiveMetastoreInterface
 from .ExecutesSparkSQL import ExecutesSparkSQL
 
 SPARK_APP_NAME = 'jetavator'
-DELTA_VERSION = 'delta-core_2.12:0.7.0'
 
 PYSPARK_COLUMN_TYPE_MAPPINGS = [
     (sqlalchemy.types.String, pyspark.sql.types.StringType),
@@ -39,6 +42,37 @@ class SparkService(ComputeService, ExecutesSparkSQL, HiveMetastoreInterface, ABC
     @property
     def sqlalchemy_dialect(self) -> sqlalchemy.engine.interfaces.Dialect:
         return HiveWithDDLDialect()
+
+    @LazyProperty
+    def spark(self):
+        builder = (
+            SparkSession
+            .builder
+            .appName(SPARK_APP_NAME)
+            .enableHiveSupport()
+            .config("spark.jars.packages", ",".join(self.all_spark_jars_packages))
+        )
+        for storage_service in self.storage_services.values():
+            for k, v in storage_service.spark_config_options.items():
+                builder = builder.config(k, v)
+        spark_session = builder.getOrCreate()
+        spark_session.sparkContext.setLogLevel('ERROR')
+        return spark_session
+
+    @property
+    def spark_jars_packages(self) -> List[str]:
+        return []
+
+    @property
+    def all_spark_jars_packages(self) -> Set[str]:
+        return {
+            *self.spark_jars_packages,
+            *(
+                package
+                for storage_service in self.storage_services.values()
+                for package in storage_service.spark_jars_packages
+            )
+        }
 
     def load_dataframe(
             self,
