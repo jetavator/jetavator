@@ -23,6 +23,8 @@ class Source(VaultObject, register_as="source"):
     csv_files: List[str] = []
     deleted_indicator_column: Optional[str] = wysdom.UserProperty(str, optional=True)
     load_timestamp_column: Optional[str] = wysdom.UserProperty(str, optional=True)
+    date_format: Optional[str] = wysdom.UserProperty(str, optional=True)
+    timestamp_format: Optional[str] = wysdom.UserProperty(str, optional=True)
 
     @property
     def primary_key_columns(self) -> Dict[str, SourceColumn]:

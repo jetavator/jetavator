@@ -50,7 +50,11 @@ class SparkCreateSource(SparkView, CreateSource, register_as='create_source'):
             .read
             .option("header", "true")
             .schema(self.spark_schema)
-            .csv(self.source.csv_files)
+            .csv(
+                self.source.csv_files,
+                dateFormat=self.source.date_format,
+                timestampFormat=self.source.timestamp_format
+            )
         )
         return (
             df

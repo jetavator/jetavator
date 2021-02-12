@@ -148,6 +148,57 @@ Feature: CSV sources
       | CDG             | Paris-Charles de Gaulle Airport                  | 2021-01-02 12:34:56 | False           |
 
   @fixture.remove_database_after_scenario
+  Scenario: With load timestamp in custom format
+
+    Given a definition for a source:
+      """
+      name: airport_details
+      type: source
+      columns:
+        "code": {"type": "CHAR(3)", "nullable": False, "pk": True}
+        "name": {"type": "String(64)", "nullable": False}
+        "my_load_dt": {"type": "DateTime", "nullable": False}
+      load_timestamp_column: my_load_dt
+      date_format: "dd.MM.yyyy"
+      timestamp_format: "dd.MM.yyyy HH:mm:ss"
+      """
+
+    And a CSV file airport_details.csv saved in a temporary folder:
+      | code | name                                             | my_load_dt          |
+      | ATL  | Hartsfield-Jackson Atlanta International Airport | 2021-01-01 00:00:00 |
+      | PEK  | Beijing Capital International Airport            | 2021-01-01 00:00:00 |
+      | DXB  | Dubai International Airport                      | 2021-02-02 02:46:00 |
+      | HND  | Haneda Airport                                   | 2021-02-02 02:46:00 |
+      | LAX  | Los Angeles International Airport                | 2021-01-01 00:00:00 |
+      | ORD  | Orchard Field                                    | 2021-02-02 02:46:00 |
+      | LHR  | London Heathrow Airport                          | 2021-02-02 02:46:00 |
+      | HKG  | Hong Kong International Airport                  | 2021-01-01 00:00:00 |
+      | PVG  | Shanghai Pudong International Airport            | 2021-02-02 02:46:00 |
+      | CDG  | Paris-Charles de Gaulle Airport	                | 2021-01-01 00:00:00 |
+
+    When all the definitions are saved to disk
+     And we run the CLI command "jetavator deploy -d"
+     And we run the CLI command:
+       """
+       jetavator run delta --csv airport_details="{tempfolder}/airport_details.csv"
+       """
+
+    Then the table vault_sat_airport_details exists on the vault datastore
+     And the table vault_sat_airport_details on the vault datastore contains 10 rows
+     And the table vault_sat_airport_details on the vault datastore contains these columns with this data:
+      | hub_airport_key | name                                             | sat_load_dt         | sat_deleted_ind |
+      | ATL             | Hartsfield-Jackson Atlanta International Airport | 2021-01-01 00:00:00 | False           |
+      | PEK             | Beijing Capital International Airport            | 2021-01-01 00:00:00 | False           |
+      | DXB             | Dubai International Airport                      | 2021-02-02 02:46:00 | False           |
+      | HND             | Haneda Airport                                   | 2021-02-02 02:46:00 | False           |
+      | LAX             | Los Angeles International Airport                | 2021-01-01 00:00:00 | False           |
+      | ORD             | Orchard Field                                    | 2021-02-02 02:46:00 | False           |
+      | LHR             | London Heathrow Airport                          | 2021-02-02 02:46:00 | False           |
+      | HKG             | Hong Kong International Airport                  | 2021-01-01 00:00:00 | False           |
+      | PVG             | Shanghai Pudong International Airport            | 2021-02-02 02:46:00 | False           |
+      | CDG             | Paris-Charles de Gaulle Airport                  | 2021-01-01 00:00:00 | False           |
+
+  @fixture.remove_database_after_scenario
   Scenario: With load timestamp
 
     Given a definition for a source:
