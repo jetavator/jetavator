@@ -144,7 +144,6 @@ class SparkMSSQLService(MSSQLService, SparkStorageService, Service[SparkMSSQLCon
             '''
         original_df = self.owner.spark.table(spark_view_name)
         df = original_df.drop("key_source")
-        self.logger.debug(df.collect())
         self.write_table(temp_table_name, df, "overwrite")
         merge_sql = jinja2.Template(merge_sql_template).render(
             target=self.qualified_table_name(storage_table_name),

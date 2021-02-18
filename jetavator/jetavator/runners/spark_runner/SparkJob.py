@@ -7,6 +7,7 @@ from pyspark.sql import DataFrame, SparkSession
 
 from .. import Job
 
+# TODO: Make COALESCE_PARTITIONS configurable, per-job, per-stage
 COALESCE_PARTITIONS = 10
 
 
