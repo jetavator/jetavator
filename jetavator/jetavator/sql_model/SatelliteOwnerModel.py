@@ -116,7 +116,7 @@ class SatelliteOwnerModel(BaseModel[SatelliteOwner], ABC, register_as="satellite
     def record_source_columns(self) -> List[Column]:
         return [
             Column(f"{self.definition.type}_load_dt", DateTime(), nullable=True),
-            Column(f"{self.definition.type}_record_source", String(256), nullable=True),
+            Column(f"{self.definition.type}_record_source", String(), nullable=True),
         ]
 
     @property

@@ -70,7 +70,7 @@ class SatelliteModel(SatelliteModelABC, register_as="satellite"):
     @property
     def record_source_columns(self) -> List[Column]:
         return [
-            Column("sat_record_source", String(256), nullable=True),
+            Column("sat_record_source", String(), nullable=True),
             Column("sat_record_hash", CHAR(32), nullable=True)
         ]
 
