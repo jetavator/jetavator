@@ -90,7 +90,7 @@ class ColumnType(str):
         elif isinstance(self.sqlalchemy_type, sqlalchemy.types.Date):
             return func.date_format(column, literal_column("'yyyy-MM-dd'"))
         elif isinstance(self.sqlalchemy_type, sqlalchemy.types.DateTime):
-            return func.date_format(column, literal_column("""yyyy-MM-dd'T'HH:mm:ssX"""))
+            return func.date_format(column, literal_column("'yyyy-MM-dd HH:mm:ssX'"))
         elif isinstance(self.sqlalchemy_type, sqlalchemy.types.Boolean):
             return cast(column, self.sqlalchemy_type)
         elif isinstance(self.sqlalchemy_type, sqlalchemy.types.String):
