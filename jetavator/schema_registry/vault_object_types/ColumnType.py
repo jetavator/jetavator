@@ -90,6 +90,7 @@ class ColumnType(str):
         elif isinstance(self.sqlalchemy_type, sqlalchemy.types.Date):
             return func.date_format(column, literal_column("'yyyy-MM-dd'"))
         elif isinstance(self.sqlalchemy_type, sqlalchemy.types.DateTime):
+            # TODO: Switch back to ISO date format when we rewrite this in Spark
             return func.date_format(column, literal_column("'yyyy-MM-dd HH:mm:ssX'"))
         elif isinstance(self.sqlalchemy_type, sqlalchemy.types.Boolean):
             return cast(column, self.sqlalchemy_type)
