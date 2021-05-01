@@ -50,6 +50,7 @@ class SparkService(ComputeService, ExecutesSparkSQL, HiveMetastoreInterface, ABC
             .builder
             .appName(SPARK_APP_NAME)
             .enableHiveSupport()
+            .config("spark.ui.showConsoleProgress", False)
             .config("spark.jars.packages", ",".join(self.all_spark_jars_packages))
         )
         for storage_service in self.storage_services.values():
