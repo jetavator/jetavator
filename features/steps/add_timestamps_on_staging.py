@@ -8,12 +8,7 @@ from behave_pandas import table_to_dataframe
 def step_impl(context):
 
     context.dataframe = table_to_dataframe(
-        context.table,
-        data_types={
-            "example_key": "int",
-            "example_int": "int",
-            "example_optional_varchar": "str"
-        }
+        context.table
     )
     context.jetavator.test_data_loader(
         dataframe=context.dataframe

@@ -12,8 +12,6 @@ from freezegun import freeze_time
 from sqlalchemy import MetaData, Table, Column
 from sqlalchemy.sql import and_, select
 
-from behave_pandas import table_to_dataframe
-
 from ast import literal_eval
 
 from jetavator.default_logger import default_logger
@@ -204,29 +202,6 @@ def step_impl(context, expected_value, datastore):
 )
 def step_impl(context):
     context.feature.test_data = context.table
-
-
-@given(u"the following updates are loaded to table {table:w}")
-@given(u"the following data is loaded to table {table:w}")
-@when(u"the following updates are loaded to table {table:w}")
-@when(u"the following data is loaded to table {table:w}")
-def load_to_base_table(context, table):
-    context.dataframe = table_to_dataframe(
-        context.table,
-        data_types={
-            k: v.lower()
-            for k, v in jetavator_engine().table_dtypes(table).items()
-        }
-    )
-    jetavator_engine().test_data_loader(
-        dataframe=context.dataframe
-    ).generate_sql(
-        table_name=table,
-        base_columns={
-            k: v
-            for k, v in context.dataframe.items()
-        }
-    )
 
 
 @when(u'we load a set of test data to table {table:w}')
