@@ -1,20 +1,30 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from lazy_property import LazyProperty
 
 from sqlalchemy import MetaData, Column, Table
 from sqlalchemy.schema import CreateTable
-from sqlalchemy.types import *
+from sqlalchemy.types import DateTime, Integer
 
 import wysdom
-import pandas
 
 from .SourceColumn import SourceColumn
 from ..VaultObject import VaultObject
 
+FilePath = str
+
 
 class Source(VaultObject, register_as="source"):
+
+    DELETED_INDICATOR_SYSTEM_COLUMN = "jetavator_deleted_ind"
+    LOAD_TIMESTAMP_SYSTEM_COLUMN = "jetavator_load_dt"
+
     columns: Dict[str, SourceColumn] = wysdom.UserProperty(wysdom.SchemaDict(SourceColumn))
+    csv_files: List[str] = []
+    deleted_indicator_column: Optional[str] = wysdom.UserProperty(str, optional=True)
+    load_timestamp_column: Optional[str] = wysdom.UserProperty(str, optional=True)
+    date_format: Optional[str] = wysdom.UserProperty(str, optional=True)
+    timestamp_format: Optional[str] = wysdom.UserProperty(str, optional=True)
 
     @property
     def primary_key_columns(self) -> Dict[str, SourceColumn]:
@@ -31,6 +41,7 @@ class Source(VaultObject, register_as="source"):
     def create_table_statement(self) -> CreateTable:
         return CreateTable(self.table)
 
+    # TODO: Move to sql_model?
     @LazyProperty
     def table(self) -> Table:
         return Table(
@@ -39,58 +50,16 @@ class Source(VaultObject, register_as="source"):
             *self._table_columns()
         )
 
-    # TODO: Re-implement assume_schema_integrity for loading CSVs
-    #       (perhaps with a header line safety check!)
     def load_csvs(
             self,
-            csv_files: List[str]
+            csv_files: List[FilePath]
             # , assume_schema_integrity=False
     ) -> None:
         """Loads a list of CSV files into a single named Source
 
         :param csv_files:  List of paths on disk of the CSV files
         """
-        # if assume_schema_integrity:
-        #     source = self.schema_registry.loaded["source", table_name]
-        #     self.spark_runner.load_csv(csv_file, source)
-        # else:
-        self.compute_service.load_dataframe(
-            dataframe=pandas.concat([
-                self._csv_to_dataframe(csv_file)
-                for csv_file in csv_files
-            ]),
-            source_name=self.name,
-            source_column_names=self.columns.keys()
-        )
-
-    def _csv_to_dataframe(
-            self,
-            csv_file: str
-    ) -> pandas.DataFrame:
-        date_columns = {
-            "jetavator_load_dt"
-        }
-        dtypes = {
-            "jetavator_deleted_ind": "int"
-        }
-        for k, v in self.columns.items():
-            if v.pandas_dtype in ["datetime64[ns]", "timedelta64[ns]"]:
-                date_columns.add(k)
-            else:
-                dtypes[k] = v.pandas_dtype
-        try:
-            return pandas.read_csv(
-                csv_file,
-                parse_dates=list(date_columns),
-                dtype=dtypes
-            )
-        except ValueError:
-            # File may be missing jetavator_load_dt column, so try again without it
-            return pandas.read_csv(
-                csv_file,
-                parse_dates=list(date_columns - {"jetavator_load_dt"}),
-                dtype=dtypes
-            )
+        self.csv_files = csv_files
 
     def _table_columns(self) -> List[Column]:
         # TODO: Spark/Hive does not allow PKs. Make this configurable per engine?
@@ -104,7 +73,7 @@ class Source(VaultObject, register_as="source"):
         return [
             Column(
                 column_name,
-                eval(column.type.upper().replace("MAX", "None")),
+                column.type.sqlalchemy_type,
                 nullable=True,
                 primary_key=(use_primary_key and column.pk)
             )
@@ -116,12 +85,15 @@ class Source(VaultObject, register_as="source"):
         return [
             Column(
                 "jetavator_load_dt",
-                DATETIME,
+                DateTime(),
                 nullable=True,
                 primary_key=use_primary_key),
             Column(
                 "jetavator_deleted_ind",
-                CHAR(1),
+                # TODO: Loading as integer saves space in CSVs.
+                #       Does this make sense for other file formats?
+                #       Is there a more general solution?
+                Integer(),
                 nullable=True,
                 default=0)
         ]

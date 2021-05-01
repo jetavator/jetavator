@@ -29,14 +29,16 @@ class SQLAlchemyRegistryService(RegistryService, Mapping, register_as="sqlalchem
             self.config, self.compute_service, deployment)
 
     def __len__(self) -> int:
-        return len(list(session.query(Deployment)))
+        return len(list(self.session().query(Deployment)))
 
     def __iter__(self) -> Iterator[str]:
-        session = self.compute_service.session()
         return iter(
             deployment.version
-            for deployment in session.query(Deployment)
+            for deployment in self.session().query(Deployment)
         )
+
+    def session(self):
+        return self.owner.compute_service.session()
 
     def load_from_disk(self) -> None:
         self.loaded = Project.from_directory(

@@ -1,12 +1,17 @@
 from typing import List
 
-from sqlalchemy.schema import DDLElement
+from lazy_property import LazyProperty
 
+from sqlalchemy.schema import DDLElement
+from sqlalchemy import MetaData
+
+from jetavator.sql_model.ProjectModelABC import ProjectModelABC
 from jetavator.config import Config
-from jetavator.services import DBService
+from jetavator.services import ComputeService
 from jetavator.schema_registry import Project, VaultObjectMapping
 
 from .BaseModel import BaseModel
+from .SatelliteModel import SatelliteModel
 
 SCHEMAS = [
     "jetavator",
@@ -22,17 +27,17 @@ SCHEMAS = [
 ]
 
 
-class ProjectModel(VaultObjectMapping[BaseModel]):
+class ProjectModel(VaultObjectMapping[BaseModel], ProjectModelABC):
 
     def __init__(
             self,
             config: Config,
-            compute_service: DBService,
+            compute_service: ComputeService,
             new_definition: Project,
             old_definition: Project
     ) -> None:
         super().__init__()
-        self.config = config
+        self._config = config
         self.compute_service = compute_service
         self.new_definition = new_definition
         self.old_definition = old_definition
@@ -49,6 +54,14 @@ class ProjectModel(VaultObjectMapping[BaseModel]):
             for key in keys
         }
 
+    @property
+    def config(self) -> Config:
+        return self._config
+
+    @LazyProperty
+    def metadata(self) -> MetaData:
+        return MetaData()
+
     def create_tables_ddl(self) -> List[DDLElement]:
         files = []
 
@@ -64,6 +77,7 @@ class ProjectModel(VaultObjectMapping[BaseModel]):
         return [
             view
             for satellite_model in self.satellites.values()
+            if isinstance(satellite_model, SatelliteModel)
             for view in satellite_model.history_views
         ]
 
@@ -71,5 +85,6 @@ class ProjectModel(VaultObjectMapping[BaseModel]):
         return [
             view
             for satellite_model in self.satellites.values()
+            if isinstance(satellite_model, SatelliteModel)
             for view in satellite_model.current_views
         ]

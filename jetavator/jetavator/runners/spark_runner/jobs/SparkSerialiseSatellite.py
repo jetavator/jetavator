@@ -1,12 +1,13 @@
-from .. import SparkSQLJob
+from pyspark.sql import DataFrame
+
+from .. import SparkJob
 from jetavator.runners.jobs import SerialiseSatellite
 
 
-class SparkSerialiseSatellite(SparkSQLJob, SerialiseSatellite, register_as='serialise_satellite'):
+class SparkSerialiseSatellite(SparkJob, SerialiseSatellite, register_as='serialise_satellite'):
 
-    sql_template = '''
-        INSERT
-          INTO {{ job.satellite.table_name }}
-        SELECT *
-          FROM {{ job.satellite_query_job.name }} AS source
-        '''
+    def execute(self) -> DataFrame:
+        return self.runner.compute_service.vault_storage_service.write_table(
+            table_name=self.satellite.table_name,
+            df=self.spark.table(self.satellite_query_job.name)
+        )

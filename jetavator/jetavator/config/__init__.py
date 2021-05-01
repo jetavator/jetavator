@@ -3,10 +3,10 @@ from .ConfigProperty import ConfigProperty
 from .Config import (
     Config,
     ServiceConfig,
-    DBServiceConfig,
-    LocalSparkConfig,
     StorageConfig,
     RegistryServiceConfig,
+    StorageServiceConfig,
+    ComputeServiceConfig,
     SimpleFileRegistryServiceConfig,
     SQLAlchemyRegistryServiceConfig
 )

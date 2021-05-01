@@ -7,6 +7,7 @@ from pyspark.sql import DataFrame, SparkSession
 
 from .. import Job
 
+# TODO: Make COALESCE_PARTITIONS configurable, per-job, per-stage
 COALESCE_PARTITIONS = 10
 
 
@@ -55,7 +56,7 @@ class SparkSQLJob(SparkJob, ABC):
         Execute the Spark SQL statement and return the resulting `DataFrame`.
         """
         try:
-            self.logger.debug(self.query)
+            self.logger.debug(f"{self.__class__.__name__}:\n{self.query}")
             return self.spark.sql(self.query).coalesce(COALESCE_PARTITIONS)
         except Exception as e:
             raise Exception(f'''

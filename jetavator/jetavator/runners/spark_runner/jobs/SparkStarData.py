@@ -12,9 +12,7 @@ class SparkStarData(SparkSQLView, StarData, register_as='star_data'):
                , keys.hub_{{alias}}_key
                {% endfor %}
                {% endif %}
-
-               , keys.key_source
-
+               
                {% for satellite in job.satellite_owner.star_satellites.values() %}
                , array_contains(
                     keys.key_source,
@@ -23,26 +21,30 @@ class SparkStarData(SparkSQLView, StarData, register_as='star_data'):
                {% endfor %}
 
                {% if job.satellite_owner.star_satellites.values() | length > 1 %}
-               , (LEAST(
+               , (
                    {% for satellite in job.satellite_owner.star_satellites.values() %}
-                   {{satellite.name}}.sat_deleted_ind{{"," if not loop.last}}
+                   {{satellite.name}}.sat_deleted_ind{{" AND " if not loop.last}}
                    {% endfor %}
-               ) == 1) AS deleted_ind
+               ) AS soft_deleted_ind
                {% elif job.satellite_owner.star_satellites.values() | length == 1 %}
                {% for satellite in job.satellite_owner.star_satellites.values() %}
-               , ({{satellite.name}}.sat_deleted_ind == 1) AS deleted_ind
+               , {{satellite.name}}.sat_deleted_ind AS soft_deleted_ind
                {% endfor %}
                {% else %}
-               , false AS deleted_ind
+               , FALSE AS soft_deleted_ind
                {% endif %}
+               
+               , FALSE AS deleted_ind  -- don't actually delete the row in the merge (may change later, see #66)
 
                {% for satellite in job.satellite_owner.star_satellites.values() %}
                {% for column in satellite.columns.keys() %}
-               , {{satellite.name}}.{{column}}
+               , CASE WHEN {{satellite.name}}.sat_deleted_ind THEN NULL 
+                      ELSE {{satellite.name}}.{{column}}
+                  END AS {{column}}
                {% endfor %}
                {% endfor %}
 
-          FROM {{ job.star_keys_job.name }} AS keys
+          FROM {{ job.satellite_owner_keys_job.name }} AS keys
           {% for query_job in job.satellite_query_jobs %}
           LEFT
           JOIN {{ query_job.name }} AS {{ query_job.satellite.name }}

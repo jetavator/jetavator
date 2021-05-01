@@ -8,11 +8,14 @@ from sqlalchemy.types import *
 from sqlalchemy.sql.expression import Select, ColumnElement, func, literal_column
 from sqlalchemy.sql.functions import Function, coalesce, max
 
+from jetavator.schema_registry import Satellite
+
 from ..VaultAction import VaultAction
-from .BaseModel import BaseModel
+from .SatelliteModelABC import SatelliteModelABC
+from .SatelliteOwnerModel import SatelliteOwnerModel
 
 
-class SatelliteModel(BaseModel, register_as="satellite"):
+class SatelliteModel(SatelliteModelABC, register_as="satellite"):
 
     @property
     def files(self) -> List[DDLElement]:
@@ -54,26 +57,26 @@ class SatelliteModel(BaseModel, register_as="satellite"):
         ]
 
     @property
-    def parent(self) -> BaseModel:
+    def parent(self) -> SatelliteOwnerModel:
         return self.project[self.definition.parent.key]
 
     @property
     def date_columns(self) -> List[Column]:
         return [
-            Column("sat_load_dt", DATETIME, nullable=True),
-            Column("sat_deleted_ind", CHAR(1), nullable=True, default=0)
+            Column("sat_load_dt", DateTime(), nullable=True),
+            Column("sat_deleted_ind", Boolean(), nullable=True, default=0)
         ]
 
     @property
     def record_source_columns(self) -> List[Column]:
         return [
-            Column("sat_record_source", VARCHAR(256), nullable=True),
+            Column("sat_record_source", String(), nullable=True),
             Column("sat_record_hash", CHAR(32), nullable=True)
         ]
 
     @property
     def expiry_date_column(self) -> Column:
-        return Column("sat_expiry_dt", DATETIME, nullable=True)
+        return Column("sat_expiry_dt", DateTime, nullable=True)
 
     @property
     def latest_version_ind_column(self) -> Column:
@@ -96,7 +99,7 @@ class SatelliteModel(BaseModel, register_as="satellite"):
             *self.date_columns,
             *self.record_source_columns,
             *self.satellite_columns,
-            schema=self.schema
+            schema=self.vault_schema
         )
 
     def custom_indexes(self, table_name: str) -> List[Index]:
@@ -151,7 +154,7 @@ class SatelliteModel(BaseModel, register_as="satellite"):
         return self.define_table(
             f'vault_history_{self.definition.name}',
             *self.view_columns,
-            schema=self.schema
+            schema=self.vault_schema
         )
 
     @property
@@ -178,7 +181,7 @@ class SatelliteModel(BaseModel, register_as="satellite"):
         return self.define_table(
             f'vault_now_{self.definition.name}',
             *self.view_columns,
-            schema=self.schema
+            schema=self.vault_schema
         )
 
     @property

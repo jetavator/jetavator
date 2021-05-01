@@ -5,17 +5,17 @@ from abc import ABC
 import pandas as pd
 
 from logging import Logger
-from typing import Dict, List
+from typing import Dict, List, Type
 from lazy_property import LazyProperty
 from wysdom.mixins import RegistersSubclasses
 
 from jetavator import Engine
-from jetavator.schema_registry import Project, Source, Satellite, SatelliteOwner
-from jetavator.services import DBService
+from jetavator.schema_registry import Project, Source, Satellite, SatelliteOwner, VaultObject
+from jetavator.services import ComputeService
 
 from .Job import Job
 from .JobState import JobState
-from .RunnerABC import RunnerABC
+from jetavator.runners.RunnerABC import RunnerABC
 
 
 class Runner(RegistersSubclasses, RunnerABC, ABC):
@@ -24,7 +24,7 @@ class Runner(RegistersSubclasses, RunnerABC, ABC):
     def __init__(
             self,
             engine: Engine,
-            compute_service: DBService,
+            compute_service: ComputeService,
             project: Project
     ):
         """
@@ -41,12 +41,12 @@ class Runner(RegistersSubclasses, RunnerABC, ABC):
     def from_compute_service(
             cls,
             engine: Engine,
-            compute_service: DBService,
+            compute_service: ComputeService,
             project: Project
     ) -> Runner:
         """
         Constructor that takes an :py:class:`~jetavator.Engine`,
-        a :py:class:`~jetavator.services.DBService` and
+        a :py:class:`~jetavator.services.ComputeService` and
         a :py:class:`~jetavator.schema_registry.Project`
         and returns a registered subclass
         of `Runner` as specified in `compute_service.config.type`
@@ -196,21 +196,21 @@ class Runner(RegistersSubclasses, RunnerABC, ABC):
         for job in self.blocked_jobs.values():
             job.check_if_ready()
 
-    def _create_jobs(self) -> List[PandasJob]:
+    def _create_jobs(self) -> List[Job]:
         return [
-                   job
-                   for source in self.project.sources.values()
-                   for job in self._create_source_jobs(source)
-               ] + [
-                   job
-                   for satellite in self.project.satellites.values()
-                   for job in self._create_satellite_jobs(satellite)
-               ] + [
-                   job
-                   for satellite_owner in self.project.satellite_owners.values()
-                   if satellite_owner.satellites_containing_keys
-                   for job in self._create_star_jobs(satellite_owner)
-               ]
+           job
+           for source in self.project.sources.values()
+           for job in self._create_source_jobs(source)
+        ] + [
+           job
+           for satellite in self.project.satellites.values()
+           for job in self._create_satellite_jobs(satellite)
+        ] + [
+           job
+           for satellite_owner in self.project.satellite_owners.values()
+           if satellite_owner.satellites_containing_keys
+           for job in self._create_satellite_owner_jobs(satellite_owner)
+        ]
 
     def _job_class_by_name(self, name: str) -> Type[Job]:
         return self.job_class.registered_subclass(name)
@@ -234,9 +234,10 @@ class Runner(RegistersSubclasses, RunnerABC, ABC):
             self._job_class_by_name("serialise_satellite")(self, satellite)
         ]
 
-    def _create_star_jobs(self, satellite_owner: SatelliteOwner) -> List[Job]:
+    def _create_satellite_owner_jobs(self, satellite_owner: SatelliteOwner) -> List[Job]:
         return [
-            self._job_class_by_name("star_keys")(self, satellite_owner),
+            self._job_class_by_name("satellite_owner_keys")(self, satellite_owner),
+            self._job_class_by_name("serialise_satellite_owner")(self, satellite_owner),
             self._job_class_by_name("star_data")(self, satellite_owner),
             self._job_class_by_name("star_merge")(self, satellite_owner)
         ]

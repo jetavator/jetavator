@@ -2,17 +2,15 @@ import os
 import random
 import shutil
 import pandas
-import behave
 import datetime
-
 import logging
 
-from behave import given, when, then
+from behave import given, when, then, model
+
+from freezegun import freeze_time
 
 from sqlalchemy import MetaData, Table, Column
 from sqlalchemy.sql import and_, select
-
-from behave_pandas import table_to_dataframe
 
 from ast import literal_eval
 
@@ -25,7 +23,7 @@ SCHEMA_METADATA_TABLE = {
     "view": "INFORMATION_SCHEMA.VIEWS"
 }
 
-use_step_matcher("parse")
+# use_step_matcher("parse")
 
 
 class ListenFilter(logging.Filter):
@@ -99,8 +97,8 @@ def jetavator_engine():
 
 
 def engine_datastore(datastore):
-    engine = jetavator_engine()
-    return engine.services[engine.config.storage[datastore]]
+    compute = jetavator_engine().compute_service
+    return compute.storage_services[compute.config.storage[datastore]]
 
 
 def engine_metadata(datastore):
@@ -124,6 +122,16 @@ def step_impl(context, datastore):
     engine_datastore(datastore).execute(context.text)
 
 
+@given(u"the system time is {time}")
+def step_impl(context, time):
+
+    if "fixture.freeze_time" not in context.tags:
+        raise Exception("Must use @fixture.freeze_time")
+
+    context.freezer = freeze_time(time)
+    context.freezer.start()
+
+
 @then(
     u"the {sql_object:w} {table:w} "
     u"on the {datastore} datastore "
@@ -136,14 +144,18 @@ def step_impl(context, datastore):
 )
 def step_impl(context, sql_object, table, row_count, datastore):
     store = engine_datastore(datastore)
+    qualified_table_name = f"{store.config.schema}.{table}"
     actual_row_count = store.sql_query_single_value(
         f"""
         SELECT COUNT(*) AS row_count
-        FROM {store.config.schema}.{table}
+        FROM {qualified_table_name}
         """
     )
     assert int(actual_row_count) == int(row_count), (
-        f"Expected {row_count} rows, got {actual_row_count} rows"
+        f"""
+        Expected {row_count} rows, got {actual_row_count} rows. The table contents are:
+        {store.execute("SELECT * FROM " + qualified_table_name)}
+        """
     )
 
 
@@ -190,29 +202,6 @@ def step_impl(context, expected_value, datastore):
 )
 def step_impl(context):
     context.feature.test_data = context.table
-
-
-@given(u"the following updates are loaded to table {table:w}")
-@given(u"the following data is loaded to table {table:w}")
-@when(u"the following updates are loaded to table {table:w}")
-@when(u"the following data is loaded to table {table:w}")
-def load_to_base_table(context, table):
-    context.dataframe = table_to_dataframe(
-        context.table,
-        data_types={
-            k: v.lower()
-            for k, v in jetavator_engine().table_dtypes(table).items()
-        }
-    )
-    jetavator_engine().test_data_loader(
-        dataframe=context.dataframe
-    ).generate_sql(
-        table_name=table,
-        base_columns={
-            k: v
-            for k, v in context.dataframe.items()
-        }
-    )
 
 
 @when(u'we load a set of test data to table {table:w}')
@@ -300,7 +289,7 @@ def step_impl(context, table_name, datastore):
 
     for row in context.table:
         where_clauses = [
-            table.c[heading] == row[heading]
+            table.c[heading] == (None if row[heading] == "None" else row[heading])
             for heading in row.headings
         ]
         row_results = connection.execute_sql_element(
@@ -398,7 +387,7 @@ def assert_returns_table(context, actual_dataframe, expected_table):
             "actual_dataframe must be type pandas.DataFrame, "
             f"not {type(actual_dataframe)}"
         )
-        assert isinstance(expected_table, behave.model.Table), (
+        assert isinstance(expected_table, model.Table), (
             "expected_table must be type behave.model.Table, "
             f"not {type(expected_table)}"
         )
@@ -412,7 +401,7 @@ def assert_returns_table(context, actual_dataframe, expected_table):
         )
         for row in expected_table:
             matches = [
-                (actual_dataframe[heading] == row[heading]).tolist()
+                (actual_dataframe[heading] == row[heading])
                 for heading in row.headings
                 if row[heading] != "*"  # exclude wildcard values
             ]
@@ -659,3 +648,11 @@ def step_impl(context, env_var_name):
 def step_impl(context, filename):
     with open(os.path.join(context.tempfolder, filename), "w") as f:
         f.write(context.text)
+
+
+@given(u'a config file saved as {filename}')
+def step_impl(context, filename):
+    with open(os.path.join(context.config.userdata.get("config"))) as from_file:
+        text = from_file.read()
+    with open(os.path.join(context.tempfolder, filename), "w") as to_file:
+        to_file.write(text)

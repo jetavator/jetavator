@@ -10,8 +10,8 @@ from azure.core.exceptions import ResourceExistsError
 
 class AzureStorageService(Service, register_as='azure_storage'):
 
-    def __init__(self, engine, config):
-        super().__init__(engine, config)
+    def __init__(self, owner, config):
+        super().__init__(owner, config)
         try:
             base64.b64decode(self.config.account_key)
         except Exception:

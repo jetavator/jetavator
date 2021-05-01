@@ -1,73 +1,19 @@
 from __future__ import annotations
 
-from typing import Dict
+from typing import Dict, List
 
 from lazy_property import LazyProperty
 
 from sqlalchemy import Column
-from sqlalchemy.types import (
-    ARRAY,
-    BIGINT,
-    BINARY,
-    BLOB,
-    BOOLEAN,
-    CHAR,
-    CLOB,
-    DATE,
-    DATETIME,
-    DECIMAL,
-    FLOAT,
-    INT,
-    INTEGER,
-    JSON,
-    NCHAR,
-    NUMERIC,
-    NVARCHAR,
-    REAL,
-    SMALLINT,
-    TEXT,
-    TIME,
-    TIMESTAMP,
-    VARBINARY,
-    VARCHAR
-)
 
 import wysdom
 
-from ..VaultObject import (
-    VaultObject, VaultObjectKey, HubKeyColumn
-)
+from ..VaultObject import VaultObjectKey, HubKeyColumn
 from ..VaultObjectCollection import VaultObjectSet
 from .SatelliteColumn import SatelliteColumn
 from .SatelliteOwner import SatelliteOwner
+from .SatelliteABC import SatelliteABC
 from .pipelines import SatellitePipeline
-
-SQLALCHEMY_TYPES = {
-    "ARRAY": ARRAY,
-    "BIGINT": BIGINT,
-    "BINARY": BINARY,
-    "BLOB": BLOB,
-    "BOOLEAN": BOOLEAN,
-    "CHAR": CHAR,
-    "CLOB": CLOB,
-    "DATE": DATE,
-    "DATETIME": DATETIME,
-    "DECIMAL": DECIMAL,
-    "FLOAT": FLOAT,
-    "INT": INT,
-    "INTEGER": INTEGER,
-    "JSON": JSON,
-    "NCHAR": NCHAR,
-    "NUMERIC": NUMERIC,
-    "NVARCHAR": NVARCHAR,
-    "REAL": REAL,
-    "SMALLINT": SMALLINT,
-    "TEXT": TEXT,
-    "TIME": TIME,
-    "TIMESTAMP": TIMESTAMP,
-    "VARBINARY": VARBINARY,
-    "VARCHAR": VARCHAR
-}
 
 
 class VaultObjectReference(wysdom.UserObject):
@@ -80,7 +26,7 @@ class VaultObjectReference(wysdom.UserObject):
         return VaultObjectKey(self.type, self.name)
 
 
-class Satellite(VaultObject, register_as="satellite"):
+class Satellite(SatelliteABC, register_as="satellite"):
 
     _parent: VaultObjectReference = wysdom.UserProperty(
         VaultObjectReference, name="parent")
@@ -135,7 +81,7 @@ class Satellite(VaultObject, register_as="satellite"):
         return VaultObjectSet(
             owner
             for dep in self.pipeline.dependencies
-            if type(dep.object_reference) is Satellite
+            if isinstance(dep.object_reference, Satellite)
             for owner in dep.object_reference.output_keys
         )
 
@@ -163,7 +109,7 @@ class Satellite(VaultObject, register_as="satellite"):
         return [
             dep.object_reference
             for dep in self.pipeline.dependencies
-            if type(dep.object_reference) is Satellite
+            if isinstance(dep.object_reference, Satellite)
             for output_key in dep.object_reference.output_keys
             if output_key is satellite_owner
         ]
@@ -179,9 +125,7 @@ class Satellite(VaultObject, register_as="satellite"):
         return [
             Column(
                 column_name,
-                # TODO: Update API to specify SQL types using a JSON schema,
-                #       not using the unsafe eval method
-                eval(column.type.upper().replace("MAX", "None")),
+                column.type.sqlalchemy_type,
                 nullable=True
             )
             for column_name, column in self.columns.items()

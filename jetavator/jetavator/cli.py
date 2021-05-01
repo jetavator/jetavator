@@ -4,14 +4,11 @@ jetavator
 Usage:
   jetavator config [--test] [--config-file=<config_file>]
     [--set <option>=<value>]...
-  jetavator build
   jetavator deploy [-d|--drop-if-exists] [--set <option>=<value>]...
   jetavator update [--set <option>=<value>]...
   jetavator run [delta|full] [--csv <target_table>=<source_csv>]...
   jetavator run [delta|full] --folder=<csv_folder>
   jetavator drop satellite <name> [--set <option>=<value>]...
-  jetavator performance [--set <option>=<value>]...
-    [--pivot=[rows|duration]] [--outfile=<csv_file>] [--no-print]
   jetavator show project [name|version|history]
     [--set <option>=<value>]...
     [--pivot=[rows|duration]] [--outfile=<csv_file>] [--no-print]
@@ -38,6 +35,7 @@ Help:
 
 import traceback
 import jsonschema
+import os
 
 from docopt import docopt
 from tabulate import tabulate
@@ -126,7 +124,7 @@ def main(argv=None, exit_callback=None):
         if options['config']:
             if options['--test']:
                 test_engine = Engine(config=config)
-                if test_engine.connection.test(master=True):
+                if test_engine.compute_service.test():
                     default_logger.info(
                         'Successfully logged in and connected to '
                         f'[{engine.config.environment_type}]'
@@ -140,9 +138,6 @@ def main(argv=None, exit_callback=None):
             else:
                 config.save()
 
-        elif options['build']:
-            engine.build_wheel()
-
         elif options['deploy']:
             engine.deploy()
 
@@ -155,6 +150,7 @@ def main(argv=None, exit_callback=None):
         elif options['run']:
             load_type = (LoadType.FULL if options['full'] else LoadType.DELTA)
             default_logger.info(f'Engine: Performing {load_type} load.')
+            # TODO: Refactor this out of cli.py to elsewhere - this is core functionality
             if options['<target_table>=<source_csv>']:
                 table_csvs = {}
                 for option in options['<target_table>=<source_csv>']:
@@ -172,28 +168,6 @@ def main(argv=None, exit_callback=None):
                     if file_extension == ".csv" and dir_entry.is_file():
                         engine.loaded_project.sources[filename].load_csvs([dir_entry.path])
             engine.run(load_type=load_type)
-
-        elif options['performance']:
-            df = engine.get_performance_data()
-
-            if options['--pivot']:
-                default_logger.info(
-                    f'Displaying report for: {options["--pivot"]}'
-                )
-                df = df.pivot_table(
-                    index=['name'],
-                    columns='stage',
-                    values=options['--pivot'],
-                    aggfunc='sum',
-                    margins=True
-                )
-            if options['--outfile']:
-                df.to_csv(options['--outfile'])
-
-            if not options['--no-print']:
-                default_logger.info(
-                    tabulate(df, headers='keys', tablefmt='grid')
-                )
 
         elif options['show']:
             if options['project']:

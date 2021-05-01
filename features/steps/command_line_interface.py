@@ -1,9 +1,8 @@
 import subprocess
 import os
+import csv
 
 from behave import given, when
-
-from behave_pandas import table_to_dataframe
 
 
 @given(u"a Behave feature file")
@@ -36,16 +35,13 @@ def step_impl(context, csv_filename):
         csv_filename
     )
     if context.text:
-        csv_file = open(context.csv_file_path, "w")
-        csv_file.write(context.text)
-        csv_file.close()
+        with open(context.csv_file_path, "w") as csv_file:
+            csv_file.write(context.text)
     elif context.table:
-        table_to_dataframe(
-            context.table,
-            data_types={
-                heading: "str"
-                for heading in context.table.headings
-            }
-        ).to_csv(context.csv_file_path)
+        with open(context.csv_file_path, "w") as csv_file:
+            csv_writer = csv.writer(csv_file)
+            csv_writer.writerow(context.table.headings)
+            for row in context.table:
+                csv_writer.writerow(row.cells)
     else:
         raise Exception("No table or CSV text found in this step")

@@ -1,4 +1,5 @@
-from typing import Iterable
+from typing import Iterable, List, Set
+from abc import ABC
 
 import datetime
 import os
@@ -7,15 +8,19 @@ import tempfile
 import numpy as np
 import pyspark
 import sqlalchemy
-import sqlparse
 import pandas
 
-from jetavator.sqlalchemy_delta import HiveWithDDLDialect, DeltaDialect
+from pyspark.sql import SparkSession
 
-from .DBService import DBService
+from lazy_property import LazyProperty
+
+from jetavator.sqlalchemy_delta import HiveWithDDLDialect
+
+from .ComputeService import ComputeService
+from .HiveMetastoreInterface import HiveMetastoreInterface
+from .ExecutesSparkSQL import ExecutesSparkSQL
 
 SPARK_APP_NAME = 'jetavator'
-DELTA_VERSION = 'delta-core_2.12:0.7.0'
 
 PYSPARK_COLUMN_TYPE_MAPPINGS = [
     (sqlalchemy.types.String, pyspark.sql.types.StringType),
@@ -32,56 +37,43 @@ def pyspark_column_type(sqlalchemy_column):
             return pyspark_type()
 
 
-class SparkService(DBService):
+class SparkService(ComputeService, ExecutesSparkSQL, HiveMetastoreInterface, ABC):
 
     @property
+    def sqlalchemy_dialect(self) -> sqlalchemy.engine.interfaces.Dialect:
+        return HiveWithDDLDialect()
+
+    @LazyProperty
     def spark(self):
-        raise NotImplementedError
+        builder = (
+            SparkSession
+            .builder
+            .appName(SPARK_APP_NAME)
+            .enableHiveSupport()
+            .config("spark.ui.showConsoleProgress", False)
+            .config("spark.jars.packages", ",".join(self.all_spark_jars_packages))
+        )
+        for storage_service in self.storage_services.values():
+            for k, v in storage_service.spark_config_options.items():
+                builder = builder.config(k, v)
+        spark_session = builder.getOrCreate()
+        spark_session.sparkContext.setLogLevel('ERROR')
+        return spark_session
 
-    # TODO: Require to avoid need for try/except block
-    # TODO: Don't hardcode DeltaDialect - make the storage configurable and separate from the compute
-    # TODO: Refactor compile_delta_lake and compile_hive back into one sensible framework
-    @staticmethod
-    def compile_delta_lake(sqlalchemy_executable):
-        try:
-            formatted = sqlparse.format(
-                str(sqlalchemy_executable.compile(
-                    dialect=DeltaDialect(),
-                    compile_kwargs={"literal_binds": True}
-                )),
-                reindent=True,
-                keyword_case='upper'
-            )
-        except TypeError:
-            formatted = sqlparse.format(
-                str(sqlalchemy_executable.compile(
-                    dialect=DeltaDialect()
-                )),
-                reindent=True,
-                keyword_case='upper'
-            )
-        return formatted
+    @property
+    def spark_jars_packages(self) -> List[str]:
+        return []
 
-    @staticmethod
-    def compile_hive(sqlalchemy_executable):
-        try:
-            formatted = sqlparse.format(
-                str(sqlalchemy_executable.compile(
-                    dialect=HiveWithDDLDialect(),
-                    compile_kwargs={"literal_binds": True}
-                )),
-                reindent=True,
-                keyword_case='upper'
+    @property
+    def all_spark_jars_packages(self) -> Set[str]:
+        return {
+            *self.spark_jars_packages,
+            *(
+                package
+                for storage_service in self.storage_services.values()
+                for package in storage_service.spark_jars_packages
             )
-        except TypeError:
-            formatted = sqlparse.format(
-                str(sqlalchemy_executable.compile(
-                    dialect=HiveWithDDLDialect()
-                )),
-                reindent=True,
-                keyword_case='upper'
-            )
-        return formatted
+        }
 
     def load_dataframe(
             self,
@@ -119,9 +111,6 @@ class SparkService(DBService):
     def csv_file_path(self, source_name: str):
         raise NotImplementedError
 
-    def source_csv_exists(self, source_name: str):
-        raise NotImplementedError
-
     def table_delta_path(self, sqlalchemy_table):
         return (
             '/tmp'
@@ -129,69 +118,12 @@ class SparkService(DBService):
             f'/{sqlalchemy_table.name}'
         )
 
-    def create_table(self, sqlalchemy_table):
-        self.spark.sql(self.compile_delta_lake(sqlalchemy_table))
-
-    def create_tables(self, sqlalchemy_tables):
-        for table in sqlalchemy_tables:
-            self.create_table(table)
-
-    def deploy(self):
-        self.engine.deploy()
-
-    def execute(self, sql):
-        try:
-            return self.spark.sql(sql).toPandas()
-        except Exception as e:
-            raise Exception(
-                f"""
-                Config dump:
-                {self.config}
-
-                Error while trying to run script:
-                {sql}
-                """ + str(e)
-            )
-
-    def drop_schema(self):
+    def prepare_environment(self) -> None:
+        # TODO: Make this platform-independent - currently HIVE specific
+        # TODO: Is this obsolete now?
         self.execute(
-            f'DROP DATABASE `{self.config.schema}` CASCADE'
+            f'USE `{self.config.schema}`'
         )
-
-    def create_schema(self):
-        self.execute(
-            f'CREATE DATABASE `{self.config.schema}`'
-        )
-
-    @property
-    def schema_empty(self):
-        return not any([
-            row
-            for row in self.execute(
-                f'SHOW TABLES IN `{self.config.schema}`'
-            )
-        ])
-
-    @property
-    def schema_exists(self):
-        return any([
-            database == self.config.schema
-            for database in self.execute('SHOW DATABASES')['namespace']
-        ])
-
-    def table_exists(self, table_name):
-        return any([
-            table == table_name
-            for table in self.execute(
-                f'SHOW TABLES IN `{self.config.schema}`')['tableName']
-        ])
-
-    def column_exists(self, table_name, column_name):
-        return any([
-            column == column_name
-            for column in self.execute(
-                f'DESCRIBE FORMATTED `{self.config.schema}`.`{table_name}`')['col_name']
-        ])
 
     def sql_query_single_value(self, sql):
         return self.execute(sql).iloc[0, 0]
@@ -200,19 +132,4 @@ class SparkService(DBService):
         assert self.sql_query_single_value("SELECT 1") == 1
         return True
 
-    def execute_sql_element(self, sql_element, async_cursor=False):
-        return self.execute(
-            self.compile_delta_lake(sql_element)
-        )
 
-    def execute_sql_elements_async(self, sql_elements):
-        # Async not implemented!
-        if type(sql_elements) is dict:
-            jobs = sql_elements
-        else:
-            jobs = {
-                self.sql_script_filename(sql_element): sql_element
-                for sql_element in sql_elements
-            }
-        for job in jobs.values():
-            self.execute_sql_element(job)

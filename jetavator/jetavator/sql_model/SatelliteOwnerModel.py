@@ -2,18 +2,20 @@ from typing import Optional, Dict, List
 
 from abc import ABC, abstractmethod
 
-from .BaseModel import BaseModel
-
 from sqlalchemy import Table, Column, Index, PrimaryKeyConstraint
 from sqlalchemy.schema import SchemaItem, DDLElement
 from sqlalchemy.types import *
 
-from sqlalchemy_views import CreateView, DropView
+from jetavator.schema_registry import SatelliteOwner
+from jetavator.services import StorageService
 
 from ..VaultAction import VaultAction
+from .BaseModel import BaseModel
+from .SatelliteModelABC import SatelliteModelABC
+from .functions import hash_keygen
 
 
-class SatelliteOwnerModel(BaseModel, ABC, register_as="satellite_owner"):
+class SatelliteOwnerModel(BaseModel[SatelliteOwner], ABC, register_as="satellite_owner"):
 
     @property
     def files(self) -> List[DDLElement]:
@@ -33,16 +35,16 @@ class SatelliteOwnerModel(BaseModel, ABC, register_as="satellite_owner"):
                 self.create_or_alter_tables(self.star_tables, with_index)
             )
 
-    @property
-    def create_views(self) -> List[CreateView]:
-        return [CreateView(
-            self.updates_pit_view,
-            self.updates_pit_view_query
-        )]
-
-    @property
-    def drop_views(self) -> List[DropView]:
-        return [DropView(self.updates_pit_view)]
+    # @property
+    # def create_views(self) -> List[CreateView]:
+    #     return [CreateView(
+    #         self.updates_pit_view,
+    #         self.updates_pit_view_query
+    #     )]
+    #
+    # @property
+    # def drop_views(self) -> List[DropView]:
+    #     return [DropView(self.updates_pit_view)]
 
     @property
     def tables(self) -> List[Table]:
@@ -64,40 +66,43 @@ class SatelliteOwnerModel(BaseModel, ABC, register_as="satellite_owner"):
     def key_columns(self) -> List[Column]:
         return self.definition.alias_key_columns(self.definition.name)
 
-    # TODO: Move MSSQL clustering options to a plugin
+    def index_kwargs(
+            self,
+            storage_service: StorageService
+    ) -> Dict[str, bool]:
+        return {
+            x: self.definition.option(x)
+            for x in storage_service.index_option_kwargs
+        }
 
     def index(
             self,
+            storage_service: StorageService,
             name: str,
-            alias: Optional[str] = None,
-            allow_clustered: bool = True
+            alias: Optional[str] = None
     ) -> Index:
         alias = alias or self.definition.name
-        mssql_clustered = allow_clustered and self.definition.option(
-            "mssql_clustered")
         return Index(
             f"ix_{name}",
             self.definition.alias_primary_key_column(alias),
             unique=False,
-            mssql_clustered=mssql_clustered
+            **self.index_kwargs(storage_service)
         )
 
     def index_or_key(
             self,
+            storage_service: StorageService,
             name: str,
-            alias: Optional[str] = None,
-            allow_clustered: bool = True
+            alias: Optional[str] = None
     ) -> SchemaItem:
         alias = alias or self.definition.name
         if self.definition.option("no_primary_key"):
-            return self.index(name, alias, allow_clustered)
+            return self.index(storage_service, name, alias)
         else:
-            mssql_clustered = allow_clustered and self.definition.option(
-                "mssql_clustered")
             return PrimaryKeyConstraint(
                 self.definition.alias_primary_key_name(alias),
                 name=f"pk_{name}",
-                mssql_clustered=mssql_clustered
+                **self.index_kwargs(storage_service)
             )
 
     def custom_indexes(self, table_name) -> List[Index]:
@@ -110,8 +115,8 @@ class SatelliteOwnerModel(BaseModel, ABC, register_as="satellite_owner"):
     @property
     def record_source_columns(self) -> List[Column]:
         return [
-            Column(f"{self.definition.type}_load_dt", DATETIME(), nullable=True),
-            Column(f"{self.definition.type}_record_source", VARCHAR(256), nullable=True),
+            Column(f"{self.definition.type}_load_dt", DateTime(), nullable=True),
+            Column(f"{self.definition.type}_record_source", String(), nullable=True),
         ]
 
     @property
@@ -130,12 +135,15 @@ class SatelliteOwnerModel(BaseModel, ABC, register_as="satellite_owner"):
     @property
     def table(self) -> Table:
         return self.define_table(
-            f"vault_{self.definition.type}_{self.definition.name}",
+            self.definition.table_name,
             *self.table_columns,
-            self.index_or_key(f"{self.definition.type}_{self.definition.name}"),
-            *self.satellite_owner_indexes(
+            self.index_or_key(
+                self.vault_storage_service,
                 f"{self.definition.type}_{self.definition.name}"),
-            schema=self.schema
+            *self.satellite_owner_indexes(
+                self.vault_storage_service,
+                f"{self.definition.type}_{self.definition.name}"),
+            schema=self.vault_schema
         )
 
     @property
@@ -153,16 +161,19 @@ class SatelliteOwnerModel(BaseModel, ABC, register_as="satellite_owner"):
             *self.key_columns,
             *self.role_specific_columns,
             *self.star_satellite_columns,
-            self.index_or_key(f"{self.star_prefix}_{self.definition.name}"),
+            self.index_or_key(
+                self.star_storage_service,
+                f"{self.star_prefix}_{self.definition.name}"),
             *self.satellite_owner_indexes(
+                self.star_storage_service,
                 f"{self.star_prefix}_{self.definition.name}"),
             *self.custom_indexes(
                 f"{self.star_prefix}_{self.definition.name}"),
-            schema=self.schema
+            schema=self.star_schema
         )
 
     @property
-    def star_satellite_models(self) -> Dict[str, BaseModel]:
+    def star_satellite_models(self) -> Dict[str, SatelliteModelABC]:
         return {
             satellite_model.definition.name: satellite_model
             for satellite_model in self.project.satellites.values()
@@ -172,5 +183,21 @@ class SatelliteOwnerModel(BaseModel, ABC, register_as="satellite_owner"):
         }
 
     @abstractmethod
-    def satellite_owner_indexes(self, table_name: str) -> List[Index]:
+    def satellite_owner_indexes(
+            self,
+            storage_service: StorageService,
+            table_name: str
+    ) -> List[Index]:
         pass
+
+    def generate_table_keys(self, source_table, alias=None):
+        alias = alias or self.definition.name
+        if self.definition.option("hash_key"):
+            hash_key = [hash_keygen(
+                source_table.c[self.definition.alias_key_name(alias)]
+                ).label(self.definition.alias_hash_key_name(alias))]
+        else:
+            hash_key = []
+        return hash_key + [
+            source_table.c[self.definition.alias_key_name(alias)]
+        ]

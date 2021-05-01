@@ -1,12 +1,10 @@
-import wysdom
-from jetavator.config import DBServiceConfig
+from jetavator.config import StorageServiceConfig, ConfigProperty
 
 
-class MSSQLConfig(DBServiceConfig):
+class MSSQLConfig(StorageServiceConfig):
 
-    type: str = wysdom.UserProperty(wysdom.SchemaConst('mssql'))
-    database: str = wysdom.UserProperty(str)
-    server: str = wysdom.UserProperty(str)
-    username: str = wysdom.UserProperty(str)
-    password: str = wysdom.UserProperty(str)
-    trusted_connection: bool = wysdom.UserProperty(bool)
+    database: str = ConfigProperty(str)
+    server: str = ConfigProperty(str)
+    username: str = ConfigProperty(str)
+    password: str = ConfigProperty(str)
+    trusted_connection: bool = ConfigProperty(bool, optional=True)

@@ -1,37 +1,48 @@
 from __future__ import annotations
 
-from typing import Iterable, List
+from typing import Iterable, List, Any, TypeVar, Generic
+from abc import ABC, abstractmethod
+
+from wysdom import RegistersSubclasses
 
 from sqlalchemy import Table, MetaData, Column
 from sqlalchemy.schema import CreateTable, DropTable, CreateIndex, DDLElement
 from sqlalchemy_views import CreateView, DropView
 
-from wysdom.mixins import RegistersSubclasses
-
 from ..VaultAction import VaultAction
 
-from jetavator.schema_registry import VaultObject, VaultObjectKey, VaultObjectMapping
+from jetavator.services import StorageService
+from jetavator.schema_registry import VaultObject, VaultObjectMapping, VaultObjectKey
+
+from .ProjectModelABC import ProjectModelABC
+
+VaultObjectType = TypeVar('VaultObjectType', bound=VaultObject)
 
 
-class BaseModel(RegistersSubclasses):
+class BaseModel(RegistersSubclasses, Generic[VaultObjectType], ABC):
 
     def __init__(
             self,
-            project: VaultObjectMapping[BaseModel],
-            new_object: VaultObject,
-            old_object: VaultObject
+            project: ProjectModelABC,
+            new_object: VaultObjectType,
+            old_object: VaultObjectType
     ) -> None:
         super().__init__()
         self.project = project
         self.new_object = new_object
         self.old_object = old_object
 
+    @property
+    @abstractmethod
+    def files(self) -> List[DDLElement]:
+        pass
+
     @classmethod
     def subclass_instance(
             cls,
             project: VaultObjectMapping[BaseModel],
-            new_object: VaultObject,
-            old_object: VaultObject
+            new_object: VaultObjectType,
+            old_object: VaultObjectType
     ) -> BaseModel:
         key: VaultObjectKey = (
             new_object.key if new_object else old_object.key
@@ -44,7 +55,11 @@ class BaseModel(RegistersSubclasses):
         )
 
     @property
-    def definition(self) -> VaultObject:
+    def metadata(self) -> MetaData:
+        return self.project.metadata
+
+    @property
+    def definition(self) -> VaultObjectType:
         if self.new_object:
             return self.new_object
         else:
@@ -62,12 +77,20 @@ class BaseModel(RegistersSubclasses):
             return VaultAction.NONE
 
     @property
-    def schema(self) -> str:
-        return self.project.config.schema
+    def vault_storage_service(self) -> StorageService:
+        return self.project.compute_service.vault_storage_service
 
     @property
-    def metadata(self) -> MetaData:
-        return self.project.compute_service.metadata
+    def star_storage_service(self) -> StorageService:
+        return self.project.compute_service.star_storage_service
+
+    @property
+    def vault_schema(self) -> str:
+        return self.vault_storage_service.config.schema
+
+    @property
+    def star_schema(self) -> str:
+        return self.star_storage_service.config.schema
 
     def define_table(
             self,

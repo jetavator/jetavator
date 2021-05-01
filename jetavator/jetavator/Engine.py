@@ -1,37 +1,20 @@
-# TODO: Support all possible operations for upgrading from one version of a project to another.
-#       Operations to support:
-#           Add source
-#           Delete source - requires all satellites referencing it to be deleted
-#           Modify source
-#           Rename source - requires all satellites referencing it to be modified
-#           Add hub
-#           Delete hub - requires all links and satellites referencing it to be deleted
-#           Modify hub - requires all links and satellites referencing it to be modified
-#           Rename hub - requires all links and satellites referencing it to be modified
-#           Add link
-#           Delete link - requires all satellites referencing it to be deleted
-#           Modify link - requires all satellites referencing it to be modified
-#           Rename link - requires all satellites referencing it to be modified
-#           Add satellite
-#           Delete satellite - requires all satellites referencing it as a dependency to be deleted
-#           Modify satellite - requires all satellites referencing it as a dependency to be modified
-#           Rename satellite - requires all satellites referencing it as a dependency to be modified
-#           Backfill satellite to date (by calculating)
-#           Backfill satellite to date (by copying from previous version)
-
 from enum import Enum
 from functools import wraps
-from logging import Logger
-from typing import Union, Dict, Callable
+from typing import Any, Union, Dict, Callable
 
+import logging
+import logging.config
 import yaml
 from lazy_property import LazyProperty
 
+from jetavator.EngineABC import EngineABC
 from .runners import Runner
 from .config import Config
 from .schema_registry import Project, RegistryService
-from .services import Service, DBService
+from .services import Service, ComputeService
 from .sql_model import ProjectModel
+from .default_logger import DEFAULT_LOGGER_CONFIG
+from .DDLDeployer import DDLDeployer
 
 PANDAS_TO_SQL_MAPPINGS = {
     "int": "bigint",
@@ -64,7 +47,7 @@ def logged(function_to_decorate: Callable) -> Callable:
     return decorated_function
 
 
-class Engine(object):
+class Engine(EngineABC):
     """The core Jetavator engine. Pass this object a valid engine
     configuration, and use it to perform operations like deploying a project
     or loading new data.
@@ -79,7 +62,11 @@ class Engine(object):
     ) -> None:
         """Default constructor
         """
-        self.config = config
+        self._config = config
+
+    @property
+    def config(self) -> Config:
+        return self._config
 
     @LazyProperty
     def loaded_project(self) -> Project:
@@ -91,62 +78,26 @@ class Engine(object):
             self.config.model_path)
 
     @property
-    def compute_service(self) -> DBService:
+    def compute_service(self) -> ComputeService:
         """The storage service used for computation
         """
         return self.services[self.config.compute]
-
-    @property
-    def source_storage_service(self) -> DBService:
-        """The storage service used for the source layer
-        """
-        return self.services[self.config.storage.source]
-
-    @property
-    def vault_storage_service(self) -> DBService:
-        """The storage service used for the data vault layer
-        """
-        return self.services[self.config.storage.vault]
-
-    @property
-    def star_storage_service(self) -> DBService:
-        """The storage service used for the star schema layer
-        """
-        return self.services[self.config.storage.star]
-
-    @property
-    def logs_storage_service(self) -> DBService:
-        """The storage service used for logs
-        """
-        return self.services[self.config.storage.logs]
-
-    @property
-    def db_services(self) -> Dict[str, DBService]:
-        """All the registered database services in the engine config
-
-        :return: A dictionary of class:`jetavator.services.DBService` by name
-        """
-        return {
-            k: v
-            for k, v in self.services.items()
-            if isinstance(v, DBService)
-        }
 
     # TODO: Engine.drop_schemas be moved to Project if the schema to drop
     #       is specific to a Project?
     def drop_schemas(self) -> None:
         """Drop this project's schema on all storage services
         """
-        for service in self.db_services.values():
-            if service.schema_exists:
-                service.drop_schema()
+        self.compute_service.drop_schemas()
 
-    # TODO: Should <object>.logger be part of the public API?
     @property
-    def logger(self) -> Logger:
-        """Python logging service to receive log messages
-        """
-        return self.compute_service.logger
+    def logger_config(self) -> Dict[str, Any]:
+        return DEFAULT_LOGGER_CONFIG
+
+    @LazyProperty
+    def logger(self) -> logging.Logger:
+        logging.config.dictConfig(self.logger_config)
+        return logging.getLogger('jetavator')
 
     @LazyProperty
     def services(self) -> Dict[str, Service]:
@@ -186,25 +137,7 @@ class Engine(object):
     def deploy(self) -> None:
         """Deploy the current project to the configured storage services
         """
-        self.logger.info('Testing database connection')
-        self.compute_service.test()
-        if self.compute_service.schema_exists:
-            if self.config.drop_schema_if_exists:
-                self.logger.info('Dropping and recreating database')
-                self.compute_service.drop_schema()
-                self.compute_service.create_schema()
-            elif (
-                    not self.compute_service.schema_empty
-                    and not self.config.skip_deploy
-            ):
-                raise Exception(
-                    f"Database {self.config.schema} already exists, "
-                    "is not empty, and config.drop_schema_if_exists "
-                    "is set to False."
-                )
-        else:
-            self.logger.info(f'Creating database {self.config.schema}')
-            self.compute_service.create_schema()
+        self.compute_service.create_schemas()
         self._deploy_template()
 
     @logged
@@ -222,10 +155,7 @@ class Engine(object):
         if load_type == LoadType.FULL:
             raise NotImplementedError("Not implemented in Spark/Hive version.")
 
-        # TODO: Make this platform-independent - currently HIVE specific
-        self.compute_service.execute(
-            f'USE `{self.config.schema}`'
-        )
+        self.compute_service.prepare_environment()
 
         # TODO: Test DB connection before execution
         # self.connection.test()
@@ -274,7 +204,7 @@ class Engine(object):
         self._update_database_model()
 
         if new_vault_object.type == "satellite":
-            self.compute_service.execute_sql_element(
+            self.compute_service.vault_storage_service.execute_sql_element(
                 new_vault_object.sql_model.sp_load("full").execute())
 
     # TODO: Move Engine.drop to VaultObject.drop in order to allow
@@ -366,12 +296,12 @@ class Engine(object):
             self.loaded_project
         )
 
-    # TODO: Do we need both clear_database and drop_schemas?
-    def clear_database(self) -> None:
-        self.logger.info('Starting: clear_database')
-        for table in self.sql_model.tables:
-            self.compute_service.write_empty_table(table, overwrite_schema=False)
-        self.logger.info('Finished: clear_database')
+    @LazyProperty
+    def ddl_deployer(self) -> DDLDeployer:
+        return DDLDeployer(
+            self.sql_model,
+            self.compute_service.vault_storage_service
+        )
 
     def _deploy_template(self) -> None:
 
@@ -380,23 +310,7 @@ class Engine(object):
 
         # self.connection.reset_metadata()
 
-        self.logger.info(f'Creating tables...')
-
-        self.vault_storage_service.create_tables(
-            self.sql_model.create_tables_ddl()
-        )
-
-        self.logger.info(f'Creating history views...')
-
-        self.vault_storage_service.execute_sql_elements_async(
-            self.sql_model.create_history_views()
-        )
-
-        self.logger.info(f'Creating current views...')
-
-        self.vault_storage_service.execute_sql_elements_async(
-            self.sql_model.create_current_views()
-        )
+        self.ddl_deployer.deploy()
 
         # self.logger.info(f'Updating schema registry...')
         # self.schema_registry.write_definitions_to_sql()
