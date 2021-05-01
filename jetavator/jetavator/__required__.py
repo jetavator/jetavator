@@ -15,5 +15,6 @@ REQUIRED = [
     'pyhive[hive]>=0.6.1,<2',
     'thrift>=0.13.0<1',
     'jinja2>=2.10.3,<3',
-    'docopt>=0.6.2,<0.7'
+    'docopt>=0.6.2,<0.7',
+    'python-dotenv>=0.17.1,<0.18'
 ]
