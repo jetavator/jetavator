@@ -1,7 +1,6 @@
 import datetime
 
 from behave import given, when, then
-from behave_pandas import table_to_dataframe
 
 
 @when(u"test data is loaded into the source table")

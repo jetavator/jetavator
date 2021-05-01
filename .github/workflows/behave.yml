@@ -27,7 +27,7 @@ jobs:
         pip install ./jetavator[dev]
     - name: Test with behave
       run: |
-        coverage run --source='./jetavator' -m behave
+        coverage run --source='./jetavator' -m behave -D config=test_configs/delta.yml
     - name: Generate coverage report
       run: |
         coverage xml
