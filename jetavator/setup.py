@@ -30,7 +30,9 @@ EXTRAS = {
         'wheel>=0.36.2,<0.37',
         'sphinx>=3.5,<4',
         'sphinx_rtd_theme>=0.5.2,<0.6',
-        'behave>=1.2.6,<2'
+        'behave>=1.2.6,<2',
+        'behave-pandas>=0.4.0,<0.5',
+        'freezegun>=1.1,<2'
     ],
 }
 
