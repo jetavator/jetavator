@@ -20,7 +20,7 @@ from .SparkStorageService import SparkStorageService
 
 DRIVER_GROUP_ID = "io.delta"
 DRIVER_ARTIFACT_ID = "delta-core_2.12"
-DRIVER_VERSION = "0.7.0"
+DRIVER_VERSION = "0.8.0"
 
 
 class SparkDeltaStorageConfig(StorageServiceConfig):
