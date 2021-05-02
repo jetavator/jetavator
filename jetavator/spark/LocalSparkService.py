@@ -2,8 +2,6 @@ import os
 
 import wysdom
 
-from shutil import copyfile
-
 from jetavator.config import ComputeServiceConfig, ConfigProperty
 from .SparkService import SparkService
 

@@ -5,7 +5,7 @@ import pyspark
 
 from jetavator.HasConfig import HasConfig
 
-from .ExecutesSQL import ExecutesSQL
+from jetavator.sql import ExecutesSQL
 
 
 class ExecutesSparkSQL(ExecutesSQL, HasConfig, ABC):

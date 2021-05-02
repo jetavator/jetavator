@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict
 from abc import ABC, abstractmethod
 
 from lazy_property import LazyProperty
@@ -7,7 +7,7 @@ from jetavator.EngineABC import EngineABC
 from .StorageService import StorageService
 
 from .ComputeServiceABC import ComputeServiceABC
-from .ExecutesSQL import ExecutesSQL
+from jetavator.sql.ExecutesSQL import ExecutesSQL
 
 
 class ComputeService(ComputeServiceABC, ExecutesSQL, ABC):

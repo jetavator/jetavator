@@ -6,7 +6,6 @@ from typing import Any, Union, Dict, Callable
 
 import logging
 import logging.config
-import yaml
 from lazy_property import LazyProperty
 
 from jetavator.EngineABC import EngineABC

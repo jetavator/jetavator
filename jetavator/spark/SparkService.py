@@ -1,4 +1,4 @@
-from typing import Iterable, List, Set
+from typing import List, Set
 from abc import ABC
 
 import sqlalchemy
@@ -9,7 +9,7 @@ from lazy_property import LazyProperty
 
 from jetavator.sqlalchemy_delta import HiveWithDDLDialect
 
-from .ComputeService import ComputeService
+from jetavator.services.ComputeService import ComputeService
 from .HiveMetastoreInterface import HiveMetastoreInterface
 from .ExecutesSparkSQL import ExecutesSparkSQL
 

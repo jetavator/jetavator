@@ -10,7 +10,7 @@ import pyspark
 import sqlalchemy
 import pandas
 
-from .StorageService import StorageService
+from jetavator.services.StorageService import StorageService
 from .HiveMetastoreInterface import HiveMetastoreInterface
 from .ExecutesSparkSQL import ExecutesSparkSQL
 

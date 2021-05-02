@@ -1,6 +1,5 @@
 from jetavator.EngineABC import EngineABC
-from jetavator.services import Service
-from jetavator.services.Service import ConfigType
+from .Service import Service, ConfigType
 
 from .ComputeServiceABC import ComputeServiceABC
 

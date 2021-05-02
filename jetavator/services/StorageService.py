@@ -11,7 +11,7 @@ from jetavator.config import StorageServiceConfig
 from .Service import Service
 from .ComputeOwnedService import ComputeOwnedService
 from .StorageServiceABC import StorageServiceABC
-from .ExecutesSQL import ExecutesSQL
+from jetavator.sql.ExecutesSQL import ExecutesSQL
 
 
 class StorageService(

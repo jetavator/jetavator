@@ -5,6 +5,7 @@ from .VaultAction import VaultAction
 from .ServiceOwner import ServiceOwner
 from .App import App, LoadType
 from .config import Config
+from . import spark
 
 from pkg_resources import iter_entry_points as _iter_entry_points
 
