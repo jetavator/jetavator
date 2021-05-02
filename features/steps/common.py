@@ -16,7 +16,7 @@ from ast import literal_eval
 
 from jetavator.default_logger import default_logger
 from jetavator.cli import main as cli_main
-from jetavator import Engine, Config
+from jetavator import App, Config
 
 SCHEMA_METADATA_TABLE = {
     "table": "INFORMATION_SCHEMA.TABLES",
@@ -92,12 +92,12 @@ def run_cli(
     return log_listener.command_output, 0
 
 
-def jetavator_engine():
-    return Engine(Config.from_yaml_file(Config.config_file()))
+def jetavator_app():
+    return App(Config.from_yaml_file(Config.config_file()))
 
 
 def engine_datastore(datastore):
-    compute = jetavator_engine().compute_service
+    compute = jetavator_app().engine.compute_service
     return compute.storage_services[compute.config.storage[datastore]]
 
 
@@ -318,7 +318,7 @@ def step_impl(context, table_name, datastore):
 @given(u"the file {file} is loaded to table {table:w}")
 @when(u"the file {file} is loaded to table {table:w}")
 def load_file_to_table(context, file, table):
-    jetavator_engine().load_csv(
+    jetavator_app().load_csv(
         csv_file=os.path.join(
             context.config.paths[0], "data", file
         ),

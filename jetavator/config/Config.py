@@ -84,12 +84,12 @@ class SessionConfig(wysdom.UserObject):
 class EngineConfig(wysdom.UserObject):
     type: str = ConfigProperty(wysdom.SchemaConst('local'))
     compute: ComputeServiceConfig = ConfigProperty(ComputeServiceConfig)
+    session: SessionConfig = ConfigProperty(SessionConfig, default={}, persist_defaults=True)
 
 
 class Config(wysdom.UserObject, wysdom.ReadsJSON, wysdom.ReadsYAML):
     engine: EngineConfig = ConfigProperty(EngineConfig)
     registry: RegistryServiceConfig = ConfigProperty(RegistryServiceConfig)
-    session: SessionConfig = ConfigProperty(SessionConfig, default={}, persist_defaults=True)
     model_path: str = ConfigProperty(str, default_function=lambda self: os.getcwd())
     schema: str = ConfigProperty(str)
     environment_type: str = ConfigProperty(str, default="local_spark")
@@ -105,7 +105,7 @@ class Config(wysdom.UserObject, wysdom.ReadsJSON, wysdom.ReadsYAML):
     _secret_lookup_name: str = wysdom.UserProperty(str, name="secret_lookup")
 
     def reset_session(self):
-        self.session.clear()
+        self.engine.session.clear()
 
     def __str__(self):
         return yaml.dump(

@@ -128,7 +128,7 @@ def fixture_remove_database(context):
 
 @fixture_hook("fixture.remove_database_after_scenario", when="after_scenario")
 def fixture_remove_after_scenario(context, step):
-    engine = jetavator.Engine(
+    engine = jetavator.App(
         jetavator.Config.from_yaml_file(
             jetavator.Config.config_file()))
     engine.logger.info("fixture.remove_database_after_scenario: running")

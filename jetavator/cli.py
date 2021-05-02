@@ -43,7 +43,7 @@ from textwrap import indent
 
 from . import __version__ as version
 from .default_logger import default_logger
-from .Engine import Engine, LoadType
+from .App import App, LoadType
 from .config import Config
 
 
@@ -86,7 +86,7 @@ def main(argv=None, exit_callback=None):
             config = Config(cli_config_values)
 
     config.reset_session()
-    engine = Engine(config)
+    engine = App(config)
 
     printable_options = [
         k
@@ -123,7 +123,7 @@ def main(argv=None, exit_callback=None):
 
         if options['config']:
             if options['--test']:
-                test_engine = Engine(config=config)
+                test_engine = App(config=config)
                 if test_engine.compute_service.test():
                     default_logger.info(
                         'Successfully logged in and connected to '

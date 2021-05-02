@@ -3,7 +3,7 @@ from .__required__ import REQUIRED
 from .default_logger import DEFAULT_LOGGER_CONFIG
 from .VaultAction import VaultAction
 from .ServiceOwner import ServiceOwner
-from .Engine import Engine, LoadType
+from .App import App, LoadType
 from .config import Config
 
 from pkg_resources import iter_entry_points as _iter_entry_points
