@@ -16,12 +16,3 @@ class ComputeServiceABC(EngineOwnedService, Service[ComputeServiceConfig], Servi
     @abstractmethod
     def engine(self) -> EngineABC:
         pass
-
-    @abstractmethod
-    def load_dataframe(
-            self,
-            dataframe: pandas.DataFrame,
-            source_name: str,
-            source_column_names: Iterable[str]
-    ) -> None:
-        pass

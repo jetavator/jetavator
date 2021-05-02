@@ -20,10 +20,6 @@ class LocalSparkService(SparkService, register_as="spark"):
         # Figure out a better way to manage temporary folders -
         # requires storage of state between commands line calls!
 
-    # TODO: Remove SparkService.session
-    def session(self):
-        raise NotImplementedError
-
     def csv_file_path(self, source_name: str):
         return (
             f'{self.tempfolder}/'
@@ -34,13 +30,3 @@ class LocalSparkService(SparkService, register_as="spark"):
 
     def source_csv_exists(self, source_name: str) -> bool:
         return os.path.exists(self.csv_file_path(source_name))
-
-    def load_csv(self, csv_file, source_name: str):
-        self.logger.info(f"{source_name}.csv: Uploading file")
-        try:
-            os.makedirs(
-                os.path.dirname(
-                    self.csv_file_path(source_name)))
-        except FileExistsError:
-            pass
-        copyfile(csv_file, self.csv_file_path(source_name))

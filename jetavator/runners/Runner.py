@@ -9,7 +9,7 @@ from typing import Dict, List, Type
 from lazy_property import LazyProperty
 from wysdom.mixins import RegistersSubclasses
 
-from jetavator import App
+from jetavator.EngineABC import EngineABC
 from jetavator.schema_registry import Project, Source, Satellite, SatelliteOwner, VaultObject
 from jetavator.services import ComputeService
 
@@ -23,7 +23,7 @@ class Runner(RegistersSubclasses, RunnerABC, ABC):
 
     def __init__(
             self,
-            engine: App,
+            engine: EngineABC,
             compute_service: ComputeService,
             project: Project
     ):
@@ -40,7 +40,7 @@ class Runner(RegistersSubclasses, RunnerABC, ABC):
     @classmethod
     def from_compute_service(
             cls,
-            engine: App,
+            engine: EngineABC,
             compute_service: ComputeService,
             project: Project
     ) -> Runner:

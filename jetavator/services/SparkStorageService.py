@@ -66,12 +66,6 @@ class SparkStorageService(StorageService, ExecutesSparkSQL, HiveMetastoreInterfa
             )
             self.load_csv(temp_csv_file, source_name)
 
-    def load_csv(self, csv_file, source_name: str):
-        raise NotImplementedError
-
-    def csv_file_path(self, source_name: str):
-        raise NotImplementedError
-
     def table_delta_path(self, sqlalchemy_table):
         return (
             '/tmp'

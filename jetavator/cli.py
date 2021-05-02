@@ -169,33 +169,6 @@ def main(argv=None, exit_callback=None):
                         engine.loaded_project.sources[filename].load_csvs([dir_entry.path])
             engine.run(load_type=load_type)
 
-        elif options['show']:
-            if options['project']:
-                if options['name']:
-                    default_logger.info(engine.project.name)
-                elif options['version']:
-                    default_logger.info(engine.project.version)
-                elif options['history']:
-                    version_history = [
-                        (
-                            project_version.name,
-                            project_version.version,
-                            project_version.deployed_time,
-                            project_version.is_latest_version
-                        )
-                        for project_version
-                        in engine.schema_registry.values()
-                    ]
-                    default_logger.info(
-                        tabulate(
-                            version_history,
-                            headers=[
-                                'name',
-                                'version',
-                                'deployed_time',
-                                'latest_version'
-                            ]))
-
     except RuntimeError:
         default_logger.error(traceback.format_exc())
         if exit_callback:

@@ -155,25 +155,7 @@ class Engine(EngineABC):
                                   (optional - will be auto-incremented if
                                   not supplied)
         """
-
-        if load_full_history:
-            # TODO: Re-implement or refactor load_full_history
-            raise NotImplementedError()
-
-        if isinstance(new_object, str):
-            new_object_dict = yaml.safe_load(new_object)
-        elif isinstance(new_object, dict):
-            new_object_dict = new_object
-        else:
-            raise Exception("Jetavator.add: new_object must be str or dict.")
-
-        self.app.loaded_project.increment_version(version)
-        new_vault_object = self.app.loaded_project.add(new_object_dict)
-        self._update_database_model()
-
-        if new_vault_object.type == "satellite":
-            self.compute_service.vault_storage_service.execute_sql_element(
-                new_vault_object.sql_model.sp_load("full").execute())
+        raise NotImplementedError
 
     # TODO: Move Engine.drop to VaultObject.drop in order to allow
     #       multiple lookup methods, e.g. by type+name, composite key,
@@ -194,10 +176,7 @@ class Engine(EngineABC):
                                   (optional - will be auto-incremented if
                                   not supplied)
         """
-        self.schema_registry.load_from_database()
-        self.app.loaded_project.increment_version(version)
-        self.app.loaded_project.delete(object_type, object_name)
-        self._update_database_model()
+        raise NotImplementedError
 
     # TODO: Refactor so the Engine doesn't need physical disk paths for
     #       the YAML folder - move this functionality into an extendable
@@ -216,45 +195,7 @@ class Engine(EngineABC):
         :param load_full_history: True if the new object(s) should be loaded
                                   with full historic data
         """
-        if model_path:
-            self.config.model_path = model_path
-        self.schema_registry.load_from_disk()
-        assert (
-                self.app.loaded_project.checksum
-                != self.schema_registry.deployed.checksum
-        ), (
-            f"""
-            Cannot upgrade a project if the definitions have not changed.
-            Checksum: {self.app.loaded_project.checksum.hex()}
-            """
-        )
-        assert (
-                self.app.loaded_project.version
-                > self.schema_registry.deployed.version
-        ), (
-            "Cannot upgrade - version number must be incremented "
-            f"from {self.schema_registry.deployed.version}"
-        )
-        self._update_database_model(
-            load_full_history=load_full_history
-        )
-
-    def _update_database_model(
-            self,
-            load_full_history: bool = False
-    ) -> None:
-        self._deploy_template()
-        if load_full_history:
-            raise NotImplementedError
-
-    # TODO: Refactor responsibility for loading YAML files away from Engine.
-    def update_model_from_dir(
-            self,
-            new_model_path: str = None
-    ) -> None:
-        if new_model_path:
-            self.config.model_path = new_model_path
-        self.schema_registry.load_from_disk()
+        raise NotImplementedError
 
     @LazyProperty
     def runner(self) -> Runner:
