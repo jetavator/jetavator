@@ -29,20 +29,20 @@ class HiveMetastoreInterface(HasLogger, HasConfig, ABC):
 
     @property
     def schema_empty(self) -> bool:
-        table_names = self.table_names
-        self.logger.debug(f"{self.__class__.__name__} - checking if list of tables is empty: {table_names}")
-        return not any(table_names)
+        result = not any(self.table_names)
+        self.logger.debug(f"{self.__class__.__name__} - checking if list of tables is empty: {result}")
+        return result
 
     @property
     def schema_exists(self) -> bool:
-        schemas = self.schema_names
-        self.logger.debug(f"{self.__class__.__name__} - existing schemas: {schemas}")
-        return str(self.config.schema) in schemas
+        result = str(self.config.schema) in self.schema_names
+        self.logger.debug(f"{self.__class__.__name__} - checking if schema {self.config.schema} exists: {result}")
+        return result
 
     def table_exists(self, table_name: str) -> bool:
-        table_names = self.table_names
-        self.logger.debug(f"{self.__class__.__name__} - checking if {table_name} exists in: {table_names}")
-        return table_name in table_names
+        result = table_name in self.table_names
+        self.logger.debug(f"{self.__class__.__name__} - checking if table {table_name} exists: {result}")
+        return result
 
     def column_exists(self, table_name: str, column_name: str) -> bool:
         return column_name in self.column_names_in_table(table_name)
