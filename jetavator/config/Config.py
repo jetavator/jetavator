@@ -40,7 +40,7 @@ class StorageConfig(wysdom.UserObject):
 
 
 class RegistryServiceConfig(ServiceConfig):
-    service_type: str = ConfigProperty(wysdom.SchemaConst('registry'))
+    pass
 
 
 class StorageServiceConfig(ServiceConfig):
@@ -52,7 +52,6 @@ class StorageServiceConfig(ServiceConfig):
 
 
 class ComputeServiceConfig(ServiceConfig):
-    service_type: str = ConfigProperty(wysdom.SchemaConst('compute'))
     storage_services: Dict[str, StorageServiceConfig] = ConfigProperty(
         wysdom.SchemaDict(StorageServiceConfig),
         default={},
@@ -82,16 +81,19 @@ class SessionConfig(wysdom.UserObject):
     )
 
 
+class EngineConfig(wysdom.UserObject):
+    type: str = ConfigProperty(wysdom.SchemaConst('local'))
+    compute: ComputeServiceConfig = ConfigProperty(ComputeServiceConfig)
+
+
 class Config(wysdom.UserObject, wysdom.ReadsJSON, wysdom.ReadsYAML):
+    engine: EngineConfig = ConfigProperty(EngineConfig)
+    registry: RegistryServiceConfig = ConfigProperty(RegistryServiceConfig)
+    session: SessionConfig = ConfigProperty(SessionConfig, default={}, persist_defaults=True)
     model_path: str = ConfigProperty(str, default_function=lambda self: os.getcwd())
     schema: str = ConfigProperty(str)
-    skip_deploy: bool = ConfigProperty(bool, default=False)
     environment_type: str = ConfigProperty(str, default="local_spark")
-    session: SessionConfig = ConfigProperty(SessionConfig, default={}, persist_defaults=True)
-    services: Dict[str, ServiceConfig] = ConfigProperty(
-        wysdom.SchemaDict(ServiceConfig), default={}, persist_defaults=True)
-    compute: str = ConfigProperty(str)
-    registry: str = ConfigProperty(str)
+    skip_deploy: bool = ConfigProperty(bool, default=False)
     drop_schema_if_exists: bool = ConfigProperty(bool, default=False)
 
     @LazyProperty

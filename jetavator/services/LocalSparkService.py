@@ -9,10 +9,10 @@ from .SparkService import SparkService
 
 
 class LocalSparkConfig(ComputeServiceConfig):
-    type: str = ConfigProperty(wysdom.SchemaConst('local_spark'))
+    type: str = ConfigProperty(wysdom.SchemaConst('spark'))
 
 
-class LocalSparkService(SparkService, register_as="local_spark"):
+class LocalSparkService(SparkService, register_as="spark"):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

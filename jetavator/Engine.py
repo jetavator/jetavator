@@ -11,7 +11,7 @@ from jetavator.EngineABC import EngineABC
 from .runners import Runner
 from .config import Config
 from .schema_registry import Project, RegistryService
-from .services import Service, ComputeService
+from .services import ComputeService
 from .sql_model import ProjectModel
 from .default_logger import DEFAULT_LOGGER_CONFIG
 from .DDLDeployer import DDLDeployer
@@ -77,11 +77,11 @@ class Engine(EngineABC):
             self.compute_service,
             self.config.model_path)
 
-    @property
+    @LazyProperty
     def compute_service(self) -> ComputeService:
         """The storage service used for computation
         """
-        return self.services[self.config.compute]
+        return ComputeService.from_config(self, self.config.engine.compute)
 
     # TODO: Engine.drop_schemas be moved to Project if the schema to drop
     #       is specific to a Project?
@@ -99,23 +99,12 @@ class Engine(EngineABC):
         logging.config.dictConfig(self.logger_config)
         return logging.getLogger('jetavator')
 
-    @LazyProperty
-    def services(self) -> Dict[str, Service]:
-        """All the registered services as defined in the engine config
-
-        :return: A dictionary of class:`jetavator.services.Service` by name
-        """
-        return {
-            name: Service.from_config(self, config)
-            for name, config in self.config.services.items()
-        }
-
     # TODO: The role of SchemaRegistry is unclear. Can we refactor its
     #       responsibilities into Engine and Project?
     # TODO: Rename schema_registry to something more appropriate?
     @LazyProperty
     def schema_registry(self) -> RegistryService:
-        return self.services[self.config.registry]
+        return RegistryService.from_config(self, self.config.registry)
 
     # TODO: See above - unclear how this relates to SchemaRegistry
     @LazyProperty
