@@ -12,6 +12,7 @@ from jetavator.sqlalchemy_delta import DeltaDialect
 
 from jetavator.services.Service import Service
 from .SparkStorageService import SparkStorageService
+from .SparkStorageServiceOwner import SparkStorageServiceOwner
 
 DRIVER_GROUP_ID = "io.delta"
 DRIVER_ARTIFACT_ID = "delta-core_2.12"
@@ -24,7 +25,7 @@ class SparkDeltaStorageConfig(StorageServiceConfig):
 
 class SparkDeltaStorageService(
     SparkStorageService,
-    Service[SparkDeltaStorageConfig],
+    Service[SparkDeltaStorageConfig, SparkStorageServiceOwner],
     register_as="spark_delta"
 ):
 

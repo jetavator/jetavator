@@ -9,14 +9,13 @@ from jetavator import EngineABC
 from jetavator.config import StorageServiceConfig
 
 from .Service import Service
-from .ComputeOwnedService import ComputeOwnedService
+from .ComputeServiceABC import ComputeServiceABC
 from .StorageServiceABC import StorageServiceABC
 from jetavator.sql.ExecutesSQL import ExecutesSQL
 
 
 class StorageService(
-    ComputeOwnedService,
-    Service[StorageServiceConfig],
+    Service[StorageServiceConfig, ComputeServiceABC],
     ExecutesSQL,
     StorageServiceABC,
     ABC

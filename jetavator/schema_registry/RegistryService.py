@@ -1,7 +1,10 @@
-# from abc import ABC
+from jetavator.EngineABC import EngineABC
+from jetavator.config import RegistryServiceConfig
+from jetavator.services import Service
 
-from jetavator.services.EngineOwnedService import EngineOwnedService
 
+class RegistryService(Service[RegistryServiceConfig, EngineABC]):
 
-class RegistryService(EngineOwnedService):
-    pass
+    @property
+    def engine(self) -> EngineABC:
+        return self.owner
