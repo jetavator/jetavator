@@ -7,10 +7,10 @@ from jetavator.EngineABC import EngineABC
 from .StorageService import StorageService
 
 from .ComputeServiceABC import ComputeServiceABC
-from jetavator.sql.ExecutesSQL import ExecutesSQL
+from jetavator.sql import ExecutesSQL, MetastoreInterface
 
 
-class ComputeService(ComputeServiceABC, ExecutesSQL, ABC):
+class ComputeService(ComputeServiceABC, ExecutesSQL, MetastoreInterface, ABC):
 
     @property
     def engine(self) -> EngineABC:

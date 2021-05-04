@@ -1,14 +1,18 @@
+from typing import TypeVar, Generic
 from abc import ABC, abstractmethod
 
-from jetavator.config import Config
+import wysdom
 
 
 # TODO: Pull up generic config-owning functionality from Service
 
-class HasConfig(ABC):
+ConfigType = TypeVar('ConfigType', bound=wysdom.UserObject, covariant=True)
+
+
+class HasConfig(Generic[ConfigType], ABC):
 
     @property
     @abstractmethod
-    def config(self) -> Config:
+    def config(self) -> ConfigType:
         pass
 

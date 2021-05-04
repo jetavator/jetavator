@@ -3,12 +3,13 @@ from abc import ABC, abstractmethod
 import pandas
 import pyspark
 
+from jetavator.config import ConfigWithSchema
 from jetavator.HasConfig import HasConfig
 
 from jetavator.sql import ExecutesSQL
 
 
-class ExecutesSparkSQL(ExecutesSQL, HasConfig, ABC):
+class ExecutesSparkSQL(HasConfig[ConfigWithSchema], ExecutesSQL, ABC):
 
     @property
     @abstractmethod

@@ -8,8 +8,6 @@ from sqlalchemy.types import *
 from sqlalchemy.sql.expression import Select, ColumnElement, func, literal_column
 from sqlalchemy.sql.functions import Function, coalesce, max
 
-from jetavator.schema_registry import Satellite
-
 from ..VaultAction import VaultAction
 from .SatelliteModelABC import SatelliteModelABC
 from .SatelliteOwnerModel import SatelliteOwnerModel

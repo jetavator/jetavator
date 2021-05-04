@@ -38,13 +38,12 @@ import jsonschema
 import os
 
 from docopt import docopt
-from tabulate import tabulate
 from textwrap import indent
 
 from . import __version__ as version
 from .default_logger import default_logger
 from .App import App, LoadType
-from .config import Config
+from .config import AppConfig
 
 
 def main(argv=None, exit_callback=None):
@@ -75,18 +74,18 @@ def main(argv=None, exit_callback=None):
 
     # TODO: replace with simpler --file?
     if options.get("--config-file"):
-        config = Config.from_yaml_file(options["--config-file"])
+        config = AppConfig.from_yaml_file(options["--config-file"])
         config.update(cli_config_values)
     else:
         try:
-            Config.make_config_dir()
-            config = Config.from_yaml_file(Config.config_file())
+            AppConfig.make_config_dir()
+            config = AppConfig.from_yaml_file(AppConfig.config_file())
             config.update(cli_config_values)
         except jsonschema.exceptions.ValidationError:
-            config = Config(cli_config_values)
+            config = AppConfig(cli_config_values)
 
     config.reset_session()
-    engine = App(config)
+    app = App(config)
 
     printable_options = [
         k
@@ -104,18 +103,18 @@ def main(argv=None, exit_callback=None):
         {' '.join(printable_options)}
 
         Jetavator config:
-{indent(str(engine.config), '        ')}
+{indent(str(app.config), '        ')}
         '''
     )
 
     if options.get('-d') or options.get('--drop-if-exists'):
-        engine.config.drop_schema_if_exists = True
+        app.config.drop_schema_if_exists = True
 
     if options.get('-n') or options.get('--nodeploy'):
-        engine.config.skip_deploy = True
+        app.config.skip_deploy = True
 
     if options.get('--behave'):
-        engine.config.behave_options = options.get('--behave')
+        app.config.behave_options = options.get('--behave')
 
     try:
 
@@ -123,29 +122,29 @@ def main(argv=None, exit_callback=None):
 
         if options['config']:
             if options['--test']:
-                test_engine = App(config=config)
-                if test_engine.compute_service.test():
+                test_app = App(config=config)
+                if test_app.engine.compute_service.test():
                     default_logger.info(
                         'Successfully logged in and connected to '
-                        f'[{engine.config.environment_type}]'
+                        f'[{app.config.environment_type}]'
                     )
                     config.save()
                 else:
                     default_logger.error(
                         'Unable to log in or connect to '
-                        f'[{engine.config.environment_type}]'
+                        f'[{app.config.environment_type}]'
                     )
             else:
                 config.save()
 
         elif options['deploy']:
-            engine.deploy()
+            app.deploy()
 
         elif options['update']:
-            engine.update()
+            app.update()
 
         elif options['drop'] and options['satellite']:
-            engine.drop('satellite', options['<name>'])
+            app.drop('satellite', options['<name>'])
 
         elif options['run']:
             load_type = (LoadType.FULL if options['full'] else LoadType.DELTA)
@@ -161,13 +160,13 @@ def main(argv=None, exit_callback=None):
                         f'Loading {len(csv_files)} CSVs '
                         f'into table: {table_name}'
                     )
-                    engine.loaded_project.sources[table_name].load_csvs(csv_files)
+                    app.loaded_project.sources[table_name].load_csvs(csv_files)
             elif options['--folder']:
                 for dir_entry in os.scandir(options['--folder']):
                     filename, file_extension = os.path.splitext(dir_entry.name)
                     if file_extension == ".csv" and dir_entry.is_file():
-                        engine.loaded_project.sources[filename].load_csvs([dir_entry.path])
-            engine.run(load_type=load_type)
+                        app.loaded_project.sources[filename].load_csvs([dir_entry.path])
+            app.run(load_type=load_type)
 
     except RuntimeError:
         default_logger.error(traceback.format_exc())

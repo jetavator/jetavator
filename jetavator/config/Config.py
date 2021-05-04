@@ -43,7 +43,11 @@ class RegistryServiceConfig(ServiceConfig):
     pass
 
 
-class StorageServiceConfig(ServiceConfig):
+class ConfigWithSchema(wysdom.UserObject):
+    schema: str = ConfigProperty(str, optional=True)
+
+
+class StorageServiceConfig(ServiceConfig, ConfigWithSchema):
     service_type: str = ConfigProperty(wysdom.SchemaConst('storage'))
 
     type: str = ConfigProperty(str)
@@ -51,7 +55,7 @@ class StorageServiceConfig(ServiceConfig):
     drop_schema_if_exists: bool = ConfigProperty(bool, default_function=_get_default_drop_schema_if_exists)
 
 
-class ComputeServiceConfig(ServiceConfig):
+class ComputeServiceConfig(ServiceConfig, ConfigWithSchema):
     storage_services: Dict[str, StorageServiceConfig] = ConfigProperty(
         wysdom.SchemaDict(StorageServiceConfig),
         default={},
@@ -83,13 +87,13 @@ class SessionConfig(wysdom.UserObject):
 
 class EngineConfig(wysdom.UserObject):
     type: str = ConfigProperty(wysdom.SchemaConst('local'))
+    registry: RegistryServiceConfig = ConfigProperty(RegistryServiceConfig)
     compute: ComputeServiceConfig = ConfigProperty(ComputeServiceConfig)
     session: SessionConfig = ConfigProperty(SessionConfig, default={}, persist_defaults=True)
 
 
-class Config(wysdom.UserObject, wysdom.ReadsJSON, wysdom.ReadsYAML):
+class AppConfig(ConfigWithSchema, wysdom.ReadsJSON, wysdom.ReadsYAML):
     engine: EngineConfig = ConfigProperty(EngineConfig)
-    registry: RegistryServiceConfig = ConfigProperty(RegistryServiceConfig)
     model_path: str = ConfigProperty(str, default_function=lambda self: os.getcwd())
     schema: str = ConfigProperty(str)
     environment_type: str = ConfigProperty(str, default="local_spark")

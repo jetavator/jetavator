@@ -7,7 +7,7 @@ import wysdom
 from ..VaultObject import HubKeyColumn
 from .SatelliteOwner import SatelliteOwner
 from .Hub import Hub
-from .Satellite import Satellite
+from .SatelliteABC import SatelliteABC
 from .ColumnType import ColumnType
 
 SEPARATOR = 31  # ASCII unit separator control character
@@ -29,7 +29,7 @@ class Link(SatelliteOwner, register_as="link"):
         }
 
     @property
-    def satellites_containing_keys(self) -> Dict[str, Satellite]:
+    def satellites_containing_keys(self) -> Dict[str, SatelliteABC]:
         return self.star_satellites
 
     @property

@@ -14,7 +14,7 @@ class SQLAlchemyRegistryService(RegistryService, Mapping, register_as="sqlalchem
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        if self.config.model_path:
+        if self.engine.config.model_path:
             self.load_from_disk()
         else:
             self.load_from_database()
@@ -23,10 +23,9 @@ class SQLAlchemyRegistryService(RegistryService, Mapping, register_as="sqlalchem
             self,
             key: Union[str, Tuple[str, str]]
     ) -> Project:
-        session = self.compute_service.session()
+        session = self.engine.compute_service.session()
         deployment = session.query(Deployment).get(key)
-        return Project.from_sqlalchemy_object(
-            self.config, self.compute_service, deployment)
+        return Project.from_sqlalchemy_object(self.engine.compute_service, deployment)
 
     def __len__(self) -> int:
         return len(list(self.session().query(Deployment)))
@@ -42,9 +41,9 @@ class SQLAlchemyRegistryService(RegistryService, Mapping, register_as="sqlalchem
 
     def load_from_disk(self) -> None:
         self.loaded = Project.from_directory(
-            self.config,
-            self.compute_service,
-            self.config.model_path)
+            self.engine.config,
+            self.engine.compute_service,
+            self.engine.config.model_path)
 
     def load_from_database(self) -> None:
         self.loaded = self.deployed
@@ -52,8 +51,8 @@ class SQLAlchemyRegistryService(RegistryService, Mapping, register_as="sqlalchem
     # TODO: Implement storage/retrieval of deployed definitions on Spark/Hive
     @property
     def deployed(self) -> Project:
-        # self.compute_service.test()
-        # session = self.compute_service.session()
+        # self.engine.compute_service.test()
+        # session = self.engine.compute_service.session()
         # try:
         #     deployment = session.query(Deployment).order_by(
         #         Deployment.deploy_dt.desc()).first()
@@ -67,11 +66,10 @@ class SQLAlchemyRegistryService(RegistryService, Mapping, register_as="sqlalchem
         # if deployment is None:
         #     deployment = Deployment()
         # return Project.from_sqlalchemy_object(self, deployment)
-        return Project.from_sqlalchemy_object(
-            self.config, self.compute_service, Deployment())
+        return Project.from_sqlalchemy_object(self.engine.compute_service, Deployment())
 
     def write_definitions_to_sql(self) -> None:
-        session = self.compute_service.session()
+        session = self.engine.compute_service.session()
         session.add(self.loaded.export_sqlalchemy_object())
         session.add_all([
             object_definition.export_sqlalchemy_object()

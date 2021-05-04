@@ -2,13 +2,13 @@ from typing import List
 from abc import ABC, abstractmethod
 
 import pyspark
-import pandas
 
 from jetavator.HasLogger import HasLogger
 from jetavator.HasConfig import HasConfig
+from jetavator.sql import MetastoreInterface
 
 
-class HiveMetastoreInterface(HasLogger, HasConfig, ABC):
+class HiveMetastoreInterface(HasLogger, HasConfig, MetastoreInterface, ABC):
 
     @property
     @abstractmethod

@@ -16,7 +16,7 @@ from ast import literal_eval
 
 from jetavator.default_logger import default_logger
 from jetavator.cli import main as cli_main
-from jetavator import App, Config
+from jetavator import App, AppConfig
 
 SCHEMA_METADATA_TABLE = {
     "table": "INFORMATION_SCHEMA.TABLES",
@@ -93,7 +93,7 @@ def run_cli(
 
 
 def jetavator_app():
-    return App(Config.from_yaml_file(Config.config_file()))
+    return App(AppConfig.from_yaml_file(AppConfig.config_file()))
 
 
 def engine_datastore(datastore):

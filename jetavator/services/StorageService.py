@@ -11,12 +11,13 @@ from jetavator.config import StorageServiceConfig
 from .Service import Service
 from .ComputeServiceABC import ComputeServiceABC
 from .StorageServiceABC import StorageServiceABC
-from jetavator.sql.ExecutesSQL import ExecutesSQL
+from jetavator.sql import ExecutesSQL, MetastoreInterface
 
 
 class StorageService(
     Service[StorageServiceConfig, ComputeServiceABC],
     ExecutesSQL,
+    MetastoreInterface,
     StorageServiceABC,
     ABC
 ):
@@ -59,9 +60,9 @@ class StorageService(
 
     def create_views(
             self,
-            sqlalchemy_views: Iterable[sqlalchemy_views.CreateView]
+            views: Iterable[sqlalchemy_views.CreateView]
     ) -> None:
-        for view in sqlalchemy_views:
+        for view in views:
             self.create_view(view)
 
     def execute_sql_elements_async(

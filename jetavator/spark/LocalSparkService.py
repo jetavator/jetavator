@@ -22,7 +22,7 @@ class LocalSparkService(SparkService, register_as="spark"):
         return (
             f'{self.tempfolder}/'
             f'{self.config.schema}/'
-            f'{self.owner.config.session.run_uuid}/'
+            f'{self.engine.config.session.run_uuid}/'
             f'{source_name}.csv'
         )
 

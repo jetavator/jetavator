@@ -1,10 +1,10 @@
 secret_lookup: environment
 schema: $RANDOM_TEST_SCHEMA
-registry:
-  type: simple_file_registry
-  storage_path: ~/.jetavator/registry
 engine:
   type: local
+  registry:
+    type: simple_file_registry
+    storage_path: ~/.jetavator/registry
   compute:
     type: spark
     storage_services:

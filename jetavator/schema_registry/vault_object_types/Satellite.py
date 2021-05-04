@@ -7,6 +7,7 @@ from lazy_property import LazyProperty
 from sqlalchemy import Column
 
 import wysdom
+from jetavator.schema_registry import VaultObject
 
 from ..VaultObject import VaultObjectKey, HubKeyColumn
 from ..VaultObjectCollection import VaultObjectSet
@@ -105,13 +106,26 @@ class Satellite(SatelliteABC, register_as="satellite"):
     def output_keys(self) -> VaultObjectSet[SatelliteOwner]:
         return self.produced_keys | self.input_keys
 
-    def dependent_satellites_by_owner(self, satellite_owner) -> List[Satellite]:
+    def dependent_satellites_by_owner(self, satellite_owner: SatelliteOwner) -> List[Satellite]:
+        return [
+            satellite
+            for satellite in self._dependent_satellites
+            if satellite_owner in satellite.output_keys
+        ]
+
+    @property
+    def _dependent_satellites(self) -> List[Satellite]:
+        return [
+            vault_object
+            for vault_object in self._dependent_vault_objects
+            if isinstance(vault_object, Satellite)
+        ]
+
+    @property
+    def _dependent_vault_objects(self) -> List[VaultObject]:
         return [
             dep.object_reference
             for dep in self.pipeline.dependencies
-            if isinstance(dep.object_reference, Satellite)
-            for output_key in dep.object_reference.output_keys
-            if output_key is satellite_owner
         ]
 
     def validate(self) -> None:

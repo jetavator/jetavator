@@ -1,7 +1,5 @@
 from typing import Optional, Dict, List
 
-import jinja2
-
 import wysdom
 
 from .SatellitePipeline import SatellitePipeline

@@ -11,7 +11,6 @@ import sqlalchemy
 import pandas
 
 from jetavator.services.StorageService import StorageService
-from jetavator.ServiceOwner import ServiceOwner
 from .HiveMetastoreInterface import HiveMetastoreInterface
 from .ExecutesSparkSQL import ExecutesSparkSQL
 

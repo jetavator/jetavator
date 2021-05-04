@@ -10,7 +10,7 @@ from lazy_property import LazyProperty
 
 from jetavator.EngineABC import EngineABC
 from .runners import Runner
-from .config import Config, EngineConfig
+from .config import AppConfig, EngineConfig
 from .schema_registry import Project, RegistryService
 from .services import ComputeService
 from .sql_model import ProjectModel
@@ -81,9 +81,12 @@ class Engine(EngineABC):
     def logger(self) -> logging.Logger:
         return self.app.logger
 
-    @property
+    # TODO: The role of SchemaRegistry is unclear. Can we refactor its
+    #       responsibilities into Engine and Project?
+    # TODO: Rename schema_registry to something more appropriate?
+    @LazyProperty
     def schema_registry(self) -> RegistryService:
-        return self.app.schema_registry
+        return RegistryService.from_config(self, self.config.registry)
 
     @LazyProperty
     def sql_model(self) -> ProjectModel:
@@ -228,7 +231,7 @@ class Engine(EngineABC):
         # deployment history, like writing JSON direct to DBFS
 
 
-class App(EngineABC):
+class App(object):
     """The core Jetavator engine. Pass this object a valid engine
     configuration, and use it to perform operations like deploying a project
     or loading new data.
@@ -239,14 +242,14 @@ class App(EngineABC):
 
     def __init__(
             self,
-            config: Config
+            config: AppConfig
     ) -> None:
         """Default constructor
         """
         self._config = config
 
     @property
-    def config(self) -> Config:
+    def config(self) -> AppConfig:
         return self._config
 
     @LazyProperty
@@ -258,7 +261,6 @@ class App(EngineABC):
         """The current project as specified by the YAML files in self.config.model_path
         """
         return Project.from_directory(
-            self.config,
             self.engine.compute_service,
             self.config.model_path)
 
@@ -278,18 +280,11 @@ class App(EngineABC):
         logging.config.dictConfig(self.logger_config)
         return logging.getLogger('jetavator')
 
-    # TODO: The role of SchemaRegistry is unclear. Can we refactor its
-    #       responsibilities into Engine and Project?
-    # TODO: Rename schema_registry to something more appropriate?
-    @LazyProperty
-    def schema_registry(self) -> RegistryService:
-        return RegistryService.from_config(self, self.config.registry)
-
     # TODO: Is there any reason for an Engine only to have one project?
     #       Should this be Engine.projects?
     @property
     def project(self) -> Project:
-        return self.schema_registry.deployed
+        return self.engine.schema_registry.deployed
 
     @logged
     def deploy(self) -> None:
@@ -379,5 +374,5 @@ class App(EngineABC):
     ) -> None:
         if new_model_path:
             self.config.model_path = new_model_path
-        self.schema_registry.load_from_disk()
+        self.engine.schema_registry.load_from_disk()
 
