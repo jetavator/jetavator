@@ -92,7 +92,8 @@ class Engine(EngineABC):
     def sql_model(self) -> ProjectModel:
         return ProjectModel(
             self.app.config,
-            self.compute_service,
+            self.compute_service.vault_storage_service.config.schema,
+            self.compute_service.star_storage_service.config.schema,
             self.app.loaded_project,
             self.schema_registry.deployed
         )
@@ -260,9 +261,7 @@ class App(object):
     def loaded_project(self) -> Project:
         """The current project as specified by the YAML files in self.config.model_path
         """
-        return Project.from_directory(
-            self.engine.compute_service,
-            self.config.model_path)
+        return Project.from_directory(self.config.model_path)
 
     # TODO: Engine.drop_schemas be moved to Project if the schema to drop
     #       is specific to a Project?

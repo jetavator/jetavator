@@ -25,12 +25,10 @@ class LinkModel(SatelliteOwnerModel, BaseModel[Link], register_as="link"):
 
     def satellite_owner_indexes(
             self,
-            storage_service: StorageService,
             table_name: str
     ) -> List[Index]:
         return [
             hub_model.index(
-                storage_service,
                 f"{table_name}_hx_{hub_alias}",
                 hub_alias
             )

@@ -7,7 +7,6 @@ from sqlalchemy import MetaData
 
 from jetavator.sql_model.ProjectModelABC import ProjectModelABC
 from jetavator.config import AppConfig
-from jetavator.services import ComputeService
 from jetavator.schema_registry import Project, VaultObjectMapping
 
 from .BaseModel import BaseModel
@@ -32,13 +31,13 @@ class ProjectModel(VaultObjectMapping[BaseModel], ProjectModelABC):
     def __init__(
             self,
             config: AppConfig,
-            compute_service: ComputeService,
+            vault_schema: str,
+            star_schema: str,
             new_definition: Project,
             old_definition: Project
     ) -> None:
         super().__init__()
         self._config = config
-        self._compute_service = compute_service
         self.new_definition = new_definition
         self.old_definition = old_definition
         keys = (
@@ -48,6 +47,8 @@ class ProjectModel(VaultObjectMapping[BaseModel], ProjectModelABC):
         self._data = {
             key: BaseModel.subclass_instance(
                 self,
+                vault_schema,
+                star_schema,
                 self.new_definition.get(key),
                 self.old_definition.get(key)
             )
@@ -57,10 +58,6 @@ class ProjectModel(VaultObjectMapping[BaseModel], ProjectModelABC):
     @property
     def config(self) -> AppConfig:
         return self._config
-
-    @property
-    def compute_service(self) -> ComputeService:
-        return self._compute_service
 
     @LazyProperty
     def metadata(self) -> MetaData:

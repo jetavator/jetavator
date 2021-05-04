@@ -17,8 +17,3 @@ class ProjectModelABC(ABC):
     @abstractmethod
     def metadata(self) -> MetaData:
         pass
-
-    @property
-    @abstractmethod
-    def compute_service(self) -> Any:
-        pass

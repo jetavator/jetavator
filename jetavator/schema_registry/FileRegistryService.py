@@ -24,5 +24,5 @@ class FileRegistryService(RegistryService, register_as="simple_file_registry"):
 
     @property
     def deployed(self) -> Project:
-        return Project.from_sqlalchemy_object(self.engine.compute_service, Deployment())
+        return Project.from_sqlalchemy_object(Deployment())
 

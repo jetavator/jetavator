@@ -12,8 +12,6 @@ from .sqlalchemy_tables import ObjectDefinition
 
 import wysdom
 
-from jetavator.services import ComputeServiceABC
-
 from .ProjectABC import ProjectABC
 
 VaultObjectKey = namedtuple('VaultObjectKey', ['type', 'name'])
@@ -72,10 +70,6 @@ class VaultObject(wysdom.UserObject, wysdom.RegistersSubclasses, ABC):
     @abstractmethod
     def validate(self) -> None:
         pass
-
-    @property
-    def compute_service(self) -> ComputeServiceABC:
-        return self.project.compute_service
 
     @property
     def full_name(self) -> str:

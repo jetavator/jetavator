@@ -28,7 +28,6 @@ class HubModel(SatelliteOwnerModel, BaseModel[Hub], register_as="hub"):
 
     def satellite_owner_indexes(
             self,
-            storage_service: StorageService,
             table_name: str
     ) -> List[Index]:
         return []

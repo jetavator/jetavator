@@ -3,19 +3,12 @@ from abc import ABC, abstractmethod
 
 import semver
 
-from jetavator.services.ComputeServiceABC import ComputeServiceABC
-
 
 class ProjectABC(ABC):
 
     @property
     @abstractmethod
     def version(self) -> semver.VersionInfo:
-        pass
-
-    @property
-    @abstractmethod
-    def compute_service(self) -> ComputeServiceABC:
         pass
 
     @property

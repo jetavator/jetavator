@@ -1,4 +1,4 @@
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Set
 
 from abc import ABC, abstractmethod
 
@@ -13,6 +13,8 @@ from ..VaultAction import VaultAction
 from .BaseModel import BaseModel
 from .SatelliteModelABC import SatelliteModelABC
 from .functions import hash_keygen
+
+INDEX_OPTION_KWARGS = set()
 
 
 class SatelliteOwnerModel(BaseModel[SatelliteOwner], ABC, register_as="satellite_owner"):
@@ -66,18 +68,19 @@ class SatelliteOwnerModel(BaseModel[SatelliteOwner], ABC, register_as="satellite
     def key_columns(self) -> List[Column]:
         return self.definition.alias_key_columns(self.definition.name)
 
-    def index_kwargs(
-            self,
-            storage_service: StorageService
-    ) -> Dict[str, bool]:
+    @property
+    def index_option_kwargs(self) -> Set[str]:
+        return INDEX_OPTION_KWARGS
+
+    @property
+    def index_kwargs(self) -> Dict[str, bool]:
         return {
             x: self.definition.option(x)
-            for x in storage_service.index_option_kwargs
+            for x in self.index_option_kwargs
         }
 
     def index(
             self,
-            storage_service: StorageService,
             name: str,
             alias: Optional[str] = None
     ) -> Index:
@@ -86,23 +89,22 @@ class SatelliteOwnerModel(BaseModel[SatelliteOwner], ABC, register_as="satellite
             f"ix_{name}",
             self.definition.alias_primary_key_column(alias),
             unique=False,
-            **self.index_kwargs(storage_service)
+            **self.index_kwargs
         )
 
     def index_or_key(
             self,
-            storage_service: StorageService,
             name: str,
             alias: Optional[str] = None
     ) -> SchemaItem:
         alias = alias or self.definition.name
         if self.definition.option("no_primary_key"):
-            return self.index(storage_service, name, alias)
+            return self.index(name, alias)
         else:
             return PrimaryKeyConstraint(
                 self.definition.alias_primary_key_name(alias),
                 name=f"pk_{name}",
-                **self.index_kwargs(storage_service)
+                **self.index_kwargs
             )
 
     def custom_indexes(self, table_name) -> List[Index]:
@@ -137,12 +139,8 @@ class SatelliteOwnerModel(BaseModel[SatelliteOwner], ABC, register_as="satellite
         return self.define_table(
             self.definition.table_name,
             *self.table_columns,
-            self.index_or_key(
-                self.vault_storage_service,
-                f"{self.definition.type}_{self.definition.name}"),
-            *self.satellite_owner_indexes(
-                self.vault_storage_service,
-                f"{self.definition.type}_{self.definition.name}"),
+            self.index_or_key(f"{self.definition.type}_{self.definition.name}"),
+            *self.satellite_owner_indexes(f"{self.definition.type}_{self.definition.name}"),
             schema=self.vault_schema
         )
 
@@ -161,14 +159,9 @@ class SatelliteOwnerModel(BaseModel[SatelliteOwner], ABC, register_as="satellite
             *self.key_columns,
             *self.role_specific_columns,
             *self.star_satellite_columns,
-            self.index_or_key(
-                self.star_storage_service,
-                f"{self.star_prefix}_{self.definition.name}"),
-            *self.satellite_owner_indexes(
-                self.star_storage_service,
-                f"{self.star_prefix}_{self.definition.name}"),
-            *self.custom_indexes(
-                f"{self.star_prefix}_{self.definition.name}"),
+            self.index_or_key(f"{self.star_prefix}_{self.definition.name}"),
+            *self.satellite_owner_indexes(f"{self.star_prefix}_{self.definition.name}"),
+            *self.custom_indexes(f"{self.star_prefix}_{self.definition.name}"),
             schema=self.star_schema
         )
 
@@ -185,7 +178,6 @@ class SatelliteOwnerModel(BaseModel[SatelliteOwner], ABC, register_as="satellite
     @abstractmethod
     def satellite_owner_indexes(
             self,
-            storage_service: StorageService,
             table_name: str
     ) -> List[Index]:
         pass

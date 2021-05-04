@@ -11,7 +11,6 @@ from sqlalchemy_views import CreateView, DropView
 
 from ..VaultAction import VaultAction
 
-from jetavator.services import StorageService
 from jetavator.schema_registry import VaultObject, VaultObjectMapping, VaultObjectKey
 
 from .ProjectModelABC import ProjectModelABC
@@ -24,11 +23,15 @@ class BaseModel(RegistersSubclasses, Generic[VaultObjectType], ABC):
     def __init__(
             self,
             project: ProjectModelABC,
+            vault_schema: str,
+            star_schema: str,
             new_object: VaultObjectType,
             old_object: VaultObjectType
     ) -> None:
         super().__init__()
         self.project = project
+        self.vault_schema = vault_schema
+        self.star_schema = star_schema
         self.new_object = new_object
         self.old_object = old_object
 
@@ -41,6 +44,8 @@ class BaseModel(RegistersSubclasses, Generic[VaultObjectType], ABC):
     def subclass_instance(
             cls,
             project: VaultObjectMapping[BaseModel],
+            vault_schema: str,
+            star_schema: str,
             new_object: VaultObjectType,
             old_object: VaultObjectType
     ) -> BaseModel:
@@ -50,6 +55,8 @@ class BaseModel(RegistersSubclasses, Generic[VaultObjectType], ABC):
         return cls.registered_subclass_instance(
             key.type,
             project,
+            vault_schema,
+            star_schema,
             new_object,
             old_object
         )
@@ -75,22 +82,6 @@ class BaseModel(RegistersSubclasses, Generic[VaultObjectType], ABC):
             return VaultAction.ALTER
         else:
             return VaultAction.NONE
-
-    @property
-    def vault_storage_service(self) -> StorageService:
-        return self.project.compute_service.vault_storage_service
-
-    @property
-    def star_storage_service(self) -> StorageService:
-        return self.project.compute_service.star_storage_service
-
-    @property
-    def vault_schema(self) -> str:
-        return self.vault_storage_service.config.schema
-
-    @property
-    def star_schema(self) -> str:
-        return self.star_storage_service.config.schema
 
     def define_table(
             self,
