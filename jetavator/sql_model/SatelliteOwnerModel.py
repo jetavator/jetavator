@@ -7,7 +7,6 @@ from sqlalchemy.schema import SchemaItem, DDLElement
 from sqlalchemy.types import *
 
 from jetavator.schema_registry import SatelliteOwner
-from jetavator.services import StorageService
 
 from ..VaultAction import VaultAction
 from .BaseModel import BaseModel

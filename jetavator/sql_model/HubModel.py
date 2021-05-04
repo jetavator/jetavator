@@ -2,7 +2,6 @@ from typing import List
 
 from sqlalchemy import Column, Index
 
-from jetavator.services import StorageService
 from jetavator.schema_registry import Hub
 
 from .SatelliteOwnerModel import SatelliteOwnerModel

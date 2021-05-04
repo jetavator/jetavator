@@ -14,10 +14,7 @@ class SQLAlchemyRegistryService(RegistryService, Mapping, register_as="sqlalchem
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        if self.engine.config.model_path:
-            self.load_from_disk()
-        else:
-            self.load_from_database()
+        self.load_from_database()
 
     def __getitem__(
             self,
@@ -38,9 +35,6 @@ class SQLAlchemyRegistryService(RegistryService, Mapping, register_as="sqlalchem
 
     def session(self):
         raise NotImplementedError
-
-    def load_from_disk(self) -> None:
-        self.loaded = Project.from_directory(self.engine.config.model_path)
 
     def load_from_database(self) -> None:
         self.loaded = self.deployed

@@ -1,14 +1,8 @@
-from typing import Iterable, List, Dict
+from typing import List, Dict
 from abc import ABC, abstractmethod
 
-import datetime
-import os
-import tempfile
-
-import numpy as np
 import pyspark
 import sqlalchemy
-import pandas
 
 from jetavator.services.StorageService import StorageService
 from .HiveMetastoreInterface import HiveMetastoreInterface
@@ -35,36 +29,6 @@ class SparkStorageService(StorageService, ExecutesSparkSQL, HiveMetastoreInterfa
 
     spark_config_options: Dict[str, str] = {}
     spark_jars_packages: List[str] = []
-
-    def load_dataframe(
-            self,
-            dataframe: pandas.DataFrame,
-            source_name: str,
-            source_column_names: Iterable[str]
-    ) -> None:
-        for column in source_column_names:
-            if column not in dataframe.columns:
-                dataframe[column] = np.nan
-        if 'jetavator_load_dt' not in dataframe.columns:
-            dataframe['jetavator_load_dt'] = datetime.datetime.now()
-        if 'jetavator_deleted_ind' not in dataframe.columns:
-            dataframe['jetavator_deleted_ind'] = 0
-        columns = list(source_column_names) + [
-            'jetavator_load_dt',
-            'jetavator_deleted_ind'
-        ]
-        filename = f'{source_name}.csv'
-        with tempfile.TemporaryDirectory() as temp_path:
-            temp_csv_file = os.path.join(temp_path, filename)
-            (
-                dataframe
-                .reindex(
-                    columns=columns)
-                .to_csv(
-                    temp_csv_file,
-                    index=False)
-            )
-            self.load_csv(temp_csv_file, source_name)
 
     def table_delta_path(self, sqlalchemy_table):
         return (

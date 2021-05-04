@@ -80,10 +80,9 @@ class Satellite(SatelliteABC, register_as="satellite"):
     @LazyProperty
     def input_keys(self) -> VaultObjectSet[SatelliteOwner]:
         return VaultObjectSet(
-            owner
-            for dep in self.pipeline.dependencies
-            if isinstance(dep.object_reference, Satellite)
-            for owner in dep.object_reference.output_keys
+            satellite_owner
+            for satellite in self._dependent_satellites
+            for satellite_owner in satellite.output_keys
         )
 
     @LazyProperty

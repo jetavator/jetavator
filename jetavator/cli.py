@@ -125,14 +125,12 @@ def main(argv=None, exit_callback=None):
                 test_app = App(config=config)
                 if test_app.engine.compute_service.test():
                     default_logger.info(
-                        'Successfully logged in and connected to '
-                        f'[{app.config.environment_type}]'
+                        'Successfully logged in and connected to compute service.'
                     )
                     config.save()
                 else:
                     default_logger.error(
-                        'Unable to log in or connect to '
-                        f'[{app.config.environment_type}]'
+                        'Unable to log in or connect to compute service.'
                     )
             else:
                 config.save()

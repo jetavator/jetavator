@@ -94,15 +94,6 @@ class StorageService(
         return set()
 
     @abstractmethod
-    def load_dataframe(
-            self,
-            dataframe: pandas.DataFrame,
-            source_name: str,
-            source_column_names: Iterable[str]
-    ) -> None:
-        pass
-
-    @abstractmethod
     def merge_from_spark_view(
             self,
             storage_table_name: str,

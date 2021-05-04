@@ -11,3 +11,8 @@ class SatelliteABC(VaultObject, ABC):
     @abstractmethod
     def columns(self) -> Dict[str, SatelliteColumn]:
         pass
+
+    @property
+    @abstractmethod
+    def exclude_from_star_schema(self) -> bool:
+        pass

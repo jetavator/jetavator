@@ -90,14 +90,13 @@ class EngineConfig(wysdom.UserObject):
     registry: RegistryServiceConfig = ConfigProperty(RegistryServiceConfig)
     compute: ComputeServiceConfig = ConfigProperty(ComputeServiceConfig)
     session: SessionConfig = ConfigProperty(SessionConfig, default={}, persist_defaults=True)
+    skip_deploy: bool = ConfigProperty(bool, default=False)
 
 
 class AppConfig(ConfigWithSchema, wysdom.ReadsJSON, wysdom.ReadsYAML):
     engine: EngineConfig = ConfigProperty(EngineConfig)
     model_path: str = ConfigProperty(str, default_function=lambda self: os.getcwd())
     schema: str = ConfigProperty(str)
-    environment_type: str = ConfigProperty(str, default="local_spark")
-    skip_deploy: bool = ConfigProperty(bool, default=False)
     drop_schema_if_exists: bool = ConfigProperty(bool, default=False)
 
     @LazyProperty
