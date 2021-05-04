@@ -3,7 +3,8 @@ from .ConfigProperty import ConfigProperty
 from .Config import (
     ConfigWithSchema,
     AppConfig,
-    EngineConfig,
+    EngineServiceConfig,
+    LocalEngineServiceConfig,
     ServiceConfig,
     StorageConfig,
     RegistryServiceConfig,

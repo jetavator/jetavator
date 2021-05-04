@@ -1,109 +1,75 @@
-from __future__ import annotations
-
-from typing import Any, Union, Dict
-
-import logging
-import logging.config
-from lazy_property import LazyProperty
+from abc import ABC, abstractmethod
+from typing import Union
 
 from jetavator.LoadType import LoadType
 from jetavator.ServiceOwner import ServiceOwner
-from jetavator.EngineService import EngineService
-from jetavator.config import AppConfig
-from jetavator.logged import logged
-from jetavator.schema_registry import Project
-from jetavator.default_logger import DEFAULT_LOGGER_CONFIG
-
-PANDAS_TO_SQL_MAPPINGS = {
-    "int": "bigint",
-    "int32": "bigint",
-    "int64": "bigint",
-    "bool": "bit",
-    "float": "float(53)",
-    "float32": "float(53)",
-    "float64": "float(53)",
-    "datetime64[ns]": "datetime",
-    "str": "nvarchar(255)",
-    "object": "nvarchar(255)"
-}
+from jetavator.DDLDeployer import DDLDeployer
+from jetavator.EngineABC import EngineABC
+from jetavator.config import EngineServiceConfig
+from jetavator.runners import Runner
+from jetavator.schema_registry import RegistryService, Project
+from jetavator.services import Service, ComputeService
+from jetavator.sql_model import ProjectModel
 
 
-class App(ServiceOwner):
-    """The core Jetavator engine. Pass this object a valid engine
-    configuration, and use it to perform operations like deploying a project
-    or loading new data.
-
-    :param config: A `jetavator.Config` object containing the desired
-                   configuration for the Engine
-    """
-
-    def __init__(
-            self,
-            config: AppConfig
-    ) -> None:
-        """Default constructor
-        """
-        self._config = config
+class EngineService(Service[EngineServiceConfig, ServiceOwner], EngineABC, ABC):
 
     @property
-    def config(self) -> AppConfig:
-        return self._config
+    def engine(self) -> EngineABC:
+        return self
 
-    @LazyProperty
-    def engine(self) -> EngineService:
-        return EngineService.from_config(self, self.config.engine)
-
-    @LazyProperty
-    def loaded_project(self) -> Project:
-        """The current project as specified by the YAML files in self.config.model_path
+    @property
+    @abstractmethod
+    def compute_service(self) -> ComputeService:
+        """The storage service used for computation
         """
-        return Project.from_directory(self.config.model_path)
+        pass
 
-    # TODO: Engine.drop_schemas be moved to Project if the schema to drop
-    #       is specific to a Project?
+    @abstractmethod
     def drop_schemas(self) -> None:
         """Drop this project's schema on all storage services
         """
-        self.engine.drop_schemas()
+        pass
+
+    # TODO: The role of SchemaRegistry is unclear. Can we refactor its
+    #       responsibilities into Engine and Project?
+    # TODO: Rename schema_registry to something more appropriate?
+    @property
+    @abstractmethod
+    def schema_registry(self) -> RegistryService:
+        pass
 
     @property
-    def logger_config(self) -> Dict[str, Any]:
-        return DEFAULT_LOGGER_CONFIG
-
-    @LazyProperty
-    def logger(self) -> logging.Logger:
-        logging.config.dictConfig(self.logger_config)
-        return logging.getLogger('jetavator')
+    @abstractmethod
+    def sql_model(self) -> ProjectModel:
+        pass
 
     # TODO: Is there any reason for an Engine only to have one project?
     #       Should this be Engine.projects?
     @property
+    @abstractmethod
     def project(self) -> Project:
-        return self.engine.schema_registry.deployed
+        pass
 
-    @logged
+    @abstractmethod
     def deploy(self) -> None:
         """Deploy the current project to the configured storage services
         """
-        self.engine.deploy()
+        pass
 
-    @logged
+    @abstractmethod
     def run(
             self,
             load_type: LoadType = LoadType.DELTA
     ) -> None:
-        """Run the data pipelines for the current project
-
-        :param load_type: A `LoadType` that tells the pipelines how to behave
-                          with respect to historic data
-        """
-        self.engine.run(load_type)
+        pass
 
     # TODO: Reintroduce tests for Engine.add
     # TODO: Refactor new_object so it takes a VaultObject which can then
     #       be extended with more constructors
     # TODO: Move load_full_history functionality to a new VaultObject method
     # TODO: Enforce semver compatibility for user-supplied version strings?
+    @abstractmethod
     def add(
             self,
             new_object: Union[str, dict],
@@ -120,12 +86,13 @@ class App(ServiceOwner):
                                   (optional - will be auto-incremented if
                                   not supplied)
         """
-        self.engine.add(new_object, load_full_history, version)
+        pass
 
     # TODO: Move Engine.drop to VaultObject.drop in order to allow
     #       multiple lookup methods, e.g. by type+name, composite key,
     #       iteration through a list of VaultObjects? Possibly decouple
     #       from the version increment to give users more control?
+    @abstractmethod
     def drop(
             self,
             object_type: str,
@@ -141,11 +108,12 @@ class App(ServiceOwner):
                                   (optional - will be auto-incremented if
                                   not supplied)
         """
-        self.engine.drop(object_type, object_name, version)
+        pass
 
     # TODO: Refactor so the Engine doesn't need physical disk paths for
     #       the YAML folder - move this functionality into an extendable
     #       loader object elsewhere. Instead pass in a whole project object.
+    @abstractmethod
     def update(
             self,
             model_path: str = None,
@@ -160,15 +128,14 @@ class App(ServiceOwner):
         :param load_full_history: True if the new object(s) should be loaded
                                   with full historic data
         """
-        self.engine.update(model_path, load_full_history)
+        pass
 
-    # TODO: Refactor responsibility for loading YAML files away from Engine.
-    def update_model_from_dir(
-            self,
-            new_model_path: str = None
-    ) -> None:
-        if new_model_path:
-            self.config.model_path = new_model_path
-        self.engine.schema_registry.load_from_disk()
+    @property
+    @abstractmethod
+    def runner(self) -> Runner:
+        pass
 
-
+    @property
+    @abstractmethod
+    def ddl_deployer(self) -> DDLDeployer:
+        pass

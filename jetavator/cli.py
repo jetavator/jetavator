@@ -42,7 +42,8 @@ from textwrap import indent
 
 from . import __version__ as version
 from .default_logger import default_logger
-from .App import App, LoadType
+from jetavator.App import App
+from jetavator import LoadType
 from .config import AppConfig
 
 

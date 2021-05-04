@@ -2,12 +2,12 @@ from typing import Any
 from abc import ABC, abstractmethod
 
 from jetavator.ServiceOwner import ServiceOwner
-from jetavator.config import EngineConfig
+from jetavator.config import EngineServiceConfig
 from .HasConfig import HasConfig
 from .HasLogger import HasLogger
 
 
-class EngineABC(ServiceOwner, HasConfig[EngineConfig], HasLogger, ABC):
+class EngineABC(ServiceOwner, HasConfig[EngineServiceConfig], HasLogger, ABC):
 
     @property
     @abstractmethod

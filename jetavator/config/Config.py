@@ -85,16 +85,19 @@ class SessionConfig(wysdom.UserObject):
     )
 
 
-class EngineConfig(wysdom.UserObject):
-    type: str = ConfigProperty(wysdom.SchemaConst('local'))
+class EngineServiceConfig(ServiceConfig):
     registry: RegistryServiceConfig = ConfigProperty(RegistryServiceConfig)
     compute: ComputeServiceConfig = ConfigProperty(ComputeServiceConfig)
     session: SessionConfig = ConfigProperty(SessionConfig, default={}, persist_defaults=True)
     skip_deploy: bool = ConfigProperty(bool, default=False)
 
 
+class LocalEngineServiceConfig(EngineServiceConfig):
+    type: str = ConfigProperty(wysdom.SchemaConst('local'))
+
+
 class AppConfig(ConfigWithSchema, wysdom.ReadsJSON, wysdom.ReadsYAML):
-    engine: EngineConfig = ConfigProperty(EngineConfig)
+    engine: EngineServiceConfig = ConfigProperty(EngineServiceConfig)
     model_path: str = ConfigProperty(str, default_function=lambda self: os.getcwd())
     schema: str = ConfigProperty(str)
     drop_schema_if_exists: bool = ConfigProperty(bool, default=False)
