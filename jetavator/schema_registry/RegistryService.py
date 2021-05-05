@@ -2,9 +2,8 @@ from typing import Iterator
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 
-from jetavator.ServiceOwner import ServiceOwner
 from jetavator.config import RegistryServiceConfig
-from jetavator.services import Service
+from jetavator.services import Service, ServiceOwner
 from .Project import Project
 
 

@@ -3,12 +3,12 @@ from abc import ABC, abstractmethod
 
 from lazy_property import LazyProperty
 
-from jetavator.ServiceOwner import ServiceOwner
 from jetavator.config import ComputeServiceConfig
-from jetavator.services import Service
-from .StorageService import StorageService
-
 from jetavator.sql import ExecutesSQL, MetastoreInterface
+
+from .Service import Service
+from .ServiceOwner import ServiceOwner
+from .StorageService import StorageService
 
 
 class ComputeService(Service[ComputeServiceConfig, ServiceOwner], ExecutesSQL, MetastoreInterface, ServiceOwner, ABC):

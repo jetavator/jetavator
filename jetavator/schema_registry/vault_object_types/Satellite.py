@@ -305,3 +305,8 @@ class SatelliteOwner(VaultObject, ABC, register_as="satellite_owner"):
     @abstractmethod
     def star_prefix(self):
         pass
+
+    @property
+    @abstractmethod
+    def unique_hubs(self) -> Dict[str, SatelliteOwner]:
+        pass

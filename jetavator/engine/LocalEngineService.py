@@ -5,7 +5,7 @@ from lazy_property import LazyProperty
 
 from jetavator import App, LoadType
 from jetavator.logged import logged
-from jetavator.EngineService import EngineService
+from jetavator.services.EngineService import EngineService
 from jetavator.DDLDeployer import DDLDeployer
 from jetavator.config import LocalEngineServiceConfig
 from jetavator.runners import Runner

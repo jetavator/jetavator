@@ -7,8 +7,9 @@ import logging
 
 from wysdom.mixins import RegistersSubclasses
 
-from jetavator import ServiceOwner
 from jetavator.config import ServiceConfig
+
+from .ServiceOwner import ServiceOwner
 
 ConfigType = TypeVar('ConfigType', bound=ServiceConfig, covariant=True)
 ServiceOwnerType = TypeVar('ServiceOwnerType', bound=ServiceOwner, covariant=True)

@@ -6,10 +6,10 @@ import sqlalchemy_views
 import pandas
 
 from jetavator.config import StorageServiceConfig
-from jetavator.ServiceOwner import ServiceOwner
+from jetavator.sql import ExecutesSQL, MetastoreInterface
 
 from .Service import Service
-from jetavator.sql import ExecutesSQL, MetastoreInterface
+from .ServiceOwner import ServiceOwner
 
 
 class StorageService(

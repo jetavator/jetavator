@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, TypeVar, Generic, Iterable, Iterator, Tuple
+from typing import Any, Dict, List, TypeVar, Generic, Iterator, Tuple
 from collections.abc import Mapping
 from abc import ABC, abstractmethod
 

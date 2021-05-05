@@ -42,13 +42,6 @@ class Link(SatelliteOwner, register_as="link"):
     def key_type(self) -> ColumnType:
         return ColumnType(f"CHAR({self.key_length})")
 
-    @property
-    def unique_hubs(self) -> Dict[str, Hub]:
-        return {
-            hub_name: self.owner["hub", hub_name]
-            for hub_name in set(x.name for x in self.hubs.values())
-        }
-
     def hub_key_columns(self, satellite) -> Dict[str, HubKeyColumn]:
         columns = {}
         for alias, hub in self.hubs.items():
@@ -81,3 +74,10 @@ class Link(SatelliteOwner, register_as="link"):
                 raise KeyError(
                     f"Cannot find referenced hub {v} in object {self.key}"
                 )
+
+    @property
+    def unique_hubs(self) -> Dict[str, Hub]:
+        return {
+            hub_name: self.owner["hub", hub_name]
+            for hub_name in set(x.name for x in self.hubs.values())
+        }

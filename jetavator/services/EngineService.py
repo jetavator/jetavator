@@ -2,13 +2,15 @@ from abc import ABC, abstractmethod
 from typing import Union
 
 from jetavator.LoadType import LoadType
-from jetavator.ServiceOwner import ServiceOwner
 from jetavator.DDLDeployer import DDLDeployer
 from jetavator.config import EngineServiceConfig
 from jetavator.runners import Runner
 from jetavator.schema_registry import RegistryService, Project
-from jetavator.services import Service, ComputeService
 from jetavator.sql_model import ProjectModel
+
+from .ServiceOwner import ServiceOwner
+from .Service import Service
+from .ComputeService import ComputeService
 
 
 class EngineService(Service[EngineServiceConfig, ServiceOwner], ServiceOwner, ABC):

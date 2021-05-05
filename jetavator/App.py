@@ -7,8 +7,7 @@ import logging.config
 from lazy_property import LazyProperty
 
 from jetavator.LoadType import LoadType
-from jetavator.ServiceOwner import ServiceOwner
-from jetavator.EngineService import EngineService
+from jetavator.services import ServiceOwner, EngineService
 from jetavator.config import AppConfig
 from jetavator.logged import logged
 from jetavator.schema_registry import Project
