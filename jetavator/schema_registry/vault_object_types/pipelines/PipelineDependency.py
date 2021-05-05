@@ -3,13 +3,13 @@ from typing import Optional, TypeVar, Generic
 import wysdom
 
 
-from ... import VaultObject, VaultObjectKey, Project
+from ... import VaultObject, VaultObjectKey, VaultObjectOwner
 
 
 DependencyType = TypeVar("DependencyType", bound=VaultObject)
 
 
-class SatellitePipelineDependency(wysdom.UserObject, Generic[DependencyType]):
+class PipelineDependency(wysdom.UserObject, Generic[DependencyType]):
 
     name: str = wysdom.UserProperty(str)
     type: str = wysdom.UserProperty(str)
@@ -20,13 +20,13 @@ class SatellitePipelineDependency(wysdom.UserObject, Generic[DependencyType]):
         return VaultObjectKey(self.type, self.name)
 
     @property
-    def project(self) -> Project:
-        return wysdom.document(self).project
+    def _vault_objects(self) -> VaultObjectOwner:
+        return wysdom.document(self).owner
 
     @property
     def object_reference(self) -> DependencyType:
-        return self.project[self.type, self.name]
+        return self._vault_objects[self.type, self.name]
 
     def validate(self) -> None:
-        if self.object_reference_key not in self.project:
+        if self.object_reference_key not in self._vault_objects:
             raise KeyError(f"Cannot find {self.object_reference_key} in project.")

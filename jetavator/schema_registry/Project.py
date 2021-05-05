@@ -9,15 +9,14 @@ from itertools import groupby
 
 from jetavator import __version__
 
-from .VaultObject import VaultObject, VaultObjectKey
+from .VaultObject import VaultObject, VaultObjectKey, VaultObjectOwner
 from .VaultObjectCollection import VaultObjectMapping
 from .YamlProjectLoader import YamlProjectLoader
-from .ProjectABC import ProjectABC
 
 from .sqlalchemy_tables import Deployment, ObjectDefinition
 
 
-class Project(VaultObjectMapping, ProjectABC):
+class Project(VaultObjectMapping, VaultObjectOwner):
     _vault_objects: Dict[Tuple[str, str], VaultObject] = None
     _sqlalchemy_object = None
 

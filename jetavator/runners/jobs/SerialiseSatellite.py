@@ -28,7 +28,7 @@ class SerialiseSatellite(Job, ABC, register_as='serialise_satellite'):
         """
         :return: The `SatelliteQuery` job that contains the updated data.
         """
-        return self.runner.get_job('satellite_query', self.satellite)
+        return self.owner.get_job('satellite_query', self.satellite)
 
     @property
     def dependencies(self) -> List[Job]:

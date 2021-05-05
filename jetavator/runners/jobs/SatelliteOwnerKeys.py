@@ -31,7 +31,7 @@ class SatelliteOwnerKeys(Job, ABC, register_as='satellite_owner_keys'):
     @property
     def dependencies(self) -> List[Job]:
         return [
-            self.runner.get_job('output_keys', satellite, self.satellite_owner)
+            self.owner.get_job('output_keys', satellite, self.satellite_owner)
             for satellite
             in self.satellite_owner.satellites_containing_keys.values()
         ]

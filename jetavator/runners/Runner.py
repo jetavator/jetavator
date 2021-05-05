@@ -11,14 +11,13 @@ from wysdom.mixins import RegistersSubclasses
 from jetavator.schema_registry import Project, Source, Satellite, SatelliteOwner, VaultObject
 from jetavator.services import ComputeService
 
-from .Job import Job
+from .Job import Job, JobOwner
 from .JobState import JobState
-from jetavator.runners.RunnerABC import RunnerABC
 from jetavator.services import Service
 from jetavator.config import RunnerServiceConfig
 
 
-class Runner(Service[RunnerServiceConfig, ComputeService], RegistersSubclasses, RunnerABC, ABC):
+class Runner(Service[RunnerServiceConfig, ComputeService], RegistersSubclasses, JobOwner, ABC):
     job_class: Job = Job
 
     def __init__(

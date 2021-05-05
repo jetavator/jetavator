@@ -28,7 +28,7 @@ class SerialiseSatelliteOwner(Job, ABC, register_as='serialise_satellite_owner')
         """
         :return: The `SatelliteOwnerKeys` job that contains the updated keys.
         """
-        return self.runner.get_job('satellite_owner_keys', self.satellite_owner)
+        return self.owner.get_job('satellite_owner_keys', self.satellite_owner)
 
     @property
     def dependencies(self) -> List[Job]:

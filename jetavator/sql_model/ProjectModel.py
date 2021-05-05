@@ -1,3 +1,4 @@
+import semver
 from typing import List
 
 from lazy_property import LazyProperty
@@ -58,6 +59,10 @@ class ProjectModel(VaultObjectMapping[BaseModel], ProjectModelABC):
     @property
     def config(self) -> AppConfig:
         return self._config
+
+    @property
+    def version(self) -> semver.VersionInfo:
+        return self.new_definition.version
 
     @LazyProperty
     def metadata(self) -> MetaData:

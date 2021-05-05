@@ -33,7 +33,7 @@ class StarData(Job, ABC, register_as='star_data'):
         """
         :return: The `SatelliteOwnerKeys` job that contains the updated keys.
         """
-        return self.runner.get_job('satellite_owner_keys', self.satellite_owner)
+        return self.owner.get_job('satellite_owner_keys', self.satellite_owner)
 
     @property
     def satellite_query_jobs(self) -> List[Job]:
@@ -41,7 +41,7 @@ class StarData(Job, ABC, register_as='star_data'):
         :return: A list of the `SatelliteQuery` jobs that contain the updated data.
         """
         return [
-            self.runner.get_job('satellite_query', satellite)
+            self.owner.get_job('satellite_query', satellite)
             for satellite in self.satellite_owner.star_satellites.values()
         ]
 

@@ -25,7 +25,7 @@ class DropSource(Job, ABC, register_as='drop_source'):
     @property
     def dependencies(self) -> List[Job]:
         return [
-            self.runner.get_job('satellite_query', satellite)
+            self.owner.get_job('satellite_query', satellite)
             for satellite in self.source.dependent_satellites
         ]
 
@@ -34,4 +34,4 @@ class DropSource(Job, ABC, register_as='drop_source'):
         """
         :return: Returns the path to the supplied `Source` CSV file.
         """
-        return self.runner.compute_service.csv_file_path(self.source.name)
+        return self.owner.compute_service.csv_file_path(self.source.name)

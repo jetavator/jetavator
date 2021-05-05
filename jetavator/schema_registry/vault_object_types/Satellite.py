@@ -1,20 +1,20 @@
 from __future__ import annotations
 
-from typing import Dict, List
+from abc import ABC, abstractmethod
+
+from typing import Dict, List, Iterable
 
 from lazy_property import LazyProperty
 
-from sqlalchemy import Column
+from sqlalchemy import Column, CHAR
 
 import wysdom
-from jetavator.schema_registry import VaultObject
 
-from ..VaultObject import VaultObjectKey, HubKeyColumn
+from ..VaultObject import VaultObject, VaultObjectKey, HubKeyColumn
 from ..VaultObjectCollection import VaultObjectSet
 from .SatelliteColumn import SatelliteColumn
-from .SatelliteOwner import SatelliteOwner
-from .SatelliteABC import SatelliteABC
-from .pipelines import SatellitePipeline
+from .ColumnType import ColumnType
+from .pipelines import Pipeline, PipelineOwner
 
 
 class VaultObjectReference(wysdom.UserObject):
@@ -27,19 +27,25 @@ class VaultObjectReference(wysdom.UserObject):
         return VaultObjectKey(self.type, self.name)
 
 
-class Satellite(SatelliteABC, register_as="satellite"):
+class Satellite(VaultObject, PipelineOwner, register_as="satellite"):
 
     _parent: VaultObjectReference = wysdom.UserProperty(
         VaultObjectReference, name="parent")
 
     columns: Dict[str, SatelliteColumn] = wysdom.UserProperty(
         wysdom.SchemaDict(SatelliteColumn))
-    pipeline: SatellitePipeline = wysdom.UserProperty(SatellitePipeline)
+    pipeline: Pipeline = wysdom.UserProperty(Pipeline)
     exclude_from_star_schema: bool = wysdom.UserProperty(bool, default=False)
 
     @property
     def parent(self) -> SatelliteOwner:
-        return self.project[self._parent.key]
+        parent = self.owner[self._parent.key]
+        assert isinstance(parent, SatelliteOwner)
+        return parent
+
+    @property
+    def default_pipeline_keys(self) -> Iterable[str]:
+        return self.parent.hubs.keys()
 
     @property
     def hub_reference_columns(self) -> Dict[str, SatelliteColumn]:
@@ -52,7 +58,7 @@ class Satellite(SatelliteABC, register_as="satellite"):
     @property
     def referenced_hubs(self) -> Dict[str, SatelliteOwner]:
         return {
-            hub_name: self.project["hub", hub_name]
+            hub_name: self.owner["hub", hub_name]
             for hub_name in VaultObjectSet(
                 x.hub_reference
                 for x in self.hub_reference_columns.values()
@@ -91,7 +97,7 @@ class Satellite(SatelliteABC, register_as="satellite"):
             keys = VaultObjectSet()
         else:
             keys = VaultObjectSet(
-                self.project.hubs[name]
+                self.owner.hubs[name]
                 for name in self.hub_key_columns
             )
         if (
@@ -128,7 +134,7 @@ class Satellite(SatelliteABC, register_as="satellite"):
         ]
 
     def validate(self) -> None:
-        if self._parent.key not in self.project:
+        if self._parent.key not in self.owner:
             raise KeyError(
                 f"Could not find parent object {self._parent.key}")
         self.pipeline.validate()
@@ -147,3 +153,155 @@ class Satellite(SatelliteABC, register_as="satellite"):
     @property
     def table_name(self):
         return f"vault_sat_{self.name}"
+
+    def depends_on(self, other_object: VaultObject) -> bool:
+        return any(
+            dependency.type == other_object.type
+            and dependency.name == other_object.name
+            for dependency in self.pipeline.dependencies
+        )
+
+
+class SatelliteOwner(VaultObject, ABC, register_as="satellite_owner"):
+
+    key_length: int = None
+    options: List[str] = wysdom.UserProperty(wysdom.SchemaArray(str), default=[])
+    exclude_from_star_schema: bool = wysdom.UserProperty(bool, default=False)
+
+    @property
+    @abstractmethod
+    def hubs(self) -> Dict[str, VaultObject]:
+        pass
+
+    @property
+    def satellites(self) -> Dict[str, Satellite]:
+        return {
+            satellite.name: satellite
+            for satellite in self.owner.satellites.values()
+            if satellite.parent.key == self.key
+        }
+
+    @property
+    def star_satellites(self) -> Dict[str, Satellite]:
+        return {
+            satellite.name: satellite
+            for satellite in self.satellites.values()
+            if not satellite.exclude_from_star_schema
+        }
+
+    @property
+    @abstractmethod
+    def satellites_containing_keys(self) -> Dict[str, Satellite]:
+        pass
+
+    @property
+    def satellite_columns(self) -> Dict[str, SatelliteColumn]:
+        return {
+            column_name: column
+            for satellite in self.star_satellites.values()
+            for column_name, column in satellite.columns.items()
+        }
+
+    @property
+    def key_column_name(self) -> str:
+        return f"{self.type}_{self.name}_key"
+
+    @property
+    def hash_column_name(self) -> str:
+        return f"{self.type}_{self.name}_hash"
+
+    @property
+    def hashed_columns(self) -> Dict[str, SatelliteColumn]:
+        return self.satellite_columns
+
+    def hub_key_columns(self, satellite) -> Dict[str, HubKeyColumn]:
+        raise NotImplementedError
+
+    def option(self, option_name: str) -> bool:
+        return any(
+            option == option_name
+            for option in self.options
+        )
+
+    @abstractmethod
+    def validate(self) -> None:
+        pass
+
+    def alias_key_name(self, alias):
+        return f"{self.type}_{alias}_key"
+
+    def alias_hash_key_name(self, alias):
+        return f"{self.type}_{alias}_hash"
+
+    @property
+    def key_name(self):
+        return self.alias_key_name(self.name)
+
+    @property
+    def hash_key_name(self):
+        return self.alias_hash_key_name(self.name)
+
+    def alias_primary_key_name(self, alias):
+        if self.option("hash_key"):
+            return self.alias_hash_key_name(alias)
+        else:
+            return self.alias_key_name(alias)
+
+    @abstractmethod
+    def generate_key(self, from_table):
+        pass
+
+    @property
+    @abstractmethod
+    def link_key_columns(self):
+        pass
+
+    @property
+    @abstractmethod
+    def key_type(self) -> ColumnType:
+        pass
+
+    # TODO: Move SQLAlchemy column generation to sql_model
+    def alias_key_column(self, alias):
+        return Column(
+            self.alias_key_name(alias),
+            self.key_type.sqlalchemy_type,
+            nullable=False
+        )
+
+    def alias_hash_key_column(self, alias):
+        return Column(
+            self.alias_hash_key_name(alias),
+            CHAR(32),
+            nullable=False
+        )
+
+    def alias_key_columns(self, alias):
+        if self.option("hash_key"):
+            return [
+                self.alias_hash_key_column(alias),
+                self.alias_key_column(alias)
+            ]
+        else:
+            return [
+                self.alias_key_column(alias)
+            ]
+
+    def alias_primary_key_column(self, alias):
+        if self.option("hash_key"):
+            return self.alias_hash_key_column(alias)
+        else:
+            return self.alias_key_column(alias)
+
+    @property
+    def table_name(self) -> str:
+        return f"vault_{self.type}_{self.name}"
+
+    @property
+    def star_table_name(self) -> str:
+        return f"star_{self.star_prefix}_{self.name}"
+
+    @property
+    @abstractmethod
+    def star_prefix(self):
+        pass

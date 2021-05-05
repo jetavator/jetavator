@@ -33,7 +33,7 @@ class StarMerge(Job, ABC, register_as='star_merge'):
         """
         :return: The `StarData` job that contains the updated keys and data.
         """
-        return self.runner.get_job('star_data', self.satellite_owner)
+        return self.owner.get_job('star_data', self.satellite_owner)
 
     @property
     def star_column_references(self) -> Dict[str, Satellite]:

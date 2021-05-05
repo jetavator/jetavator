@@ -2,13 +2,13 @@ from typing import Dict, List
 
 import wysdom
 
-from .SatellitePipeline import SatellitePipeline
-from .SatellitePipelineDependency import SatellitePipelineDependency
+from .Pipeline import Pipeline
+from .PipelineDependency import PipelineDependency
 from ..Source import Source
 
 
-class SatelliteSourcePipeline(
-    SatellitePipeline,
+class SourcePipeline(
+    Pipeline,
     register_as="source"
 ):
 
@@ -23,22 +23,21 @@ class SatelliteSourcePipeline(
             return {
                 key_column: source_column
                 for key_column, source_column in zip(
-                    self.satellite.parent.hubs.keys(),
+                    self.owner.parent.hubs.keys(),
                     self.source.columns.keys()
                 )
             }
 
     @property
     def source(self) -> Source:
-        # TODO: Refactor so this definitely returns Source, not VaultObject
-        source_obj = self.project["source", self._source]
+        source_obj = self._vault_objects["source", self._source]
         assert isinstance(source_obj, Source)
         return source_obj
 
     @property
-    def dependencies(self) -> List[SatellitePipelineDependency]:
+    def dependencies(self) -> List[PipelineDependency]:
         return [
-            SatellitePipelineDependency(
+            PipelineDependency(
                 {'name': self._source, 'type': 'source'},
                 json_dom_info=wysdom.dom.DOMInfo(
                     document=wysdom.document(self), parent=self)

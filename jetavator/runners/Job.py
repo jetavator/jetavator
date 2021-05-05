@@ -11,15 +11,32 @@ from wysdom.mixins import RegistersSubclasses
 from lazy_property import LazyProperty
 
 from jetavator.schema_registry import VaultObject, Satellite
+from jetavator.services import ComputeService
 from .JobState import JobState
-from jetavator.runners.RunnerABC import RunnerABC
+from jetavator.HasLogger import HasLogger
+
+
+class JobOwner(HasLogger, ABC):
+
+    @property
+    @abstractmethod
+    def compute_service(self) -> ComputeService:
+        pass
+
+    @abstractmethod
+    def get_job(
+            self,
+            registered_name: str,
+            *args: VaultObject
+    ) -> Job:
+        pass
 
 
 class Job(RegistersSubclasses, ABC):
     """
     Base class for all jobs.
 
-    :param runner: A `Runner` which is for providing execution services
+    :param owner:  A `JobOwner` which is for providing execution services
                    and allowing Jobs to look up other Jobs for
                    dependency purposes.
 
@@ -32,12 +49,12 @@ class Job(RegistersSubclasses, ABC):
     """
 
     @abstractmethod
-    def __init__(self, runner: RunnerABC, *args: VaultObject) -> None:
+    def __init__(self, owner: JobOwner, *args: VaultObject) -> None:
         """
         Abstract class constructor to be extended and called by subclasses.
         """
         super().__init__()
-        self.runner = runner
+        self.owner = owner
         self.state_timestamps = {}
         self.result = None
         self._vault_objects = args
@@ -53,7 +70,7 @@ class Job(RegistersSubclasses, ABC):
         """
         Python `Logger` instance for raising log messages.
         """
-        return self.runner.logger
+        return self.owner.logger
 
     @LazyProperty
     def key(self) -> str:
@@ -81,7 +98,7 @@ class Job(RegistersSubclasses, ABC):
     @classmethod
     def keys_for_satellite(
             cls,
-            runner: RunnerABC,
+            owner: JobOwner,
             satellite: Satellite
     ) -> List[Job]:
         return []
