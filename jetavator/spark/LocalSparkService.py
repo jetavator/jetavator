@@ -15,14 +15,14 @@ class LocalSparkService(SparkService, register_as="spark"):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.tempfolder = '/jetavator/data'
-        # Figure out a better way to manage temporary folders -
-        # requires storage of state between commands line calls!
+        # TODO: Figure out a better way to manage temporary folders -
+        #       requires storage of state between command line calls!
 
     def csv_file_path(self, source_name: str):
         return (
             f'{self.tempfolder}/'
             f'{self.config.schema}/'
-            f'{self.engine.config.session.run_uuid}/'
+            f'{self.config.runner.session.run_uuid}/'
             f'{source_name}.csv'
         )
 

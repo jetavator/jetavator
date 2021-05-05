@@ -7,6 +7,7 @@ from .Config import (
     LocalEngineServiceConfig,
     ServiceConfig,
     StorageConfig,
+    RunnerServiceConfig,
     RegistryServiceConfig,
     StorageServiceConfig,
     ComputeServiceConfig,

@@ -51,7 +51,7 @@ class App(ServiceOwner):
 
     @LazyProperty
     def engine(self) -> EngineService:
-        return EngineService.from_config(self, self.config.engine)
+        return EngineService.from_config(self.config.engine, self)
 
     @LazyProperty
     def loaded_project(self) -> Project:

@@ -4,66 +4,40 @@ from abc import ABC
 
 import pandas as pd
 
-from logging import Logger
 from typing import Dict, List, Type
 from lazy_property import LazyProperty
 from wysdom.mixins import RegistersSubclasses
 
-from jetavator.EngineABC import EngineABC
 from jetavator.schema_registry import Project, Source, Satellite, SatelliteOwner, VaultObject
 from jetavator.services import ComputeService
 
 from .Job import Job
 from .JobState import JobState
 from jetavator.runners.RunnerABC import RunnerABC
+from jetavator.services import Service
+from jetavator.config import RunnerServiceConfig
 
 
-class Runner(RegistersSubclasses, RunnerABC, ABC):
+class Runner(Service[RunnerServiceConfig, ComputeService], RegistersSubclasses, RunnerABC, ABC):
     job_class: Job = Job
 
     def __init__(
             self,
-            engine: EngineABC,
+            config: RunnerServiceConfig,
             compute_service: ComputeService,
             project: Project
     ):
         """
         Default constructor to be inherited by subclasses.
         Not intended for direct use: use
-        :py:meth:`from_compute_service` instead.
+        :py:meth:`from_config` instead.
         """
-        super().__init__()
-        self.engine = engine
-        self.compute_service = compute_service
+        super().__init__(config, compute_service)
         self.project = project
 
-    @classmethod
-    def from_compute_service(
-            cls,
-            engine: EngineABC,
-            compute_service: ComputeService,
-            project: Project
-    ) -> Runner:
-        """
-        Constructor that takes an :py:class:`~jetavator.Engine`,
-        a :py:class:`~jetavator.services.ComputeService` and
-        a :py:class:`~jetavator.schema_registry.Project`
-        and returns a registered subclass
-        of `Runner` as specified in `compute_service.config.type`
-        """
-        return cls.registered_subclass_instance(
-            compute_service.config.type,
-            engine,
-            compute_service,
-            project
-        )
-
     @property
-    def logger(self) -> Logger:
-        """
-        Python `Logger` instance for raising log messages.
-        """
-        return self.engine.logger
+    def compute_service(self) -> ComputeService:
+        return self.owner
 
     @LazyProperty
     def jobs(self) -> Dict[str, Job]:

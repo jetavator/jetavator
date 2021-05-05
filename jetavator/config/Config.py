@@ -21,6 +21,11 @@ def _get_default_schema(config):
         return f"{wysdom.document(config).schema}_{wysdom.key(config)}"
 
 
+def _get_default_skip_deploy(config):
+    if not wysdom.document(config) is config:
+        return wysdom.document(config).skip_deploy
+
+
 def _get_default_drop_schema_if_exists(config):
     if not wysdom.document(config) is config:
         return wysdom.document(config).drop_schema_if_exists
@@ -53,6 +58,20 @@ class StorageServiceConfig(ServiceConfig, ConfigWithSchema):
     type: str = ConfigProperty(str)
     schema: str = ConfigProperty(str, default_function=_get_default_schema)
     drop_schema_if_exists: bool = ConfigProperty(bool, default_function=_get_default_drop_schema_if_exists)
+    skip_deploy: bool = ConfigProperty(bool, default_function=_get_default_skip_deploy)
+
+
+class SessionConfig(wysdom.UserObject):
+    run_uuid = ConfigProperty(
+        str,
+        name="run_uuid",
+        default_function=lambda self: str(uuid.uuid4()),
+        persist_defaults=True
+    )
+
+
+class RunnerServiceConfig(ServiceConfig):
+    session: SessionConfig = ConfigProperty(SessionConfig, default={}, persist_defaults=True)
 
 
 class ComputeServiceConfig(ServiceConfig, ConfigWithSchema):
@@ -61,9 +80,13 @@ class ComputeServiceConfig(ServiceConfig, ConfigWithSchema):
         default={},
         persist_defaults=True)
     storage: StorageConfig = ConfigProperty(StorageConfig)
-
+    runner: RunnerServiceConfig = ConfigProperty(
+        RunnerServiceConfig,
+        default_function=lambda self: {"type": self.type},
+        persist_defaults=True)
     schema: str = ConfigProperty(str, default_function=_get_default_schema)
     drop_schema_if_exists: bool = ConfigProperty(bool, default_function=_get_default_drop_schema_if_exists)
+    skip_deploy: bool = ConfigProperty(bool, default_function=_get_default_skip_deploy)
 
 
 class SQLAlchemyRegistryServiceConfig(RegistryServiceConfig):
@@ -76,19 +99,9 @@ class SimpleFileRegistryServiceConfig(RegistryServiceConfig):
     storage_path: str = ConfigProperty(str)
 
 
-class SessionConfig(wysdom.UserObject):
-    run_uuid = ConfigProperty(
-        str,
-        name="run_uuid",
-        default_function=lambda self: str(uuid.uuid4()),
-        persist_defaults=True
-    )
-
-
 class EngineServiceConfig(ServiceConfig):
     registry: RegistryServiceConfig = ConfigProperty(RegistryServiceConfig)
     compute: ComputeServiceConfig = ConfigProperty(ComputeServiceConfig)
-    session: SessionConfig = ConfigProperty(SessionConfig, default={}, persist_defaults=True)
     skip_deploy: bool = ConfigProperty(bool, default=False)
 
 
@@ -111,7 +124,7 @@ class AppConfig(ConfigWithSchema, wysdom.ReadsJSON, wysdom.ReadsYAML):
     _secret_lookup_name: str = wysdom.UserProperty(str, name="secret_lookup")
 
     def reset_session(self):
-        self.engine.session.clear()
+        self.engine.compute.runner.session.clear()
 
     def __str__(self):
         return yaml.dump(

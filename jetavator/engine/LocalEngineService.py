@@ -20,7 +20,7 @@ class LocalEngineService(EngineService, Service[LocalEngineServiceConfig, App], 
     def compute_service(self) -> ComputeService:
         """The storage service used for computation
         """
-        return ComputeService.from_config(self, self.config.compute)
+        return ComputeService.from_config(self.config.compute, self)
 
     # TODO: Engine.drop_schemas be moved to Project if the schema to drop
     #       is specific to a Project?
@@ -38,7 +38,7 @@ class LocalEngineService(EngineService, Service[LocalEngineServiceConfig, App], 
     # TODO: Rename schema_registry to something more appropriate?
     @LazyProperty
     def schema_registry(self) -> RegistryService:
-        return RegistryService.from_config(self, self.config.registry)
+        return RegistryService.from_config(self.config.registry, self)
 
     @LazyProperty
     def sql_model(self) -> ProjectModel:
@@ -154,8 +154,8 @@ class LocalEngineService(EngineService, Service[LocalEngineServiceConfig, App], 
 
     @LazyProperty
     def runner(self) -> Runner:
-        return Runner.from_compute_service(
-            self,
+        return Runner.from_config(
+            self.config.compute.runner,
             self.compute_service,
             self.owner.loaded_project
         )

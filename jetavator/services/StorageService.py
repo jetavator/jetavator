@@ -5,26 +5,19 @@ import sqlalchemy
 import sqlalchemy_views
 import pandas
 
-from jetavator import EngineABC
 from jetavator.config import StorageServiceConfig
+from jetavator.ServiceOwner import ServiceOwner
 
 from .Service import Service
-from .ComputeServiceABC import ComputeServiceABC
-from .StorageServiceABC import StorageServiceABC
 from jetavator.sql import ExecutesSQL, MetastoreInterface
 
 
 class StorageService(
-    Service[StorageServiceConfig, ComputeServiceABC],
+    Service[StorageServiceConfig, ServiceOwner],
     ExecutesSQL,
     MetastoreInterface,
-    StorageServiceABC,
     ABC
 ):
-
-    @property
-    def engine(self) -> EngineABC:
-        return self.owner.engine
 
     def create_schema_if_missing(self) -> None:
         if self.schema_exists:
@@ -34,7 +27,7 @@ class StorageService(
                 self.create_schema()
             elif (
                     not self.schema_empty
-                    and not self.engine.config.skip_deploy
+                    and not self.config.skip_deploy
             ):
                 raise Exception(
                     f"Database {self.config.schema} already exists, "

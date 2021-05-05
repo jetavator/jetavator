@@ -4,7 +4,6 @@ from typing import Union
 from jetavator.LoadType import LoadType
 from jetavator.ServiceOwner import ServiceOwner
 from jetavator.DDLDeployer import DDLDeployer
-from jetavator.EngineABC import EngineABC
 from jetavator.config import EngineServiceConfig
 from jetavator.runners import Runner
 from jetavator.schema_registry import RegistryService, Project
@@ -12,11 +11,7 @@ from jetavator.services import Service, ComputeService
 from jetavator.sql_model import ProjectModel
 
 
-class EngineService(Service[EngineServiceConfig, ServiceOwner], EngineABC, ABC):
-
-    @property
-    def engine(self) -> EngineABC:
-        return self
+class EngineService(Service[EngineServiceConfig, ServiceOwner], ABC):
 
     @property
     @abstractmethod
