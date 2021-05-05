@@ -3,10 +3,10 @@ from typing import List
 
 from jetavator.schema_registry import Source
 
-from .BaseModel import BaseModel
+from .SQLModel import SQLModel
 
 
-class SourceModel(BaseModel[Source], register_as="source"):
+class SourceModel(SQLModel[Source], register_as="source"):
 
     @property
     def files(self) -> List[DDLElement]:

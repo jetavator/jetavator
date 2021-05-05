@@ -43,11 +43,10 @@ class LocalEngineService(EngineService, Service[LocalEngineServiceConfig, App], 
     @LazyProperty
     def sql_model(self) -> ProjectModel:
         return ProjectModel(
-            self.owner.config,
-            self.compute_service.vault_storage_service.config.schema,
-            self.compute_service.star_storage_service.config.schema,
             self.owner.loaded_project,
-            self.schema_registry.deployed
+            self.schema_registry.deployed,
+            self.compute_service.vault_storage_service.config.schema,
+            self.compute_service.star_storage_service.config.schema
         )
 
     # TODO: Is there any reason for an Engine only to have one project?

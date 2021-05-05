@@ -32,11 +32,15 @@ class Runner(Service[RunnerServiceConfig, ComputeService], RegistersSubclasses, 
         :py:meth:`from_config` instead.
         """
         super().__init__(config, compute_service)
-        self.project = project
+        self._project = project
 
     @property
     def compute_service(self) -> ComputeService:
         return self.owner
+
+    @property
+    def project(self) -> Project:
+        return self._project
 
     @LazyProperty
     def jobs(self) -> Dict[str, Job]:

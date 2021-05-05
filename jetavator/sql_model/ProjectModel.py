@@ -6,11 +6,9 @@ from lazy_property import LazyProperty
 from sqlalchemy.schema import DDLElement
 from sqlalchemy import MetaData
 
-from jetavator.sql_model.ProjectModelABC import ProjectModelABC
-from jetavator.config import AppConfig
-from jetavator.schema_registry import Project, VaultObjectMapping
+from jetavator.schema_registry import Project
 
-from .BaseModel import BaseModel
+from .SQLModel import SQLModel, SQLModelOwner
 from .SatelliteModel import SatelliteModel
 
 SCHEMAS = [
@@ -27,29 +25,27 @@ SCHEMAS = [
 ]
 
 
-class ProjectModel(VaultObjectMapping[BaseModel], ProjectModelABC):
+class ProjectModel(SQLModelOwner):
 
     def __init__(
             self,
-            config: AppConfig,
-            vault_schema: str,
-            star_schema: str,
             new_definition: Project,
-            old_definition: Project
+            old_definition: Project,
+            vault_schema: str,
+            star_schema: str
     ) -> None:
         super().__init__()
-        self._config = config
         self.new_definition = new_definition
         self.old_definition = old_definition
+        self._vault_schema = vault_schema
+        self._star_schema = star_schema
         keys = (
                 set(self.new_definition.keys()) |
                 set(self.old_definition.keys())
         )
         self._data = {
-            key: BaseModel.subclass_instance(
+            key: SQLModel.subclass_instance(
                 self,
-                vault_schema,
-                star_schema,
                 self.new_definition.get(key),
                 self.old_definition.get(key)
             )
@@ -57,8 +53,12 @@ class ProjectModel(VaultObjectMapping[BaseModel], ProjectModelABC):
         }
 
     @property
-    def config(self) -> AppConfig:
-        return self._config
+    def vault_schema(self) -> str:
+        return self._vault_schema
+
+    @property
+    def star_schema(self) -> str:
+        return self._star_schema
 
     @property
     def version(self) -> semver.VersionInfo:

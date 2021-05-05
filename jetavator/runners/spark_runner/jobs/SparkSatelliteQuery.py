@@ -100,7 +100,7 @@ class SparkSatelliteQuery(SparkSQLView, SatelliteQuery, register_as='satellite_q
         return {
             'source': StorageViewMapping(self.connector, {
                 source.name: f'source_{source.name}'
-                for source in self.satellite.project.sources.values()
+                for source in self.owner.project.sources.values()
             }),
             'hub': {
                 hub.name: StorageViewMapping(self.connector, {
@@ -111,7 +111,7 @@ class SparkSatelliteQuery(SparkSQLView, SatelliteQuery, register_as='satellite_q
                         f'_{self.satellite.full_name}'
                     ),
                 })
-                for hub in self.satellite.project.hubs.values()
+                for hub in self.owner.project.hubs.values()
             },
             'link': {
                 link.name: StorageViewMapping(self.connector, {
@@ -122,7 +122,7 @@ class SparkSatelliteQuery(SparkSQLView, SatelliteQuery, register_as='satellite_q
                         f'_{self.satellite.full_name}'
                     ),
                 })
-                for link in self.satellite.project.links.values()
+                for link in self.owner.project.links.values()
             },
             'satellite': {
                 satellite.name:  StorageViewMapping(self.connector, {
@@ -130,7 +130,7 @@ class SparkSatelliteQuery(SparkSQLView, SatelliteQuery, register_as='satellite_q
                     'history': StorageTable(f'vault_history_{satellite.name}'),
                     'updates': f'vault_updates_{satellite.full_name}'
                 })
-                for satellite in self.satellite.project.satellites.values()
+                for satellite in self.owner.project.satellites.values()
             }
         }
 

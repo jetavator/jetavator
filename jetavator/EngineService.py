@@ -11,7 +11,7 @@ from jetavator.services import Service, ComputeService
 from jetavator.sql_model import ProjectModel
 
 
-class EngineService(Service[EngineServiceConfig, ServiceOwner], ABC):
+class EngineService(Service[EngineServiceConfig, ServiceOwner], ServiceOwner, ABC):
 
     @property
     @abstractmethod

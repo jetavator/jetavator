@@ -11,7 +11,7 @@ from .StorageService import StorageService
 from jetavator.sql import ExecutesSQL, MetastoreInterface
 
 
-class ComputeService(Service[ComputeServiceConfig, ServiceOwner], ExecutesSQL, MetastoreInterface, ABC):
+class ComputeService(Service[ComputeServiceConfig, ServiceOwner], ExecutesSQL, MetastoreInterface, ServiceOwner, ABC):
 
     @LazyProperty
     def storage_services(self) -> Dict[str, StorageService]:

@@ -10,7 +10,7 @@ from concurrent.futures import Future
 from wysdom.mixins import RegistersSubclasses
 from lazy_property import LazyProperty
 
-from jetavator.schema_registry import VaultObject, Satellite
+from jetavator.schema_registry import Project, VaultObject, Satellite
 from jetavator.services import ComputeService
 from .JobState import JobState
 from jetavator.HasLogger import HasLogger
@@ -21,6 +21,11 @@ class JobOwner(HasLogger, ABC):
     @property
     @abstractmethod
     def compute_service(self) -> ComputeService:
+        pass
+
+    @property
+    @abstractmethod
+    def project(self) -> Project:
         pass
 
     @abstractmethod

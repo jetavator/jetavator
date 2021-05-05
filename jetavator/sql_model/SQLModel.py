@@ -9,61 +9,59 @@ from sqlalchemy import Table, MetaData, Column
 from sqlalchemy.schema import CreateTable, DropTable, CreateIndex, DDLElement
 from sqlalchemy_views import CreateView, DropView
 
+from jetavator.schema_registry import VaultObject, VaultObjectKey, VaultObjectMapping
+
 from ..VaultAction import VaultAction
-
-from jetavator.schema_registry import VaultObject, VaultObjectMapping, VaultObjectKey
-
-from .ProjectModelABC import ProjectModelABC
 
 VaultObjectType = TypeVar('VaultObjectType', bound=VaultObject)
 
 
-class BaseModel(RegistersSubclasses, Generic[VaultObjectType], ABC):
+class SQLModel(RegistersSubclasses, Generic[VaultObjectType], ABC):
 
     def __init__(
             self,
-            project: ProjectModelABC,
-            vault_schema: str,
-            star_schema: str,
+            owner: SQLModelOwner,
             new_object: VaultObjectType,
             old_object: VaultObjectType
     ) -> None:
         super().__init__()
-        self.project = project
-        self.vault_schema = vault_schema
-        self.star_schema = star_schema
+        self.owner = owner
         self.new_object = new_object
         self.old_object = old_object
-
-    @property
-    @abstractmethod
-    def files(self) -> List[DDLElement]:
-        pass
 
     @classmethod
     def subclass_instance(
             cls,
-            project: VaultObjectMapping[BaseModel],
-            vault_schema: str,
-            star_schema: str,
+            owner: SQLModelOwner,
             new_object: VaultObjectType,
             old_object: VaultObjectType
-    ) -> BaseModel:
+    ) -> SQLModel:
         key: VaultObjectKey = (
             new_object.key if new_object else old_object.key
         )
         return cls.registered_subclass_instance(
             key.type,
-            project,
-            vault_schema,
-            star_schema,
+            owner,
             new_object,
             old_object
         )
 
     @property
     def metadata(self) -> MetaData:
-        return self.project.metadata
+        return self.owner.metadata
+
+    @property
+    def vault_schema(self) -> str:
+        return self.owner.vault_schema
+
+    @property
+    def star_schema(self) -> str:
+        return self.owner.star_schema
+
+    @property
+    @abstractmethod
+    def files(self) -> List[DDLElement]:
+        pass
 
     @property
     def definition(self) -> VaultObjectType:
@@ -140,7 +138,7 @@ class BaseModel(RegistersSubclasses, Generic[VaultObjectType], ABC):
                 VaultAction.CREATE,
                 VaultAction.NONE
         ):
-            files += BaseModel.create_table(table, with_index)
+            files += SQLModel.create_table(table, with_index)
         return files
 
     def create_or_alter_tables(
@@ -175,7 +173,7 @@ class BaseModel(RegistersSubclasses, Generic[VaultObjectType], ABC):
         return [
             statement
             for table in tables
-            for statement in BaseModel.create_table(table, with_index)
+            for statement in SQLModel.create_table(table, with_index)
         ]
 
     @staticmethod
@@ -184,3 +182,21 @@ class BaseModel(RegistersSubclasses, Generic[VaultObjectType], ABC):
             DropTable(table)
             for table in tables
         ]
+
+
+class SQLModelOwner(VaultObjectMapping[SQLModel], ABC):
+
+    @property
+    @abstractmethod
+    def metadata(self) -> MetaData:
+        pass
+
+    @property
+    @abstractmethod
+    def vault_schema(self) -> str:
+        pass
+
+    @property
+    @abstractmethod
+    def star_schema(self) -> str:
+        pass
