@@ -1,6 +1,6 @@
 REQUIRED = [
     'wysdom>=0.2.2,<1',
-    'pandas>=1.1.5,<2',
+    'pandas>=1.1.0,<2',
     'SQLAlchemy>=1.3.22,<1.4',
     'sqlalchemy-views>=0.2.3,<1',
     'PyYAML>=5.3.1,<6',
