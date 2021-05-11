@@ -36,6 +36,7 @@ Help:
 import traceback
 import jsonschema
 import os
+import sys
 
 from docopt import docopt
 from textwrap import indent
@@ -47,6 +48,7 @@ from jetavator import LoadType
 from .config import AppConfig
 
 
+# TODO: Replace docopt with extensible click application
 def main(argv=None, exit_callback=None):
     """Main CLI entrypoint."""
 
@@ -66,7 +68,7 @@ def main(argv=None, exit_callback=None):
             exit_callback(1)
             return
         else:
-            exit(1)
+            sys.exit(1)
 
     cli_config_values = dict(
         tuple(option_string.split("=", 1))
@@ -172,7 +174,7 @@ def main(argv=None, exit_callback=None):
         if exit_callback:
             exit_callback(1)
         else:
-            exit(1)
+            sys.exit(1)
 
 
 if __name__ == '__main__':

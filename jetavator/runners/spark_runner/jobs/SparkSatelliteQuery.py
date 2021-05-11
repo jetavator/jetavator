@@ -12,7 +12,7 @@ from sqlalchemy.types import Boolean
 
 from jetavator.runners.jobs import SatelliteQuery
 from jetavator.sql_model.functions import hash_keygen, hash_record
-from jetavator.spark import SparkStorageService
+from jetavator.spark_services import SparkStorageService
 from .. import SparkSQLView
 
 

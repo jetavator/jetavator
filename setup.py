@@ -17,7 +17,7 @@ DESCRIPTION = (
 URL = 'https://github.com/jetavator/jetavator'
 EMAIL = 'joetaylorconsulting@gmail.com'
 AUTHOR = 'Joe Taylor'
-REQUIRES_PYTHON = '>=3.7.0'
+REQUIRES_PYTHON = '>=3.8.0'
 VERSION = None
 
 # What packages are required for this module to be executed?

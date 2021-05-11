@@ -1,26 +1,33 @@
-from typing import List, Set
+from typing import Dict, List, Set
 from abc import ABC
 
 import sqlalchemy
+import wysdom
 
 from pyspark.sql import SparkSession
 
 from lazy_property import LazyProperty
 
-from jetavator.sqlalchemy_delta import HiveWithDDLDialect
+from jetavator.config import ConfigProperty, ComputeServiceConfig
+from jetavator.sqlalchemy_delta import HiveDialect
+from jetavator.services import ComputeService, Service, ServiceOwner
 
-from jetavator.services.ComputeService import ComputeService
 from .HiveMetastoreInterface import HiveMetastoreInterface
 from .ExecutesSparkSQL import ExecutesSparkSQL
 
 SPARK_APP_NAME = 'jetavator'
 
 
-class SparkService(ComputeService, ExecutesSparkSQL, HiveMetastoreInterface, ABC):
+class SparkConfig(ComputeServiceConfig):
+    spark_config: Dict[str, str] = ConfigProperty(wysdom.SchemaDict(str), default={})
+    spark_packages: List[str] = ConfigProperty(wysdom.SchemaArray(str), default=[])
+
+
+class SparkService(ComputeService, Service[SparkConfig, ServiceOwner], ExecutesSparkSQL, HiveMetastoreInterface, ABC):
 
     @property
     def sqlalchemy_dialect(self) -> sqlalchemy.engine.interfaces.Dialect:
-        return HiveWithDDLDialect()
+        return HiveDialect()
 
     @LazyProperty
     def spark(self):
@@ -32,6 +39,9 @@ class SparkService(ComputeService, ExecutesSparkSQL, HiveMetastoreInterface, ABC
             .config("spark.ui.showConsoleProgress", False)
             .config("spark.jars.packages", ",".join(self.all_spark_jars_packages))
         )
+        # TODO: Throw error if conflicting config values are set
+        for k, v in self.config.spark_config.items():
+            builder = builder.config(k, v)
         for storage_service in self.storage_services.values():
             for k, v in storage_service.spark_config_options.items():
                 builder = builder.config(k, v)
@@ -41,7 +51,7 @@ class SparkService(ComputeService, ExecutesSparkSQL, HiveMetastoreInterface, ABC
 
     @property
     def spark_jars_packages(self) -> List[str]:
-        return []
+        return self.config.spark_packages
 
     @property
     def all_spark_jars_packages(self) -> Set[str]:
@@ -74,5 +84,3 @@ class SparkService(ComputeService, ExecutesSparkSQL, HiveMetastoreInterface, ABC
     def test(self):
         assert self.sql_query_single_value("SELECT 1") == 1
         return True
-
-

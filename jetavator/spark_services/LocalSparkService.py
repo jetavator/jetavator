@@ -2,11 +2,12 @@ import os
 
 import wysdom
 
-from jetavator.config import ComputeServiceConfig, ConfigProperty
-from .SparkService import SparkService
+from jetavator.config import ConfigProperty
+
+from .SparkService import SparkConfig, SparkService
 
 
-class LocalSparkConfig(ComputeServiceConfig):
+class LocalSparkConfig(SparkConfig):
     type: str = ConfigProperty(wysdom.SchemaConst('spark'))
 
 

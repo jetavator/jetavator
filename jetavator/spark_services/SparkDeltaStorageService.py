@@ -9,10 +9,9 @@ from lazy_property import LazyProperty
 
 from jetavator.config import StorageServiceConfig
 from jetavator.sqlalchemy_delta import DeltaDialect
+from jetavator.services import Service
 
-from jetavator.services.Service import Service
-from .SparkStorageService import SparkStorageService
-from .SparkStorageServiceOwner import SparkStorageServiceOwner
+from .SparkStorageService import SparkStorageService, SparkStorageServiceOwner
 
 DRIVER_GROUP_ID = "io.delta"
 DRIVER_ARTIFACT_ID = "delta-core_2.12"
@@ -37,10 +36,6 @@ class SparkDeltaStorageService(
     spark_jars_packages: List[str] = [
         f"{DRIVER_GROUP_ID}:{DRIVER_ARTIFACT_ID}:{DRIVER_VERSION}"
     ]
-
-    @property
-    def spark(self):
-        return self.owner.spark
 
     def table_delta_path(self, sqlalchemy_table):
         return (

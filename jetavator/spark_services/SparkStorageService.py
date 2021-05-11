@@ -4,7 +4,8 @@ from abc import ABC, abstractmethod
 import pyspark
 import sqlalchemy
 
-from jetavator.services.StorageService import StorageService
+from jetavator.config import StorageServiceConfig
+from jetavator.services import Service, StorageService
 from .HiveMetastoreInterface import HiveMetastoreInterface
 from .ExecutesSparkSQL import ExecutesSparkSQL
 
@@ -25,11 +26,30 @@ def pyspark_column_type(sqlalchemy_column):
             return pyspark_type()
 
 
-class SparkStorageService(StorageService, ExecutesSparkSQL, HiveMetastoreInterface, ABC):
+class SparkStorageServiceOwner(ABC):
+
+    @property
+    @abstractmethod
+    def spark(self) -> pyspark.sql.SparkSession:
+        pass
+
+
+class SparkStorageService(
+    StorageService,
+    Service[StorageServiceConfig, SparkStorageServiceOwner],
+    ExecutesSparkSQL,
+    HiveMetastoreInterface,
+    ABC
+):
 
     spark_config_options: Dict[str, str] = {}
     spark_jars_packages: List[str] = []
 
+    @property
+    def spark(self) -> pyspark.sql.SparkSession:
+        return self.owner.spark
+
+    # TODO:: Is this actually generic?
     def table_delta_path(self, sqlalchemy_table):
         return (
             '/tmp'
