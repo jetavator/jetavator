@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 from abc import ABC, abstractmethod
 
 import pyspark
@@ -59,7 +59,7 @@ class HiveMetastoreInterface(HasLogger, HasConfig, MetastoreInterface, ABC):
     def schema_names(self) -> List[str]:
         self.logger.debug(f"{self.__class__.__name__} - listing schemas")
         return self._column_in_spark_query(
-            select_column="namespace",
+            select_column=0,
             from_query="SHOW DATABASES"
         )
 
@@ -70,7 +70,7 @@ class HiveMetastoreInterface(HasLogger, HasConfig, MetastoreInterface, ABC):
             from_query=f"DESCRIBE FORMATTED `{self.config.schema}`.`{table_name}`"
         )
 
-    def _column_in_spark_query(self, select_column: str, from_query: str) -> List[str]:
+    def _column_in_spark_query(self, select_column: Union[str, int], from_query: str) -> List[str]:
         return [
             row[select_column]
             for row in self.spark.sql(from_query).collect()
