@@ -67,7 +67,7 @@ class App(ServiceOwner):
 
     @property
     def logger_config(self) -> Dict[str, Any]:
-        return DEFAULT_LOGGER_CONFIG
+        return self.config.logging
 
     @LazyProperty
     def logger(self) -> logging.Logger:

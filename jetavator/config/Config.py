@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Any
 
 import os
 import uuid
@@ -11,6 +11,7 @@ from pathlib import Path
 
 from .secret_lookup import SecretLookup
 from .ConfigProperty import ConfigProperty
+from jetavator.default_logger import DEFAULT_LOGGER_CONFIG
 
 # TODO: Co-locate config classes with their related service classes
 # TODO: Split services into service types in config file structure
@@ -114,6 +115,7 @@ class AppConfig(ConfigWithSchema, wysdom.ReadsJSON, wysdom.ReadsYAML):
     model_path: str = ConfigProperty(str, default_function=lambda self: os.getcwd())
     schema: str = ConfigProperty(str)
     drop_schema_if_exists: bool = ConfigProperty(bool, default=False)
+    logging: Dict[str, Any] = ConfigProperty(wysdom.SchemaDict(wysdom.SchemaAnything()), default=DEFAULT_LOGGER_CONFIG)
 
     @LazyProperty
     def secret_lookup(self) -> SecretLookup:
