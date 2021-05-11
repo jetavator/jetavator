@@ -103,7 +103,6 @@ class SimpleFileRegistryServiceConfig(RegistryServiceConfig):
 class EngineServiceConfig(ServiceConfig):
     registry: RegistryServiceConfig = ConfigProperty(RegistryServiceConfig)
     compute: ComputeServiceConfig = ConfigProperty(ComputeServiceConfig)
-    skip_deploy: bool = ConfigProperty(bool, default=False)
 
 
 class LocalEngineServiceConfig(EngineServiceConfig):
@@ -115,6 +114,7 @@ class AppConfig(ConfigWithSchema, wysdom.ReadsJSON, wysdom.ReadsYAML):
     model_path: str = ConfigProperty(str, default_function=lambda self: os.getcwd())
     schema: str = ConfigProperty(str)
     drop_schema_if_exists: bool = ConfigProperty(bool, default=False)
+    skip_deploy: bool = ConfigProperty(bool, default=False)
     logging: Dict[str, Any] = ConfigProperty(wysdom.SchemaDict(wysdom.SchemaAnything()), default=DEFAULT_LOGGER_CONFIG)
 
     @LazyProperty
