@@ -92,7 +92,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'jetavator=jetavator.cli:main',
+            'jetavator=jetavator.cli:cli',
         ],
     }
 )

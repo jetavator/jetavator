@@ -15,7 +15,7 @@ from sqlalchemy.sql import and_, select
 from ast import literal_eval
 
 from jetavator.default_logger import default_logger
-from jetavator.cli import main as cli_main
+from jetavator.cli import cli
 from jetavator import App, AppConfig
 
 SCHEMA_METADATA_TABLE = {
@@ -49,20 +49,17 @@ def run_cli(
 
     exit_code = 0
 
-    def exit_callback(code):
-        exit_code = code
-
     assert retry_limit > 0, "retry_limit must be greater than zero"
 
     for attempts in range(0, retry_limit):
         try:
             command_parts = (
                 command
-                    .replace("\\\r", "")
-                    .replace("\\\n", "")
-                    .replace("\r", "")
-                    .replace("\n", "")
-                    .split(' ')
+                .replace("\\\r", "")
+                .replace("\\\n", "")
+                .replace("\r", "")
+                .replace("\n", "")
+                .split(' ')
             )
             command, *argv = [
                 part.replace('"', '')
@@ -72,7 +69,12 @@ def run_cli(
             assert command == 'jetavator', (
                 f'CLI command "{command}" not recognised'
             )
-            cli_main(argv, exit_callback)
+
+            try:
+                cli.main(args=argv)
+            except SystemExit as e:
+                exit_code = e.code
+
             break
         except Exception as e:
             if attempts + 1 == retry_limit:

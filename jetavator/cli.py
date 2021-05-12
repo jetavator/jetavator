@@ -1,181 +1,127 @@
-"""
-jetavator
+from typing import List, Dict, Tuple, Iterable
 
-Usage:
-  jetavator config [--test] [--config-file=<config_file>]
-    [--set <option>=<value>]...
-  jetavator deploy [-d|--drop-if-exists] [--set <option>=<value>]...
-  jetavator update [--set <option>=<value>]...
-  jetavator run [delta|full] [--csv <target_table>=<source_csv>]...
-  jetavator run [delta|full] --folder=<csv_folder>
-  jetavator drop satellite <name> [--set <option>=<value>]...
-  jetavator show project [name|version|history]
-    [--set <option>=<value>]...
-    [--pivot=[rows|duration]] [--outfile=<csv_file>] [--no-print]
-  jetavator -h | --help
-  jetavator --version
-
-Options:
-
-  -d --drop-if-exists   Drop and recreate the SQL database if it already exists
-                        (use with caution!)
-
-  -n --nodeploy         Run tests only, using an existing deployment.
-
-  --behave=BEHAVE_OPTS  Options to pass to the behave tests
-                        (e.g. --behave='--wip --no-summary')
-
-  -h --help             Show this screen.
-  --version             Show version.
-
-Help:
-  For help using this tool, please open an issue on the Github repository:
-  https://github.com/jetavator/jetavator
-"""
-
-import traceback
 import jsonschema
 import os
-import sys
+import click
 
-from docopt import docopt
-from textwrap import indent
-
-from . import __version__ as version
-from .default_logger import default_logger
+from .__version__ import __version__
 from jetavator.App import App
-from jetavator import LoadType
 from .config import AppConfig
 
 
-# TODO: Replace docopt with extensible click application
-def main(argv=None, exit_callback=None):
-    """Main CLI entrypoint."""
+def validate_assignment_expressions(expressions: Iterable[str]) -> List[Tuple[str, str]]:
+    assignment_tuples = [tuple(expression.split("=", 1)) for expression in expressions]
 
-    docopt_kwargs = {'version': version}
+    if not all(len(x) == 2 for x in assignment_tuples):
+        raise click.BadParameter("format must be 'x=y'")
 
-    if argv:
-        # Simulating CLI entry point call from Python
-        docopt_kwargs['argv'] = argv
+    return [(x[0], x[1]) for x in assignment_tuples]
 
-    options = {}
+
+def assignments_to_dict(
+    context: click.core.Context, parameter: click.core.Option, expressions: Tuple[str]
+) -> Dict[str, str]:
+    return dict(validate_assignment_expressions(expressions))
+
+
+def multiple_assignments_to_dict(
+    context: click.core.Context, parameter: click.core.Option, expressions: Tuple[str]
+) -> Dict[str, List[str]]:
+    assignment_dict = {}
+    for key, value in validate_assignment_expressions(expressions):
+        assignment_dict.setdefault(key, []).append(value)
+    return assignment_dict
+
+
+def create_app_object() -> App:
 
     try:
-        options = docopt(__doc__, **docopt_kwargs)
-    except SystemExit as e:
-        default_logger.error(str(e))
-        if exit_callback:
-            exit_callback(1)
-            return
-        else:
-            sys.exit(1)
+        AppConfig.make_config_dir()
+        app_config = AppConfig.from_yaml_file(AppConfig.config_file())
+    except jsonschema.exceptions.ValidationError:
+        click.echo("")
+        app_config = AppConfig({})
 
-    cli_config_values = dict(
-        tuple(option_string.split("=", 1))
-        for option_string in options["<option>=<value>"]
-    )
+    app_config.reset_session()
+    return App(app_config)
 
-    # TODO: replace with simpler --file?
-    if options.get("--config-file"):
-        config = AppConfig.from_yaml_file(options["--config-file"])
-        config.update(cli_config_values)
+
+@click.group()
+def cli():
+    pass
+
+
+@cli.command()
+def version():
+    """Display the application version."""
+    click.echo(__version__)
+
+
+@cli.command()
+@click.option("--config-file", type=click.Path(exists=True, dir_okay=False), help="YAML config file.")
+@click.option(
+    "--set",
+    "set_values",
+    multiple=True,
+    callback=assignments_to_dict,
+    help="Provide options in the form --set <option>=<value>.",
+)
+def config(config_file: str, set_values: Dict[str, str]):
+    """Configure the application's settings."""
+    if config_file:
+        app_config = AppConfig.from_yaml_file(config_file)
     else:
         try:
             AppConfig.make_config_dir()
-            config = AppConfig.from_yaml_file(AppConfig.config_file())
-            config.update(cli_config_values)
+            app_config = AppConfig.from_yaml_file(AppConfig.config_file())
         except jsonschema.exceptions.ValidationError:
-            config = AppConfig(cli_config_values)
-
-    config.reset_session()
-    app = App(config)
-
-    printable_options = [
-        k
-        for k, v in options.items()
-        if v is True
-    ] + [
-        f'{k}={v}'
-        for k, v in options.items()
-        if v and v is not True and not k == '--password'
-    ]
-
-    default_logger.info(
-        f'''
-        Jetavator {version} - running command:
-        {' '.join(printable_options)}
-
-        Jetavator config:
-{indent(str(app.config), '        ')}
-        '''
-    )
-
-    if options.get('-d') or options.get('--drop-if-exists'):
-        app.config.drop_schema_if_exists = True
-
-    if options.get('-n') or options.get('--nodeploy'):
-        app.config.skip_deploy = True
-
-    if options.get('--behave'):
-        app.config.behave_options = options.get('--behave')
-
-    try:
-
-        # TODO: refactor this if block into separate functions
-
-        if options['config']:
-            if options['--test']:
-                test_app = App(config=config)
-                if test_app.engine.compute_service.test():
-                    default_logger.info(
-                        'Successfully logged in and connected to compute service.'
-                    )
-                    config.save()
-                else:
-                    default_logger.error(
-                        'Unable to log in or connect to compute service.'
-                    )
-            else:
-                config.save()
-
-        elif options['deploy']:
-            app.deploy()
-
-        elif options['update']:
-            app.update()
-
-        elif options['drop'] and options['satellite']:
-            app.drop('satellite', options['<name>'])
-
-        elif options['run']:
-            load_type = (LoadType.FULL if options['full'] else LoadType.DELTA)
-            default_logger.info(f'Engine: Performing {load_type} load.')
-            # TODO: Refactor this out of cli.py to elsewhere - this is core functionality
-            if options['<target_table>=<source_csv>']:
-                table_csvs = {}
-                for option in options['<target_table>=<source_csv>']:
-                    table_name, csv_file = option.split('=')
-                    table_csvs.setdefault(table_name, []).append(csv_file)
-                for table_name, csv_files in table_csvs.items():
-                    default_logger.info(
-                        f'Loading {len(csv_files)} CSVs '
-                        f'into table: {table_name}'
-                    )
-                    app.loaded_project.sources[table_name].load_csvs(csv_files)
-            elif options['--folder']:
-                for dir_entry in os.scandir(options['--folder']):
-                    filename, file_extension = os.path.splitext(dir_entry.name)
-                    if file_extension == ".csv" and dir_entry.is_file():
-                        app.loaded_project.sources[filename].load_csvs([dir_entry.path])
-            app.run(load_type=load_type)
-
-    except RuntimeError:
-        default_logger.error(traceback.format_exc())
-        if exit_callback:
-            exit_callback(1)
-        else:
-            sys.exit(1)
+            raise click.ClickException("Stored configuration is invalid. Please overwrite it using --config-file.")
+    app_config.update(set_values)
+    app_config.save()
 
 
-if __name__ == '__main__':
-    main()
+@cli.command()
+@click.option("-d", "--drop-if-exists", is_flag=True, help="Drop the current database schema if it exists.")
+def deploy(drop_if_exists: bool):
+    """Deploy the current project to a fresh database"""
+    app = create_app_object()
+    app.config.drop_schema_if_exists = drop_if_exists
+    app.deploy()
+
+
+@cli.command()
+def update():
+    """Update the currently deployed project to a new version"""
+    app = create_app_object()
+    app.update()
+
+
+@cli.command()
+@click.option(
+    "--csv",
+    multiple=True,
+    callback=multiple_assignments_to_dict,
+    help="Provide CSV file paths in the form --csv <source>=<path-to-csv>.",
+)
+@click.option(
+    "--folder",
+    type=click.Path(exists=True),
+    help=""
+)
+def run(csv: Dict[str, List[str]], folder: str):
+    """Runs the pipeline(s) for the current project with the specified data files"""
+
+    app = create_app_object()
+
+    if csv:
+        for table_name, csv_files in csv.items():
+            click.echo(f"Loading {len(csv_files)} CSVs " f"into table: {table_name}")
+            app.loaded_project.sources[table_name].load_csvs(csv_files)
+
+    if folder:
+        for dir_entry in os.scandir(folder):
+            filename, file_extension = os.path.splitext(dir_entry.name)
+            if file_extension == ".csv" and dir_entry.is_file():
+                app.loaded_project.sources[filename].load_csvs([dir_entry.path])
+
+    app.run()

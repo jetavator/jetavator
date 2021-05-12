@@ -76,7 +76,7 @@ Feature: CSV sources
      And we run the CLI command "jetavator deploy -d"
      And we run the CLI command:
        """
-       jetavator run delta --csv airport_details="{tempfolder}/airport_details.csv"
+       jetavator run --csv airport_details="{tempfolder}/airport_details.csv"
        """
 
     Then the table vault_sat_airport_details exists on the vault datastore
@@ -129,7 +129,7 @@ Feature: CSV sources
      And we run the CLI command "jetavator deploy -d"
      And we run the CLI command:
        """
-       jetavator run delta --csv airport_details="{tempfolder}/airport_details.csv"
+       jetavator run --csv airport_details="{tempfolder}/airport_details.csv"
        """
 
     Then the table vault_sat_airport_details exists on the vault datastore
@@ -180,7 +180,7 @@ Feature: CSV sources
      And we run the CLI command "jetavator deploy -d"
      And we run the CLI command:
        """
-       jetavator run delta --csv airport_details="{tempfolder}/airport_details.csv"
+       jetavator run --csv airport_details="{tempfolder}/airport_details.csv"
        """
 
     Then the table vault_sat_airport_details exists on the vault datastore
@@ -229,7 +229,7 @@ Feature: CSV sources
      And we run the CLI command "jetavator deploy -d"
      And we run the CLI command:
        """
-       jetavator run delta --csv airport_details="{tempfolder}/airport_details.csv"
+       jetavator run --csv airport_details="{tempfolder}/airport_details.csv"
        """
 
     Then the table vault_sat_airport_details exists on the vault datastore
@@ -280,7 +280,7 @@ Feature: CSV sources
      And we run the CLI command "jetavator deploy -d"
      And we run the CLI command:
        """
-       jetavator run delta --csv airport_details="{tempfolder}/airport_details.csv"
+       jetavator run --csv airport_details="{tempfolder}/airport_details.csv"
        """
 
     Then the table vault_sat_airport_details exists on the vault datastore

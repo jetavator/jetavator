@@ -258,7 +258,7 @@ Feature: Build star schema from project
      And we run the CLI command "jetavator deploy -d"
      And we run the CLI command:
        """
-       jetavator run delta \
+       jetavator run \
          --csv airport_details="{tempfolder}/airport_details.csv" \
          --csv airport_pair_details="{tempfolder}/airport_pair_details.csv"
        """
@@ -323,7 +323,7 @@ Feature: Build star schema from project
      And we run the CLI command "jetavator deploy -d"
      And we run the CLI command:
        """
-       jetavator run delta \
+       jetavator run \
          --csv airport_details="{tempfolder}/airport_details.csv" \
          --csv airport_pair_details="{tempfolder}/airport_pair_details.csv"
        """
@@ -335,7 +335,7 @@ Feature: Build star schema from project
        | ORD         | PVG         | 0           | 0                     |
      And we run the CLI command:
        """
-       jetavator run delta \
+       jetavator run \
          --csv airport_details="{tempfolder}/airport_details_update.csv" \
          --csv airport_pair_details="{tempfolder}/airport_pair_details_update.csv"
        """
@@ -400,7 +400,7 @@ Feature: Build star schema from project
      And we run the CLI command "jetavator deploy -d"
      And we run the CLI command:
        """
-       jetavator run delta \
+       jetavator run \
          --csv airport_details="{tempfolder}/airport_details.csv" \
          --csv airport_pair_details="{tempfolder}/airport_pair_details.csv"
        """
@@ -413,7 +413,7 @@ Feature: Build star schema from project
        | ORD         | CDG         | 1           | 0                     |
      And we run the CLI command:
        """
-       jetavator run delta \
+       jetavator run \
          --csv airport_details="{tempfolder}/airport_details_insert.csv" \
          --csv airport_pair_details="{tempfolder}/airport_pair_details_insert.csv"
        """
@@ -484,7 +484,7 @@ Feature: Build star schema from project
      And we run the CLI command "jetavator deploy -d"
      And we run the CLI command:
        """
-       jetavator run delta \
+       jetavator run \
          --csv airport_details="{tempfolder}/airport_details.csv" \
          --csv airport_pair_details="{tempfolder}/airport_pair_details.csv"
        """
@@ -497,7 +497,7 @@ Feature: Build star schema from project
        | ORD         | DEN         |             | 1                     |
      And we run the CLI command:
        """
-       jetavator run delta \
+       jetavator run \
          --csv airport_details="{tempfolder}/airport_details_delete.csv" \
          --csv airport_pair_details="{tempfolder}/airport_pair_details_delete.csv"
        """
@@ -562,7 +562,7 @@ Feature: Build star schema from project
      And we run the CLI command "jetavator deploy -d"
      And we run the CLI command:
        """
-       jetavator run delta \
+       jetavator run \
          --csv airport_details="{tempfolder}/airport_details.csv" \
          --csv airport_pair_details="{tempfolder}/airport_pair_details.csv"
        """
@@ -588,7 +588,7 @@ Feature: Build star schema from project
        | ORD         | DEN         |             | 1                     |
      And we run the CLI command:
        """
-       jetavator run delta \
+       jetavator run \
          --csv airport_details="{tempfolder}/airport_details_update.csv" \
          --csv airport_details="{tempfolder}/airport_details_insert.csv" \
          --csv airport_details="{tempfolder}/airport_details_delete.csv" \
@@ -663,12 +663,12 @@ Feature: Build star schema from project
      And we run the CLI command "jetavator deploy -d"
      And we run the CLI command:
        """
-       jetavator run delta \
+       jetavator run \
          --csv airport_details="{tempfolder}/airport_details.csv"
        """
      And we run the CLI command:
        """
-       jetavator run delta \
+       jetavator run \
          --csv airport_pair_details="{tempfolder}/airport_pair_details.csv"
        """
      And the following CSV file airport_details_update.csv is saved in the temporary folder:
@@ -693,32 +693,32 @@ Feature: Build star schema from project
        | ORD         | DEN         |             | 1                     |
      And we run the CLI command:
        """
-       jetavator run delta \
+       jetavator run \
          --csv airport_details="{tempfolder}/airport_details_update.csv"
        """
      And we run the CLI command:
        """
-       jetavator run delta \
+       jetavator run \
          --csv airport_details="{tempfolder}/airport_details_delete.csv"
        """
      And we run the CLI command:
        """
-       jetavator run delta \
+       jetavator run \
          --csv airport_details="{tempfolder}/airport_details_insert.csv"
        """
      And we run the CLI command:
        """
-       jetavator run delta \
+       jetavator run \
          --csv airport_pair_details="{tempfolder}/airport_pair_details_update.csv"
        """
      And we run the CLI command:
        """
-       jetavator run delta \
+       jetavator run \
          --csv airport_pair_details="{tempfolder}/airport_pair_details_delete.csv"
        """
      And we run the CLI command:
        """
-       jetavator run delta \
+       jetavator run \
          --csv airport_pair_details="{tempfolder}/airport_pair_details_insert.csv"
        """
 

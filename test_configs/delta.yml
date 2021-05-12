@@ -26,5 +26,6 @@ logging:
       formatter: simple
   loggers:
     jetavator:
-      handlers: [console]
+      handlers:
+        - console
       level: DEBUG
