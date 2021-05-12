@@ -17,11 +17,28 @@ DESCRIPTION = (
 URL = 'https://github.com/jetavator/jetavator'
 EMAIL = 'joetaylorconsulting@gmail.com'
 AUTHOR = 'Joe Taylor'
-REQUIRES_PYTHON = '>=3.7.0'
+REQUIRES_PYTHON = '>=3.8.0'
 VERSION = None
 
 # What packages are required for this module to be executed?
-REQUIRED = None
+REQUIRED = [
+    'wysdom>=0.2.2,<1',
+    'pandas>=1.1.0,<2',
+    'SQLAlchemy>=1.3.22,<1.4',
+    'sqlalchemy-views>=0.2.3,<1',
+    'PyYAML>=5.3.1,<6',
+    'tabulate>=0.8,<1',
+    'behave>=1.2,<2',
+    'sqlparse>=0.3.0,<1',
+    'semver>=2.8.1,<3',
+    'future>=0.18.2,<1',
+    'lazy-property>=0.0.1,<1',
+    'pyspark>=3.0.1,<3.1',
+    'pyspark-asyncactions>=0.0.2,<3',
+    'jinja2>=2.10.3,<3',
+    'click>=8.0.0,<9',
+    'python-dotenv>=0.17.1,<0.18'
+]
 
 # What packages are optional?
 EXTRAS = {
@@ -62,15 +79,6 @@ if not VERSION:
 else:
     about['__version__'] = VERSION
 
-
-requirements = {}
-if not REQUIRED:
-    with open(os.path.join(here, NAME, '__required__.py')) as f:
-        exec(f.read(), requirements)
-else:
-    requirements['REQUIRED'] = REQUIRED
-
-
 setup(
     name=NAME,
     version=about['__version__'],
@@ -81,7 +89,7 @@ setup(
     python_requires=REQUIRES_PYTHON,
     url=URL,
     packages=find_packages(exclude=('tests', 'docs')),
-    install_requires=requirements['REQUIRED'],
+    install_requires=REQUIRED,
     extras_require=EXTRAS,
     include_package_data=True,
     license=license_text,
@@ -92,7 +100,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'jetavator=jetavator.cli:main',
+            'jetavator=jetavator.cli:cli',
         ],
     }
 )

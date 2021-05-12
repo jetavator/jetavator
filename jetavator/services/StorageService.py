@@ -5,26 +5,19 @@ import sqlalchemy
 import sqlalchemy_views
 import pandas
 
-from jetavator import EngineABC
 from jetavator.config import StorageServiceConfig
+from jetavator.sql import ExecutesSQL, MetastoreInterface
 
 from .Service import Service
-from .ComputeOwnedService import ComputeOwnedService
-from .StorageServiceABC import StorageServiceABC
-from .ExecutesSQL import ExecutesSQL
+from .ServiceOwner import ServiceOwner
 
 
 class StorageService(
-    ComputeOwnedService,
-    Service[StorageServiceConfig],
+    Service[StorageServiceConfig, ServiceOwner],
     ExecutesSQL,
-    StorageServiceABC,
+    MetastoreInterface,
     ABC
 ):
-
-    @property
-    def engine(self) -> EngineABC:
-        return self.owner.engine
 
     def create_schema_if_missing(self) -> None:
         if self.schema_exists:
@@ -34,7 +27,7 @@ class StorageService(
                 self.create_schema()
             elif (
                     not self.schema_empty
-                    and not self.engine.config.skip_deploy
+                    and not self.config.skip_deploy
             ):
                 raise Exception(
                     f"Database {self.config.schema} already exists, "
@@ -60,9 +53,9 @@ class StorageService(
 
     def create_views(
             self,
-            sqlalchemy_views: Iterable[sqlalchemy_views.CreateView]
+            views: Iterable[sqlalchemy_views.CreateView]
     ) -> None:
-        for view in sqlalchemy_views:
+        for view in views:
             self.create_view(view)
 
     def execute_sql_elements_async(
@@ -92,15 +85,6 @@ class StorageService(
     @property
     def index_option_kwargs(self) -> Set[str]:
         return set()
-
-    @abstractmethod
-    def load_dataframe(
-            self,
-            dataframe: pandas.DataFrame,
-            source_name: str,
-            source_column_names: Iterable[str]
-    ) -> None:
-        pass
 
     @abstractmethod
     def merge_from_spark_view(

@@ -1,11 +1,17 @@
+# TODO: Remove any unnecessary imports
+
 from .__version__ import __version__
-from .__required__ import REQUIRED
 from .default_logger import DEFAULT_LOGGER_CONFIG
 from .VaultAction import VaultAction
-from .ServiceOwner import ServiceOwner
-from .Engine import Engine, LoadType
-from .config import Config
+from jetavator.App import App
+from jetavator.LoadType import LoadType
+from .config import AppConfig
 
+import jetavator.services
+import jetavator.spark_services
+import jetavator.engine
+
+# TODO: Is this still needed?
 from pkg_resources import iter_entry_points as _iter_entry_points
 
 plugins = {

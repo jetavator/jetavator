@@ -2,14 +2,13 @@ from typing import List
 
 from sqlalchemy import Column, Index
 
-from jetavator.services import StorageService
 from jetavator.schema_registry import Hub
 
-from .SatelliteOwnerModel import SatelliteOwnerModel
-from .BaseModel import BaseModel
+from .SatelliteModel import SatelliteOwnerModel
+from .SQLModel import SQLModel
 
 
-class HubModel(SatelliteOwnerModel, BaseModel[Hub], register_as="hub"):
+class HubModel(SatelliteOwnerModel, SQLModel[Hub], register_as="hub"):
 
     @property
     def static_columns(self) -> List[Column]:
@@ -28,7 +27,6 @@ class HubModel(SatelliteOwnerModel, BaseModel[Hub], register_as="hub"):
 
     def satellite_owner_indexes(
             self,
-            storage_service: StorageService,
             table_name: str
     ) -> List[Index]:
         return []

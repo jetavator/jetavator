@@ -8,25 +8,20 @@ from datetime import datetime
 from itertools import groupby
 
 from jetavator import __version__
-from jetavator.config import Config
-from jetavator.services import ComputeService
 
-from .VaultObject import VaultObject, VaultObjectKey
+from .VaultObject import VaultObject, VaultObjectKey, VaultObjectOwner
 from .VaultObjectCollection import VaultObjectMapping
 from .YamlProjectLoader import YamlProjectLoader
-from .ProjectABC import ProjectABC
 
 from .sqlalchemy_tables import Deployment, ObjectDefinition
 
 
-class Project(VaultObjectMapping, ProjectABC):
+class Project(VaultObjectMapping, VaultObjectOwner):
     _vault_objects: Dict[Tuple[str, str], VaultObject] = None
     _sqlalchemy_object = None
 
     def __init__(
             self,
-            config: Config,
-            compute_service: ComputeService,
             object_definitions: List[ObjectDefinition],
             sqlalchemy_object: Deployment
     ) -> None:
@@ -34,25 +29,13 @@ class Project(VaultObjectMapping, ProjectABC):
             VaultObject.subclass_instance(self, x)
             for x in object_definitions
         )
-        self._config = config
-        self._compute_service = compute_service
         self._sqlalchemy_object = sqlalchemy_object
         for vault_object in self.values():
             vault_object.validate()
 
-    @property
-    def config(self) -> Config:
-        return self._config
-
-    @property
-    def compute_service(self) -> ComputeService:
-        return self._compute_service
-
     @classmethod
     def from_directory(
             cls,
-            config: Config,
-            compute_service: ComputeService,
             directory_path: str
     ) -> Project:
 
@@ -72,8 +55,6 @@ class Project(VaultObjectMapping, ProjectABC):
             version=projects[0]["version"])
 
         return cls(
-            config,
-            compute_service,
             object_definitions=[
                 ObjectDefinition.from_dict(sqlalchemy_object, definition_dict)
                 for definition_dict in non_projects
@@ -83,13 +64,9 @@ class Project(VaultObjectMapping, ProjectABC):
     @classmethod
     def from_sqlalchemy_object(
             cls,
-            config: Config,
-            compute_service: ComputeService,
             sqlalchemy_object: Deployment
     ) -> Project:
         return cls(
-            config,
-            compute_service,
             object_definitions=sqlalchemy_object.object_definitions,
             sqlalchemy_object=sqlalchemy_object)
 

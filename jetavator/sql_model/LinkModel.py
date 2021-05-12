@@ -2,14 +2,13 @@ from typing import Dict, List
 
 from sqlalchemy import Column, Index
 
-from jetavator.services import StorageService
 from jetavator.schema_registry import Link
 
-from .SatelliteOwnerModel import SatelliteOwnerModel
-from .BaseModel import BaseModel
+from .SatelliteModel import SatelliteOwnerModel
+from .SQLModel import SQLModel
 
 
-class LinkModel(SatelliteOwnerModel, BaseModel[Link], register_as="link"):
+class LinkModel(SatelliteOwnerModel, SQLModel[Link], register_as="link"):
 
     @property
     def hub_key_columns(self) -> List[Column]:
@@ -25,12 +24,10 @@ class LinkModel(SatelliteOwnerModel, BaseModel[Link], register_as="link"):
 
     def satellite_owner_indexes(
             self,
-            storage_service: StorageService,
             table_name: str
     ) -> List[Index]:
         return [
             hub_model.index(
-                storage_service,
                 f"{table_name}_hx_{hub_alias}",
                 hub_alias
             )
@@ -40,6 +37,6 @@ class LinkModel(SatelliteOwnerModel, BaseModel[Link], register_as="link"):
     @property
     def hub_models(self) -> Dict[str, SatelliteOwnerModel]:
         return {
-            k: self.project[v.key]
+            k: self.owner[v.key]
             for k, v in self.definition.hubs.items()
         }

@@ -1,20 +1,17 @@
-from typing import Dict, Any
+from typing import Dict
 from abc import ABC, abstractmethod
 
 from lazy_property import LazyProperty
 
-from jetavator.EngineABC import EngineABC
+from jetavator.config import ComputeServiceConfig
+from jetavator.sql import ExecutesSQL, MetastoreInterface
+
+from .Service import Service
+from .ServiceOwner import ServiceOwner
 from .StorageService import StorageService
 
-from .ComputeServiceABC import ComputeServiceABC
-from .ExecutesSQL import ExecutesSQL
 
-
-class ComputeService(ComputeServiceABC, ExecutesSQL, ABC):
-
-    @property
-    def engine(self) -> EngineABC:
-        return self.owner
+class ComputeService(Service[ComputeServiceConfig, ServiceOwner], ExecutesSQL, MetastoreInterface, ServiceOwner, ABC):
 
     @LazyProperty
     def storage_services(self) -> Dict[str, StorageService]:
@@ -23,7 +20,7 @@ class ComputeService(ComputeServiceABC, ExecutesSQL, ABC):
         :return: A dictionary of class:`jetavator.services.StorageService` by name
         """
         return {
-            name: StorageService.from_config(self, config)
+            name: StorageService.from_config(config, self)
             for name, config in self.config.storage_services.items()
         }
 
@@ -55,7 +52,7 @@ class ComputeService(ComputeServiceABC, ExecutesSQL, ABC):
                 self.create_schema()
             elif (
                     not self.schema_empty
-                    and not self.engine.config.skip_deploy
+                    and not self.config.skip_deploy
             ):
                 raise Exception(
                     f"Database {self.config.schema} already exists, "

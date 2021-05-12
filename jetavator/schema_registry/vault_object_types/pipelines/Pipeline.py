@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Iterable
 
 from abc import ABC, abstractmethod
 
@@ -7,13 +7,25 @@ import wysdom
 from wysdom.mixins import RegistersSubclasses
 
 from .PerformanceHints import PerformanceHints
-from .SatellitePipelineDependency import SatellitePipelineDependency
+from .PipelineDependency import PipelineDependency
 
-from ... import Project
-from ..SatelliteABC import SatelliteABC
+from ... import VaultObjectOwner
 
 
-class SatellitePipeline(wysdom.UserObject, RegistersSubclasses, ABC):
+class PipelineOwner(ABC):
+
+    @property
+    @abstractmethod
+    def owner(self) -> VaultObjectOwner:
+        pass
+
+    @property
+    @abstractmethod
+    def default_pipeline_keys(self) -> Iterable[str]:
+        pass
+
+
+class Pipeline(wysdom.UserObject, RegistersSubclasses, ABC):
 
     type: str = wysdom.UserProperty(str)
     performance_hints: PerformanceHints = wysdom.UserProperty(
@@ -22,22 +34,19 @@ class SatellitePipeline(wysdom.UserObject, RegistersSubclasses, ABC):
         wysdom.SchemaDict(str), name="key_columns", persist_defaults=True, default={})
 
     @property
-    def satellite(self) -> SatelliteABC:
-        # TODO: Improve the type checking here?
+    def owner(self) -> PipelineOwner:
         parent = wysdom.parent(self)
-        if isinstance(parent, SatelliteABC):
-            return parent
-        else:
-            raise TypeError('Parent is not a subclass of SatelliteABC')
+        assert isinstance(parent, PipelineOwner)
+        return parent
 
     @property
-    def project(self) -> Project:
-        return self.satellite.project
+    def _vault_objects(self) -> VaultObjectOwner:
+        return self.owner.owner
 
     @property
     @abstractmethod
-    def dependencies(self) -> List[SatellitePipelineDependency]:
-        raise NotImplementedError
+    def dependencies(self) -> List[PipelineDependency]:
+        pass
 
     @property
     @abstractmethod

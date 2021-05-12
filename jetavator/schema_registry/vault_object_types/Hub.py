@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 from typing import Dict, List
 
 import wysdom
 
-from .SatelliteOwner import SatelliteOwner
-from .Satellite import Satellite
+from .Satellite import Satellite, SatelliteOwner
 from .SatelliteColumn import SatelliteColumn
 from .ColumnType import ColumnType
 from ..VaultObject import VaultObject, HubKeyColumn
@@ -35,7 +36,8 @@ class Hub(SatelliteOwner, register_as="hub"):
     def satellites_containing_keys(self) -> Dict[str, VaultObject]:
         return {
             key: sat
-            for key, sat in self.project.satellites.items()
+            for key, sat in self.owner.satellites.items()
+            if isinstance(sat, Satellite)
             if sat.parent.key == self.key
             or sat.parent.key in [link.key for link in self.links.values()]
             or self.name in sat.referenced_hubs.keys()
@@ -45,7 +47,8 @@ class Hub(SatelliteOwner, register_as="hub"):
     def links(self) -> Dict[str, VaultObject]:
         return {
             key: link
-            for key, link in self.project.links.items()
+            for key, link in self.owner.links.items()
+            if isinstance(link, SatelliteOwner)
             if self.name in link.unique_hubs.keys()
         }
 
@@ -70,3 +73,9 @@ class Hub(SatelliteOwner, register_as="hub"):
 
     def validate(self) -> None:
         pass
+
+    @property
+    def unique_hubs(self) -> Dict[str, Hub]:
+        return {
+            self.name: self
+        }

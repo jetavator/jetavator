@@ -3,7 +3,6 @@ from typing import List
 import sqlalchemy
 from sqlalchemy import func, cast, literal_column
 
-
 PANDAS_DTYPE_MAPPINGS = {
     "bigint": "Int64",
     "bit": "object",
@@ -51,7 +50,7 @@ class ColumnType(str):
             return [int(x.strip()) for x in remainder.split(")")[0].split(",")]
         else:
             return []
-        
+
     @property
     def serialized_length(self) -> int:
         # TODO: Take a more comprehensive look at SQL types and how to serialize them

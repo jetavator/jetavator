@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from abc import ABC
-from lazy_property import LazyProperty
 
 from jetavator.schema_registry import Source
 

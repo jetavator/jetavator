@@ -12,7 +12,7 @@ from sqlalchemy.types import Boolean
 
 from jetavator.runners.jobs import SatelliteQuery
 from jetavator.sql_model.functions import hash_keygen, hash_record
-from jetavator.services import SparkStorageService
+from jetavator.spark_services import SparkStorageService
 from .. import SparkSQLView
 
 
@@ -84,7 +84,7 @@ class SparkSatelliteQuery(SparkSQLView, SatelliteQuery, register_as='satellite_q
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
-        self.connector = StorageViewConnector(self.runner.compute_service.vault_storage_service)
+        self.connector = StorageViewConnector(self.owner.compute_service.vault_storage_service)
         if self.satellite.pipeline.type == "sql":
             self.user_query_sql = jinja2.Template(self.satellite.pipeline.sql).render(self.table_aliases)
         assert self.sql is not None
@@ -100,7 +100,7 @@ class SparkSatelliteQuery(SparkSQLView, SatelliteQuery, register_as='satellite_q
         return {
             'source': StorageViewMapping(self.connector, {
                 source.name: f'source_{source.name}'
-                for source in self.satellite.project.sources.values()
+                for source in self.owner.project.sources.values()
             }),
             'hub': {
                 hub.name: StorageViewMapping(self.connector, {
@@ -111,7 +111,7 @@ class SparkSatelliteQuery(SparkSQLView, SatelliteQuery, register_as='satellite_q
                         f'_{self.satellite.full_name}'
                     ),
                 })
-                for hub in self.satellite.project.hubs.values()
+                for hub in self.owner.project.hubs.values()
             },
             'link': {
                 link.name: StorageViewMapping(self.connector, {
@@ -122,7 +122,7 @@ class SparkSatelliteQuery(SparkSQLView, SatelliteQuery, register_as='satellite_q
                         f'_{self.satellite.full_name}'
                     ),
                 })
-                for link in self.satellite.project.links.values()
+                for link in self.owner.project.links.values()
             },
             'satellite': {
                 satellite.name:  StorageViewMapping(self.connector, {
@@ -130,13 +130,13 @@ class SparkSatelliteQuery(SparkSQLView, SatelliteQuery, register_as='satellite_q
                     'history': StorageTable(f'vault_history_{satellite.name}'),
                     'updates': f'vault_updates_{satellite.full_name}'
                 })
-                for satellite in self.satellite.project.satellites.values()
+                for satellite in self.owner.project.satellites.values()
             }
         }
 
     @property
     def sql(self) -> str:
-        return self.runner.compute_service.compile_sqlalchemy(
+        return self.owner.compute_service.compile_sqlalchemy(
             self.pipeline_query())
 
     def pipeline_query(self) -> Select:

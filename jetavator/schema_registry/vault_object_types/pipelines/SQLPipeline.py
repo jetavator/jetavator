@@ -1,15 +1,13 @@
 from typing import Optional, Dict, List
 
-import jinja2
-
 import wysdom
 
-from .SatellitePipeline import SatellitePipeline
-from .SatellitePipelineDependency import SatellitePipelineDependency
+from .Pipeline import Pipeline
+from .PipelineDependency import PipelineDependency
 
 
-class SatelliteSQLPipeline(
-    SatellitePipeline,
+class SQLPipeline(
+    Pipeline,
     register_as="sql"
 ):
 
@@ -17,8 +15,8 @@ class SatelliteSQLPipeline(
     sql: str = wysdom.UserProperty(str, name="sql")
     load_dt: Optional[str] = wysdom.UserProperty(str, optional=True)
     deleted_ind: Optional[str] = wysdom.UserProperty(str, optional=True)
-    dependencies: List[SatellitePipelineDependency] = wysdom.UserProperty(
-        wysdom.SchemaArray(SatellitePipelineDependency), default=[])
+    dependencies: List[PipelineDependency] = wysdom.UserProperty(
+        wysdom.SchemaArray(PipelineDependency), default=[])
 
     @property
     def key_columns(self) -> Dict[str, str]:
@@ -27,5 +25,5 @@ class SatelliteSQLPipeline(
         else:
             return {
                 hub_alias: hub_alias
-                for hub_alias in self.satellite.parent.hubs.keys()
+                for hub_alias in self.owner.parent.hubs.keys()
             }

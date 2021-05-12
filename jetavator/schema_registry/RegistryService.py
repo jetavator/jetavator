@@ -1,7 +1,32 @@
-# from abc import ABC
+from typing import Iterator
+from abc import ABC, abstractmethod
+from collections.abc import Mapping
 
-from jetavator.services.EngineOwnedService import EngineOwnedService
+from jetavator.config import RegistryServiceConfig
+from jetavator.services import Service, ServiceOwner
+from .Project import Project
 
 
-class RegistryService(EngineOwnedService):
-    pass
+class RegistryService(Service[RegistryServiceConfig, ServiceOwner], Mapping, ABC):
+
+    @abstractmethod
+    def __getitem__(self, k: str) -> Project:
+        pass
+
+    @abstractmethod
+    def __len__(self) -> int:
+        pass
+
+    @abstractmethod
+    def __iter__(self) -> Iterator[Project]:
+        pass
+
+    @property
+    @abstractmethod
+    def loaded(self) -> Project:
+        pass
+
+    @property
+    @abstractmethod
+    def deployed(self) -> Project:
+        pass

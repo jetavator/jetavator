@@ -35,14 +35,14 @@ class ProducedKeys(Job, ABC, register_as='produced_keys'):
     @classmethod
     def keys_for_satellite(
             cls,
-            runner: Runner,
+            owner: Runner,
             satellite: Satellite
     ) -> List[ProducedKeys]:
         """
         Generate an `InputKeys` job for any `Hub` or `Link`, if that Hub
         or Link can have keys generated for it by this satellite.
 
-        :param runner:    The `Runner` that is creating these objects.
+        :param owner:    The `Runner` that is creating these objects.
         :param satellite: The `Satellite` to search for output keys for.
         :return:          A list of `OutputKeys` jobs containing output keys
                           for all relevant `Hub`s and `Link`s.
@@ -50,7 +50,7 @@ class ProducedKeys(Job, ABC, register_as='produced_keys'):
         return [
             cls.registered_subclass_instance(
                 f'produced_{satellite_owner.registered_name}_keys',
-                runner,
+                owner,
                 satellite,
                 satellite_owner
             )
@@ -70,7 +70,7 @@ class ProducedKeys(Job, ABC, register_as='produced_keys'):
         """
         :return: The `SatelliteQuery` job that contains the updated data.
         """
-        return self.runner.get_job('satellite_query', self.satellite)
+        return self.owner.get_job('satellite_query', self.satellite)
 
     @property
     def dependencies(self) -> List[Job]:

@@ -1,12 +1,7 @@
 from typing import Iterable, Dict, Optional, List
 
-import datetime
-import os
-import tempfile
 import jinja2
-import numpy as np
 import sqlalchemy
-import pandas
 import wysdom
 import pyspark
 
@@ -14,9 +9,9 @@ from lazy_property import LazyProperty
 
 from jetavator.config import StorageServiceConfig
 from jetavator.sqlalchemy_delta import DeltaDialect
+from jetavator.services import Service
 
-from .Service import Service
-from .SparkStorageService import SparkStorageService
+from .SparkStorageService import SparkStorageService, SparkStorageServiceOwner
 
 DRIVER_GROUP_ID = "io.delta"
 DRIVER_ARTIFACT_ID = "delta-core_2.12"
@@ -29,7 +24,7 @@ class SparkDeltaStorageConfig(StorageServiceConfig):
 
 class SparkDeltaStorageService(
     SparkStorageService,
-    Service[SparkDeltaStorageConfig],
+    Service[SparkDeltaStorageConfig, SparkStorageServiceOwner],
     register_as="spark_delta"
 ):
 
@@ -41,46 +36,6 @@ class SparkDeltaStorageService(
     spark_jars_packages: List[str] = [
         f"{DRIVER_GROUP_ID}:{DRIVER_ARTIFACT_ID}:{DRIVER_VERSION}"
     ]
-
-    @property
-    def spark(self):
-        return self.owner.spark
-
-    def load_dataframe(
-            self,
-            dataframe: pandas.DataFrame,
-            source_name: str,
-            source_column_names: Iterable[str]
-    ) -> None:
-        for column in source_column_names:
-            if column not in dataframe.columns:
-                dataframe[column] = np.nan
-        if 'jetavator_load_dt' not in dataframe.columns:
-            dataframe['jetavator_load_dt'] = datetime.datetime.now()
-        if 'jetavator_deleted_ind' not in dataframe.columns:
-            dataframe['jetavator_deleted_ind'] = 0
-        columns = list(source_column_names) + [
-            'jetavator_load_dt',
-            'jetavator_deleted_ind'
-        ]
-        filename = f'{source_name}.csv'
-        with tempfile.TemporaryDirectory() as temp_path:
-            temp_csv_file = os.path.join(temp_path, filename)
-            (
-                dataframe
-                .reindex(
-                    columns=columns)
-                .to_csv(
-                    temp_csv_file,
-                    index=False)
-            )
-            self.load_csv(temp_csv_file, source_name)
-
-    def load_csv(self, csv_file, source_name: str):
-        raise NotImplementedError
-
-    def csv_file_path(self, source_name: str):
-        raise NotImplementedError
 
     def table_delta_path(self, sqlalchemy_table):
         return (

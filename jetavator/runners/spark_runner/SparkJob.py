@@ -18,7 +18,7 @@ class SparkJob(Job, ABC):
         """
         The Spark session that this SparkJob will use for execution.
         """
-        return self.runner.compute_service.spark
+        return self.owner.compute_service.spark
 
     @abstractmethod
     def execute(self) -> DataFrame:

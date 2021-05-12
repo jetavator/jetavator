@@ -11,7 +11,7 @@ class SparkSerialiseSatelliteOwner(
 ):
 
     def execute(self) -> DataFrame:
-        return self.runner.compute_service.vault_storage_service.merge_from_spark_view(
+        return self.owner.compute_service.vault_storage_service.merge_from_spark_view(
             storage_table_name=self.satellite_owner.table_name,
             spark_view_name=self.satellite_owner_keys_job.name,
             key_column_name=self.satellite_owner.key_column_name,

@@ -1,28 +1,33 @@
 from __future__ import annotations
 
-from typing import TypeVar, Generic
-from abc import ABC, abstractmethod
+from typing import TypeVar, Generic, Any
+from abc import ABC
 
 import logging
 
 from wysdom.mixins import RegistersSubclasses
 
-from jetavator import ServiceOwner
 from jetavator.config import ServiceConfig
-from jetavator.EngineABC import EngineABC
 
-ConfigType = TypeVar('ConfigType', bound=ServiceConfig)
+from .ServiceOwner import ServiceOwner
+
+ConfigType = TypeVar('ConfigType', bound=ServiceConfig, covariant=True)
+ServiceOwnerType = TypeVar('ServiceOwnerType', bound=ServiceOwner, covariant=True)
 
 
-class Service(RegistersSubclasses, Generic[ConfigType], ABC):
+class Service(RegistersSubclasses, Generic[ConfigType, ServiceOwnerType], ABC):
 
-    def __init__(self, owner: ServiceOwner, config: ConfigType):
+    def __init__(self, config: ConfigType, owner: ServiceOwnerType):
         super().__init__()
-        self._owner = owner
         self._config = config
+        self._owner = owner
+
+    @classmethod
+    def from_config(cls, config: ConfigType, owner: ServiceOwnerType, *args: Any, **kwargs: Any) -> Service:
+        return cls.registered_subclass_instance(config.type, config, owner, *args, **kwargs)
 
     @property
-    def owner(self) -> ServiceOwner:
+    def owner(self) -> ServiceOwnerType:
         return self._owner
 
     @property
@@ -32,14 +37,5 @@ class Service(RegistersSubclasses, Generic[ConfigType], ABC):
     @property
     def logger(self) -> logging.Logger:
         return self.owner.logger
-
-    @classmethod
-    def from_config(cls, owner: ServiceOwner, config: ConfigType) -> Service:
-        return cls.registered_subclass_instance(config.type, owner, config)
-
-    @property
-    @abstractmethod
-    def engine(self) -> EngineABC:
-        pass
 
 

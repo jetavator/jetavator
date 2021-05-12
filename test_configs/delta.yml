@@ -1,19 +1,31 @@
-services:
-  spark:
+secret_lookup: environment
+schema: $RANDOM_TEST_SCHEMA
+engine:
+  type: local
+  registry:
+    type: simple_file_registry
+    storage_path: ~/.jetavator/registry
+  compute:
+    type: spark
     storage_services:
       delta:
         service_type: storage
         type: spark_delta
-    service_type: compute
-    type: local_spark
     storage:
       vault: delta
       star: delta
-  file_registry:
-    service_type: registry
-    type: simple_file_registry
-    storage_path: ~/.jetavator/registry
-compute: spark
-registry: file_registry
-secret_lookup: environment
-schema: $RANDOM_TEST_SCHEMA
+logging:
+  version: 1
+  formatters:
+    simple:
+      format: "%(asctime)s %(message)s"
+  handlers:
+    console:
+      level: DEBUG
+      class: logging.StreamHandler
+      formatter: simple
+  loggers:
+    jetavator:
+      handlers:
+        - console
+      level: DEBUG

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from abc import ABC
 from typing import TypeVar, Generic, Iterable, Iterator, List, Dict, Tuple
 
-from collections.abc import Mapping, MutableSet
+from collections.abc import MutableSet
 
-from .VaultObject import VaultObject
+from .VaultObject import VaultObject, VaultObjectOwner
 
 
 T_co = TypeVar('T_co', covariant=True, bound=VaultObject)
@@ -51,7 +52,9 @@ class VaultObjectSet(VaultObjectCollection, MutableSet, Generic[T_co]):
         return type(self)(super().__xor__(other))
 
 
-class VaultObjectMapping(VaultObjectCollection, Mapping, Generic[T_co]):
+# TODO: Is this redundant given the interface defined in VaultObjectOwner?
+
+class VaultObjectMapping(VaultObjectCollection, VaultObjectOwner, Generic[T_co], ABC):
 
     def __getitem__(
             self,

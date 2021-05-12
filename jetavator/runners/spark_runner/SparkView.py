@@ -52,7 +52,7 @@ class SparkView(SparkJob, ABC):
         if SAMPLE_N_ROWS:
             df.limit(SAMPLE_N_ROWS).write.format("json").save(
                 f".jetavator/debug_samples"
-                f"/{self.runner.engine.config.session.run_uuid}/{self.name}.json")
+                f"/{self.owner.config.session.run_uuid}/{self.name}.json")
 
         if self.global_view:
             df = df.createOrReplaceGlobalTempView(self.name)

@@ -51,7 +51,7 @@ class InputKeys(Job, ABC, register_as='input_keys'):
     @classmethod
     def keys_for_satellite(
             cls,
-            runner: Runner,
+            owner: Runner,
             satellite: Satellite
     ) -> List[InputKeys]:
         """
@@ -59,19 +59,19 @@ class InputKeys(Job, ABC, register_as='input_keys'):
         or Link can have keys generated for it by one of this satellite's
         eventual dependencies.
 
-        :param runner:    The `Runner` that is creating these objects.
+        :param owner:    The `Runner` that is creating these objects.
         :param satellite: The `Satellite` to search for output keys for.
         :return:          A list of `OutputKeys` jobs containing output keys
                           for all relevant `Hub`s and `Link`s.
         """
         return [
-            cls(runner, satellite, satellite_owner)
+            cls(owner, satellite, satellite_owner)
             for satellite_owner in satellite.input_keys
         ]
 
     @property
     def dependencies(self) -> List[Job]:
         return [
-            self.runner.get_job('output_keys', dependent_satellite, self.satellite_owner)
+            self.owner.get_job('output_keys', dependent_satellite, self.satellite_owner)
             for dependent_satellite in self.dependent_satellites
         ]

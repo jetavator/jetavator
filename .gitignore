@@ -109,3 +109,4 @@ old_config.yml
 *.jar
 
 data/
+.jetavator

@@ -15,8 +15,8 @@ from sqlalchemy.sql import and_, select
 from ast import literal_eval
 
 from jetavator.default_logger import default_logger
-from jetavator.cli import main as cli_main
-from jetavator import Engine, Config
+from jetavator.cli import cli
+from jetavator import App, AppConfig
 
 SCHEMA_METADATA_TABLE = {
     "table": "INFORMATION_SCHEMA.TABLES",
@@ -49,20 +49,17 @@ def run_cli(
 
     exit_code = 0
 
-    def exit_callback(code):
-        exit_code = code
-
     assert retry_limit > 0, "retry_limit must be greater than zero"
 
     for attempts in range(0, retry_limit):
         try:
             command_parts = (
                 command
-                    .replace("\\\r", "")
-                    .replace("\\\n", "")
-                    .replace("\r", "")
-                    .replace("\n", "")
-                    .split(' ')
+                .replace("\\\r", "")
+                .replace("\\\n", "")
+                .replace("\r", "")
+                .replace("\n", "")
+                .split(' ')
             )
             command, *argv = [
                 part.replace('"', '')
@@ -72,7 +69,12 @@ def run_cli(
             assert command == 'jetavator', (
                 f'CLI command "{command}" not recognised'
             )
-            cli_main(argv, exit_callback)
+
+            try:
+                cli.main(args=argv)
+            except SystemExit as e:
+                exit_code = e.code
+
             break
         except Exception as e:
             if attempts + 1 == retry_limit:
@@ -92,12 +94,12 @@ def run_cli(
     return log_listener.command_output, 0
 
 
-def jetavator_engine():
-    return Engine(Config.from_yaml_file(Config.config_file()))
+def jetavator_app():
+    return App(AppConfig.from_yaml_file(AppConfig.config_file()))
 
 
 def engine_datastore(datastore):
-    compute = jetavator_engine().compute_service
+    compute = jetavator_app().engine.compute_service
     return compute.storage_services[compute.config.storage[datastore]]
 
 
@@ -318,7 +320,7 @@ def step_impl(context, table_name, datastore):
 @given(u"the file {file} is loaded to table {table:w}")
 @when(u"the file {file} is loaded to table {table:w}")
 def load_file_to_table(context, file, table):
-    jetavator_engine().load_csv(
+    jetavator_app().load_csv(
         csv_file=os.path.join(
             context.config.paths[0], "data", file
         ),

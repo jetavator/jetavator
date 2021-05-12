@@ -1,14 +1,14 @@
-from typing import List
+from typing import List, Union
 from abc import ABC, abstractmethod
 
 import pyspark
-import pandas
 
 from jetavator.HasLogger import HasLogger
 from jetavator.HasConfig import HasConfig
+from jetavator.sql import MetastoreInterface
 
 
-class HiveMetastoreInterface(HasLogger, HasConfig, ABC):
+class HiveMetastoreInterface(HasLogger, HasConfig, MetastoreInterface, ABC):
 
     @property
     @abstractmethod
@@ -29,20 +29,20 @@ class HiveMetastoreInterface(HasLogger, HasConfig, ABC):
 
     @property
     def schema_empty(self) -> bool:
-        table_names = self.table_names
-        self.logger.debug(f"{self.__class__.__name__} - checking if list of tables is empty: {table_names}")
-        return not any(table_names)
+        result = not any(self.table_names)
+        self.logger.debug(f"{self.__class__.__name__} - checking if list of tables is empty: {result}")
+        return result
 
     @property
     def schema_exists(self) -> bool:
-        schemas = self.schema_names
-        self.logger.debug(f"{self.__class__.__name__} - existing schemas: {schemas}")
-        return str(self.config.schema) in schemas
+        result = str(self.config.schema) in self.schema_names
+        self.logger.debug(f"{self.__class__.__name__} - checking if schema {self.config.schema} exists: {result}")
+        return result
 
     def table_exists(self, table_name: str) -> bool:
-        table_names = self.table_names
-        self.logger.debug(f"{self.__class__.__name__} - checking if {table_name} exists in: {table_names}")
-        return table_name in table_names
+        result = table_name in self.table_names
+        self.logger.debug(f"{self.__class__.__name__} - checking if table {table_name} exists: {result}")
+        return result
 
     def column_exists(self, table_name: str, column_name: str) -> bool:
         return column_name in self.column_names_in_table(table_name)
@@ -59,7 +59,7 @@ class HiveMetastoreInterface(HasLogger, HasConfig, ABC):
     def schema_names(self) -> List[str]:
         self.logger.debug(f"{self.__class__.__name__} - listing schemas")
         return self._column_in_spark_query(
-            select_column="namespace",
+            select_column=0,
             from_query="SHOW DATABASES"
         )
 
@@ -70,7 +70,7 @@ class HiveMetastoreInterface(HasLogger, HasConfig, ABC):
             from_query=f"DESCRIBE FORMATTED `{self.config.schema}`.`{table_name}`"
         )
 
-    def _column_in_spark_query(self, select_column: str, from_query: str) -> List[str]:
+    def _column_in_spark_query(self, select_column: Union[str, int], from_query: str) -> List[str]:
         return [
             row[select_column]
             for row in self.spark.sql(from_query).collect()

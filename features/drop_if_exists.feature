@@ -253,7 +253,7 @@ Feature: Drop existing database if exists
      And we run the CLI command "jetavator deploy"
      And we run the CLI command:
        """
-       jetavator run delta \
+       jetavator run \
          --csv airport_details="{tempfolder}/airport_details.csv" \
          --csv airport_pair_details="{tempfolder}/airport_pair_details.csv"
        """
@@ -271,7 +271,7 @@ Feature: Drop existing database if exists
      And we run the CLI command "jetavator deploy"
      And we run the CLI command:
        """
-       jetavator run delta \
+       jetavator run \
          --csv airport_details="{tempfolder}/airport_details.csv" \
          --csv airport_pair_details="{tempfolder}/airport_pair_details.csv"
        """

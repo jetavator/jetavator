@@ -34,17 +34,17 @@ class SatelliteQuery(Job, ABC, register_as='satellite_query'):
     def dependencies(self) -> List[Job]:
         return [
             *[
-                self.runner.get_job('input_keys', self.satellite, satellite_owner)
+                self.owner.get_job('input_keys', self.satellite, satellite_owner)
                 for satellite_owner in self.satellite.input_keys
             ],
             *[
-                self.runner.get_job('serialise_satellite', dep.object_reference)
+                self.owner.get_job('serialise_satellite', dep.object_reference)
                 for dep in self.satellite.pipeline.dependencies
                 if dep.type == 'satellite'
                 and dep.view in ['current', 'history']
             ],
             *[
-                self.runner.get_job('create_source', dep.object_reference)
+                self.owner.get_job('create_source', dep.object_reference)
                 for dep in self.satellite.pipeline.dependencies
                 if dep.type == 'source'
             ]

@@ -5,9 +5,8 @@ from sqlalchemy import literal_column, func
 import wysdom
 
 from ..VaultObject import HubKeyColumn
-from .SatelliteOwner import SatelliteOwner
 from .Hub import Hub
-from .Satellite import Satellite
+from .Satellite import Satellite, SatelliteOwner
 from .ColumnType import ColumnType
 
 SEPARATOR = 31  # ASCII unit separator control character
@@ -24,7 +23,7 @@ class Link(SatelliteOwner, register_as="link"):
     @property
     def hubs(self) -> Dict[str, Hub]:
         return {
-            k: self.project['hub', v]
+            k: self.owner['hub', v]
             for k, v in self._link_hubs.items()
         }
 
@@ -42,13 +41,6 @@ class Link(SatelliteOwner, register_as="link"):
     @property
     def key_type(self) -> ColumnType:
         return ColumnType(f"CHAR({self.key_length})")
-
-    @property
-    def unique_hubs(self) -> Dict[str, Hub]:
-        return {
-            hub_name: self.project["hub", hub_name]
-            for hub_name in set(x.name for x in self.hubs.values())
-        }
 
     def hub_key_columns(self, satellite) -> Dict[str, HubKeyColumn]:
         columns = {}
@@ -78,7 +70,14 @@ class Link(SatelliteOwner, register_as="link"):
 
     def validate(self) -> None:
         for k, v in self._link_hubs.items():
-            if ('hub', v) not in self.project:
+            if ('hub', v) not in self.owner:
                 raise KeyError(
                     f"Cannot find referenced hub {v} in object {self.key}"
                 )
+
+    @property
+    def unique_hubs(self) -> Dict[str, Hub]:
+        return {
+            hub_name: self.owner["hub", hub_name]
+            for hub_name in set(x.name for x in self.hubs.values())
+        }

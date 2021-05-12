@@ -1,21 +1,27 @@
-from typing import List
+from __future__ import annotations
 
-from sqlalchemy import Table, Column, Index
+from abc import ABC, abstractmethod
+
+from typing import List, Set, Dict, Optional
+
+from sqlalchemy import Table, Column, Index, PrimaryKeyConstraint
 from sqlalchemy import select, case, and_
-from sqlalchemy.schema import DDLElement
-
+from sqlalchemy.schema import DDLElement, SchemaItem
 from sqlalchemy.types import *
 from sqlalchemy.sql.expression import Select, ColumnElement, func, literal_column
 from sqlalchemy.sql.functions import Function, coalesce, max
 
-from jetavator.schema_registry import Satellite
+from jetavator.schema_registry import SatelliteOwner, Satellite
 
 from ..VaultAction import VaultAction
-from .SatelliteModelABC import SatelliteModelABC
-from .SatelliteOwnerModel import SatelliteOwnerModel
+from .SQLModel import SQLModel
+from .functions import hash_keygen
 
 
-class SatelliteModel(SatelliteModelABC, register_as="satellite"):
+INDEX_OPTION_KWARGS = set()
+
+
+class SatelliteModel(SQLModel[Satellite], register_as="satellite"):
 
     @property
     def files(self) -> List[DDLElement]:
@@ -58,7 +64,7 @@ class SatelliteModel(SatelliteModelABC, register_as="satellite"):
 
     @property
     def parent(self) -> SatelliteOwnerModel:
-        return self.project[self.definition.parent.key]
+        return self.owner[self.definition.parent.key]
 
     @property
     def date_columns(self) -> List[Column]:
@@ -205,3 +211,170 @@ class SatelliteModel(SatelliteModelABC, register_as="satellite"):
                 self.history_view.c.sat_deleted_ind == 0
             )
         )
+
+
+class SatelliteOwnerModel(SQLModel[SatelliteOwner], ABC, register_as="satellite_owner"):
+
+    @property
+    def files(self) -> List[DDLElement]:
+        return self.vault_files() + self.star_files()
+
+    def vault_files(self) -> List[DDLElement]:
+        if self.action == VaultAction.CREATE:
+            return self.create_tables(self.tables)
+        else:
+            return []
+
+    def star_files(self, with_index=False) -> List[DDLElement]:
+        if self.definition.exclude_from_star_schema:
+            return []
+        else:
+            return (
+                self.create_or_alter_tables(self.star_tables, with_index)
+            )
+
+    @property
+    def tables(self) -> List[Table]:
+        return [
+            self.table
+        ]
+
+    @property
+    def star_tables(self) -> List[Table]:
+        return [
+            self.star_table
+        ]
+
+    @property
+    def star_prefix(self) -> str:
+        return self.definition.star_prefix
+
+    @property
+    def key_columns(self) -> List[Column]:
+        return self.definition.alias_key_columns(self.definition.name)
+
+    @property
+    def index_option_kwargs(self) -> Set[str]:
+        return INDEX_OPTION_KWARGS
+
+    @property
+    def index_kwargs(self) -> Dict[str, bool]:
+        return {
+            x: self.definition.option(x)
+            for x in self.index_option_kwargs
+        }
+
+    def index(
+            self,
+            name: str,
+            alias: Optional[str] = None
+    ) -> Index:
+        alias = alias or self.definition.name
+        return Index(
+            f"ix_{name}",
+            self.definition.alias_primary_key_column(alias),
+            unique=False,
+            **self.index_kwargs
+        )
+
+    def index_or_key(
+            self,
+            name: str,
+            alias: Optional[str] = None
+    ) -> SchemaItem:
+        alias = alias or self.definition.name
+        if self.definition.option("no_primary_key"):
+            return self.index(name, alias)
+        else:
+            return PrimaryKeyConstraint(
+                self.definition.alias_primary_key_name(alias),
+                name=f"pk_{name}",
+                **self.index_kwargs
+            )
+
+    def custom_indexes(self, table_name) -> List[Index]:
+        return [
+            index
+            for satellite_model in self.star_satellite_models.values()
+            for index in satellite_model.custom_indexes(table_name)
+        ]
+
+    @property
+    def record_source_columns(self) -> List[Column]:
+        return [
+            Column(f"{self.definition.type}_load_dt", DateTime(), nullable=True),
+            Column(f"{self.definition.type}_record_source", String(), nullable=True),
+        ]
+
+    @property
+    @abstractmethod
+    def role_specific_columns(self) -> List[Column]:
+        pass
+
+    @property
+    def table_columns(self) -> List[Column]:
+        return [
+            *self.key_columns,
+            *self.record_source_columns,
+            *self.role_specific_columns
+        ]
+
+    @property
+    def table(self) -> Table:
+        return self.define_table(
+            self.definition.table_name,
+            *self.table_columns,
+            self.index_or_key(f"{self.definition.type}_{self.definition.name}"),
+            *self.satellite_owner_indexes(f"{self.definition.type}_{self.definition.name}"),
+            schema=self.vault_schema
+        )
+
+    @property
+    def star_satellite_columns(self) -> List[Column]:
+        return [
+            column
+            for satellite_model in self.star_satellite_models.values()
+            for column in satellite_model.satellite_columns
+        ]
+
+    @property
+    def star_table(self) -> Table:
+        return self.define_table(
+            self.definition.star_table_name,
+            *self.key_columns,
+            *self.role_specific_columns,
+            *self.star_satellite_columns,
+            self.index_or_key(f"{self.star_prefix}_{self.definition.name}"),
+            *self.satellite_owner_indexes(f"{self.star_prefix}_{self.definition.name}"),
+            *self.custom_indexes(f"{self.star_prefix}_{self.definition.name}"),
+            schema=self.star_schema
+        )
+
+    @property
+    def star_satellite_models(self) -> Dict[str, SatelliteModel]:
+        return {
+            satellite_model.definition.name: satellite_model
+            for satellite_model in self.owner.satellites.values()
+            if satellite_model.definition.parent.key == self.definition.key
+            and satellite_model.action != VaultAction.DROP
+            and not satellite_model.definition.exclude_from_star_schema
+        }
+
+    @abstractmethod
+    def satellite_owner_indexes(
+            self,
+            table_name: str
+    ) -> List[Index]:
+        pass
+
+    def generate_table_keys(self, source_table, alias=None):
+        alias = alias or self.definition.name
+        if self.definition.option("hash_key"):
+            hash_key = [hash_keygen(
+                source_table.c[self.definition.alias_key_name(alias)]
+                ).label(self.definition.alias_hash_key_name(alias))]
+        else:
+            hash_key = []
+        return hash_key + [
+            source_table.c[self.definition.alias_key_name(alias)]
+        ]
